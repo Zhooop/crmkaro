@@ -6,5 +6,9 @@ onlyBuiltDependencies:
   - esbuild
   - unrs-resolver
 allowBuilds:
+  '@prisma/engines': true
   esbuild: true
+  msgpackr-extract: true
+  prisma: true
   unrs-resolver: true
+  workerd: true

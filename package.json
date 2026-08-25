@@ -14,7 +14,14 @@
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:format": "pnpm --filter @crmkaro/database db:format",
+    "db:validate": "pnpm --filter @crmkaro/database db:validate",
+    "db:generate": "pnpm --filter @crmkaro/database db:generate",
+    "db:migrate": "pnpm --filter @crmkaro/database db:migrate",
+    "db:deploy": "pnpm --filter @crmkaro/database db:deploy",
+    "db:seed": "pnpm --filter @crmkaro/database db:seed",
+    "db:test:tenant": "pnpm --filter @crmkaro/database db:test:tenant"
   },
   "devDependencies": {
     "@types/node": "latest",

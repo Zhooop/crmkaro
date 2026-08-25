@@ -16,7 +16,7 @@
 - Add environment contract and project documentation
 - Verify install, typecheck and builds
 
-## 2. Local infrastructure and database foundation `[ ]`
+## 2. Local infrastructure and database foundation `[x]`
 
 - PostgreSQL and Redis development setup
 - Prisma configuration and initial migration
