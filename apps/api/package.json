@@ -3,26 +3,37 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "nest start --watch",
+    "dev": "tsx watch src/main.ts",
     "build": "nest build",
     "start": "node dist/main.js",
     "lint": "eslint src --ext .ts",
-    "test": "jest --passWithNoTests",
+    "test": "tsx --test src/**/*.spec.ts",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@crmkaro/database": "workspace:*",
+    "@crmkaro/permissions": "workspace:*",
     "@nestjs/common": "latest",
+    "@nestjs/config": "latest",
     "@nestjs/core": "latest",
     "@nestjs/platform-express": "latest",
+    "@nestjs/throttler": "latest",
+    "cookie-parser": "latest",
+    "nodemailer": "latest",
     "reflect-metadata": "latest",
-    "rxjs": "latest"
+    "rxjs": "latest",
+    "zod": "latest"
   },
   "devDependencies": {
     "@nestjs/cli": "latest",
+    "@types/cookie-parser": "latest",
+    "@types/express": "latest",
+    "@types/nodemailer": "latest",
     "@types/node": "latest",
     "eslint": "^9.0.0",
     "jest": "latest",
     "ts-jest": "latest",
+    "tsx": "latest",
     "typescript": "~6.0.2"
   }
 }

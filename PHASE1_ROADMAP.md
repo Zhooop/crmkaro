@@ -24,7 +24,7 @@
 - Tenant context and Row-Level Security foundation
 - Seed data and database test helpers
 
-## 3. Authentication and organisation tenancy `[ ]`
+## 3. Authentication and organisation tenancy `[x]`
 
 - Email OTP and Google OAuth foundations
 - Secure cookie sessions

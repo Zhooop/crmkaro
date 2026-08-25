@@ -1,0 +1,139 @@
+import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundException } from "@nestjs/common";
+import { randomUUID } from "node:crypto";
+import type { DatabaseClient } from "@crmkaro/database";
+import { withTenant, withUser } from "@crmkaro/database";
+import { permissions } from "@crmkaro/permissions";
+import { DATABASE } from "../database/database.module.js";
+import { SessionService } from "../auth/session.service.js";
+
+type CreateOrganisationInput = {
+  name: string;
+  businessType?: string;
+  industry?: string;
+  timezone: string;
+  currency: string;
+  serviceCodes: string[];
+};
+
+@Injectable()
+export class OrganisationsService {
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseClient,
+    @Inject(SessionService) private readonly sessions: SessionService,
+  ) {}
+
+  private slugify(value: string) {
+    const base = value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 100);
+    return `${base || "organisation"}-${randomUUID().slice(0, 8)}`;
+  }
+
+  async create(userId: string, sessionId: string, input: CreateOrganisationInput) {
+    const organisationId = randomUUID();
+    const roleId = randomUUID();
+
+    const organisation = await withTenant(this.database, organisationId, userId, async (transaction) => {
+      const selectedServices = await transaction.service.findMany({
+        where: { code: { in: input.serviceCodes }, status: "ACTIVE" },
+      });
+
+      if (selectedServices.length !== new Set(input.serviceCodes).size) {
+        throw new ConflictException("One or more selected services are unavailable.");
+      }
+
+      const created = await transaction.organisation.create({
+        data: {
+          id: organisationId,
+          name: input.name,
+          slug: this.slugify(input.name),
+          businessType: input.businessType,
+          industry: input.industry,
+          timezone: input.timezone,
+          currency: input.currency,
+        },
+      });
+
+      await transaction.role.create({
+        data: { id: roleId, organisationId, code: "owner", name: "Owner", isSystem: false },
+      });
+      await transaction.organisationMembership.create({
+        data: {
+          organisationId,
+          userId,
+          roleId,
+          status: "ACTIVE",
+          joinedAt: new Date(),
+        },
+      });
+
+      const permissionRows = await transaction.permission.findMany({
+        where: { code: { in: [...permissions] } },
+        select: { id: true },
+      });
+      await transaction.rolePermission.createMany({
+        data: permissionRows.map(({ id }) => ({ organisationId, roleId, permissionId: id })),
+      });
+      await transaction.organisationService.createMany({
+        data: selectedServices.map(({ id }) => ({
+          organisationId,
+          serviceId: id,
+          status: "ACTIVE",
+          activatedAt: new Date(),
+        })),
+      });
+      await transaction.auditLog.create({
+        data: {
+          organisationId,
+          actorUserId: userId,
+          action: "organisation.created",
+          entityType: "organisation",
+          entityId: organisationId,
+        },
+      });
+
+      return created;
+    });
+
+    await this.sessions.setActiveOrganisation(sessionId, organisationId);
+    return organisation;
+  }
+
+  async list(userId: string) {
+    const memberships = await withUser(this.database, userId, (transaction) =>
+      transaction.organisationMembership.findMany({
+        where: { userId, status: "ACTIVE" },
+        select: { organisationId: true, roleId: true },
+      }),
+    );
+
+    return Promise.all(
+      memberships.map(({ organisationId, roleId }) =>
+        withTenant(this.database, organisationId, userId, async (transaction) => {
+          const [organisation, role] = await Promise.all([
+            transaction.organisation.findUnique({ where: { id: organisationId } }),
+            transaction.role.findUnique({ where: { id: roleId } }),
+          ]);
+          return { organisation, role };
+        }),
+      ),
+    );
+  }
+
+  async activate(userId: string, sessionId: string, organisationId: string) {
+    const membership = await withTenant(this.database, organisationId, userId, (transaction) =>
+      transaction.organisationMembership.findUnique({
+        where: { organisationId_userId: { organisationId, userId } },
+      }),
+    );
+
+    if (!membership) throw new NotFoundException("Organisation not found.");
+    if (membership.status !== "ACTIVE") throw new ForbiddenException("Organisation membership is not active.");
+
+    await this.sessions.setActiveOrganisation(sessionId, organisationId);
+    return { activeOrganisationId: organisationId };
+  }
+}
