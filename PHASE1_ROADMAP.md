@@ -6,7 +6,7 @@
 - `[~]` In progress
 - `[x]` Complete
 
-## 1. Repository and monorepo foundation `[~]`
+## 1. Repository and monorepo foundation `[x]`
 
 - Initialise and connect the approved GitHub repository
 - Configure the personal Git identity
