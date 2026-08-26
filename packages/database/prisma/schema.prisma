@@ -55,6 +55,18 @@ enum PersonTypeCode {
   EMPLOYEE
 }
 
+enum LeadStatus {
+  OPEN
+  CONVERTED
+  LOST
+}
+
+enum FollowUpStatus {
+  SCHEDULED
+  COMPLETED
+  CANCELLED
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
@@ -72,6 +84,8 @@ model User {
   sessions         AuthSession[]
   oauthAccounts    OAuthAccount[]
   personActivities PersonActivity[]
+  leadNotes        LeadNote[]
+  leadActivities   LeadActivity[]
 
   @@map("users")
 }
@@ -162,6 +176,12 @@ model Organisation {
   personTypes      PersonTypeAssignment[]
   personTags       PersonTag[]
   personActivities PersonActivity[]
+  pipelines        Pipeline[]
+  pipelineStages   PipelineStage[]
+  leads            Lead[]
+  followUps        FollowUp[]
+  leadNotes        LeadNote[]
+  leadActivities   LeadActivity[]
 
   @@map("organisations")
 }
@@ -182,6 +202,8 @@ model OrganisationMembership {
   user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   role         Role         @relation(fields: [roleId], references: [id], onDelete: Restrict)
   invitedBy    User?        @relation("MembershipInviter", fields: [invitedById], references: [id], onDelete: SetNull)
+  ownedLeads   Lead[]       @relation("LeadOwner")
+  followUps    FollowUp[]   @relation("FollowUpAssignee")
 
   @@unique([organisationId, userId])
   @@index([userId, status])
@@ -345,6 +367,7 @@ model Person {
   types        PersonTypeAssignment[]
   tags         PersonTag[]
   activities   PersonActivity[]
+  leads        Lead[]
 
   @@index([organisationId, status, displayName])
   @@index([organisationId, primaryPhoneNormalised])
@@ -413,4 +436,131 @@ model PersonActivity {
 
   @@index([organisationId, personId, createdAt(sort: Desc)])
   @@map("person_activities")
+}
+
+model Pipeline {
+  id             String          @id @default(uuid()) @db.Uuid
+  organisationId String          @map("organisation_id") @db.Uuid
+  name           String          @db.VarChar(100)
+  isDefault      Boolean         @default(false) @map("is_default")
+  isActive       Boolean         @default(true) @map("is_active")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime        @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  stages         PipelineStage[]
+  leads          Lead[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId, isActive])
+  @@map("pipelines")
+}
+
+model PipelineStage {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  pipelineId     String       @map("pipeline_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  position       Int
+  colour         String       @default("#64748B") @db.VarChar(7)
+  isConverted    Boolean      @default(false) @map("is_converted")
+  isLost         Boolean      @default(false) @map("is_lost")
+  isActive       Boolean      @default(true) @map("is_active")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  pipeline       Pipeline     @relation(fields: [pipelineId], references: [id], onDelete: Cascade)
+  leads          Lead[]
+
+  @@unique([pipelineId, name])
+  @@unique([pipelineId, position])
+  @@index([organisationId, isActive])
+  @@map("pipeline_stages")
+}
+
+model Lead {
+  id                 String                  @id @default(uuid()) @db.Uuid
+  organisationId     String                  @map("organisation_id") @db.Uuid
+  personId           String?                 @map("person_id") @db.Uuid
+  pipelineId         String                  @map("pipeline_id") @db.Uuid
+  stageId            String                  @map("stage_id") @db.Uuid
+  ownerMembershipId  String?                 @map("owner_membership_id") @db.Uuid
+  name               String                  @db.VarChar(180)
+  phone              String?                 @db.VarChar(32)
+  phoneNormalised    String?                 @map("phone_normalised") @db.VarChar(24)
+  email              String?                 @db.VarChar(320)
+  emailNormalised    String?                 @map("email_normalised") @db.VarChar(320)
+  source             String?                 @db.VarChar(80)
+  expectedValueMinor Int?                    @map("expected_value_minor")
+  status             LeadStatus              @default(OPEN)
+  lostReason         String?                 @map("lost_reason") @db.VarChar(500)
+  convertedAt        DateTime?               @map("converted_at") @db.Timestamptz(6)
+  createdAt          DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation       Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person             Person?                 @relation(fields: [personId], references: [id], onDelete: SetNull)
+  pipeline           Pipeline                @relation(fields: [pipelineId], references: [id], onDelete: Restrict)
+  stage              PipelineStage           @relation(fields: [stageId], references: [id], onDelete: Restrict)
+  owner              OrganisationMembership? @relation("LeadOwner", fields: [ownerMembershipId], references: [id], onDelete: SetNull)
+  followUps          FollowUp[]
+  notes              LeadNote[]
+  activities         LeadActivity[]
+
+  @@index([organisationId, status, stageId])
+  @@index([organisationId, ownerMembershipId])
+  @@index([organisationId, phoneNormalised])
+  @@index([organisationId, emailNormalised])
+  @@map("leads")
+}
+
+model FollowUp {
+  id                     String                  @id @default(uuid()) @db.Uuid
+  organisationId         String                  @map("organisation_id") @db.Uuid
+  leadId                 String                  @map("lead_id") @db.Uuid
+  assignedToMembershipId String?                 @map("assigned_to_membership_id") @db.Uuid
+  dueAt                  DateTime                @map("due_at") @db.Timestamptz(6)
+  status                 FollowUpStatus          @default(SCHEDULED)
+  outcome                String?                 @db.VarChar(1000)
+  completedAt            DateTime?               @map("completed_at") @db.Timestamptz(6)
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation           Organisation            @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  lead                   Lead                    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  assignedTo             OrganisationMembership? @relation("FollowUpAssignee", fields: [assignedToMembershipId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status, dueAt])
+  @@index([organisationId, assignedToMembershipId, dueAt])
+  @@map("follow_ups")
+}
+
+model LeadNote {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  leadId         String       @map("lead_id") @db.Uuid
+  actorUserId    String?      @map("actor_user_id") @db.Uuid
+  body           String       @db.VarChar(5000)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor          User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, leadId, createdAt(sort: Desc)])
+  @@map("lead_notes")
+}
+
+model LeadActivity {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  leadId         String       @map("lead_id") @db.Uuid
+  actorUserId    String?      @map("actor_user_id") @db.Uuid
+  action         String       @db.VarChar(100)
+  summary        String       @db.VarChar(240)
+  metadata       Json?
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  lead           Lead         @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  actor          User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, leadId, createdAt(sort: Desc)])
+  @@map("lead_activities")
 }

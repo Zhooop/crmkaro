@@ -54,7 +54,7 @@
 - Profile and activity timeline
 - CSV import/export with permission checks
 
-## 7. Leads and CRM `[ ]`
+## 7. Leads and CRM `[x]`
 
 - Pipelines and configurable stages
 - Lead list and Kanban views

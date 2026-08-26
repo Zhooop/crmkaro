@@ -29,6 +29,24 @@ async function verifyTenantIsolation() {
      ON CONFLICT (id) DO NOTHING`,
     [organisationA, organisationB],
   );
+  await ownerPool.query(
+    `INSERT INTO pipelines (id, organisation_id, name, is_default, is_active, created_at, updated_at) VALUES
+       ('30000000-0000-4000-8000-000000000001', $1, 'Tenant A Test Pipeline', true, true, now(), now()),
+       ('30000000-0000-4000-8000-000000000002', $2, 'Tenant B Test Pipeline', true, true, now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
+  await ownerPool.query(
+    `INSERT INTO pipeline_stages (id, organisation_id, pipeline_id, name, position, is_active, created_at, updated_at) VALUES
+       ('40000000-0000-4000-8000-000000000001', $1, '30000000-0000-4000-8000-000000000001', 'New', 10, true, now(), now()),
+       ('40000000-0000-4000-8000-000000000002', $2, '30000000-0000-4000-8000-000000000002', 'New', 10, true, now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
+  await ownerPool.query(
+    `INSERT INTO leads (id, organisation_id, pipeline_id, stage_id, name, status, created_at, updated_at) VALUES
+       ('50000000-0000-4000-8000-000000000001', $1, '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 'Tenant A Lead', 'OPEN', now(), now()),
+       ('50000000-0000-4000-8000-000000000002', $2, '30000000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000002', 'Tenant B Lead', 'OPEN', now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
 
   const connection = await applicationPool.connect();
 
@@ -67,9 +85,13 @@ async function verifyTenantIsolation() {
     if (crossTenantPersonUpdate.rowCount !== 0) {
       throw new Error("RLS failed: tenant A modified tenant B People records.");
     }
+    const leadRows = await connection.query<{ organisation_id: string }>("SELECT organisation_id FROM leads WHERE id IN ('50000000-0000-4000-8000-000000000001','50000000-0000-4000-8000-000000000002')");
+    if (leadRows.rowCount !== 1 || leadRows.rows[0]?.organisation_id !== organisationA) throw new Error("RLS failed: tenant A could read another tenant's leads.");
+    const crossTenantLeadUpdate = await connection.query("UPDATE leads SET name = 'Blocked lead update' WHERE id = '50000000-0000-4000-8000-000000000002'");
+    if (crossTenantLeadUpdate.rowCount !== 0) throw new Error("RLS failed: tenant A modified tenant B leads.");
 
     await connection.query("ROLLBACK");
-    console.info("Tenant isolation verified: organisations and People enforce scoped reads and cross-tenant write protection.");
+    console.info("Tenant isolation verified: organisations, People and CRM enforce scoped reads and cross-tenant write protection.");
   } finally {
     connection.release();
     await Promise.all([ownerPool.end(), applicationPool.end()]);
