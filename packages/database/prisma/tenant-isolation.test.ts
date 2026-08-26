@@ -21,6 +21,14 @@ async function verifyTenantIsolation() {
      ON CONFLICT (id) DO NOTHING`,
     [organisationA, organisationB],
   );
+  await ownerPool.query(
+    `INSERT INTO people (id, organisation_id, display_name, status, created_at, updated_at)
+     VALUES
+       ('20000000-0000-4000-8000-000000000001', $1, 'Tenant A Person', 'ACTIVE', now(), now()),
+       ('20000000-0000-4000-8000-000000000002', $2, 'Tenant B Person', 'ACTIVE', now(), now())
+     ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
 
   const connection = await applicationPool.connect();
 
@@ -48,8 +56,20 @@ async function verifyTenantIsolation() {
       throw new Error("RLS failed: tenant A modified tenant B.");
     }
 
+    const peopleRows = await connection.query<{ organisation_id: string }>("SELECT organisation_id FROM people");
+    if (peopleRows.rowCount !== 1 || peopleRows.rows[0]?.organisation_id !== organisationA) {
+      throw new Error("RLS failed: tenant A could read another tenant's People records.");
+    }
+    const crossTenantPersonUpdate = await connection.query(
+      "UPDATE people SET display_name = 'Blocked person update' WHERE organisation_id = $1",
+      [organisationB],
+    );
+    if (crossTenantPersonUpdate.rowCount !== 0) {
+      throw new Error("RLS failed: tenant A modified tenant B People records.");
+    }
+
     await connection.query("ROLLBACK");
-    console.info("Tenant isolation verified: no-context deny, scoped read and cross-tenant write protection passed.");
+    console.info("Tenant isolation verified: organisations and People enforce scoped reads and cross-tenant write protection.");
   } finally {
     connection.release();
     await Promise.all([ownerPool.end(), applicationPool.end()]);
@@ -60,4 +80,3 @@ verifyTenantIsolation().catch((error: unknown) => {
   console.error(error);
   process.exitCode = 1;
 });
-

@@ -44,10 +44,8 @@ export class AccessService {
 
   assignRole(organisationId: string, userId: string, membershipId: string, roleCode: RolePresetCode) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
-      const [membership, role] = await Promise.all([
-        tx.organisationMembership.findFirst({ where: { id: membershipId, organisationId }, include: { role: true } }),
-        tx.role.findUnique({ where: { organisationId_code: { organisationId, code: roleCode } } }),
-      ]);
+      const membership = await tx.organisationMembership.findFirst({ where: { id: membershipId, organisationId }, include: { role: true } });
+      const role = await tx.role.findUnique({ where: { organisationId_code: { organisationId, code: roleCode } } });
       if (!membership) throw new NotFoundException("Membership not found.");
       if (!role) throw new NotFoundException("Role not found.");
       if (membership.userId === userId && membership.role.code === "owner" && roleCode !== "owner") {

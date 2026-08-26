@@ -56,11 +56,12 @@ export class OrganisationsService {
         },
       });
 
-      const createdRoles = await Promise.all(Object.entries(rolePresets).map(([code, preset]) =>
-        transaction.role.create({
+      const createdRoles = [];
+      for (const [code, preset] of Object.entries(rolePresets)) {
+        createdRoles.push(await transaction.role.create({
           data: { organisationId, code, name: preset.name, isSystem: false },
-        }),
-      ));
+        }));
+      }
       const ownerRole = createdRoles.find((role) => role.code === "owner");
       if (!ownerRole) throw new ConflictException("Owner role could not be created.");
       await transaction.organisationMembership.create({
@@ -120,10 +121,8 @@ export class OrganisationsService {
     return Promise.all(
       memberships.map(({ organisationId, roleId }) =>
         withTenant(this.database, organisationId, userId, async (transaction) => {
-          const [organisation, role] = await Promise.all([
-            transaction.organisation.findUnique({ where: { id: organisationId } }),
-            transaction.role.findUnique({ where: { id: roleId } }),
-          ]);
+          const organisation = await transaction.organisation.findUnique({ where: { id: organisationId } });
+          const role = await transaction.role.findUnique({ where: { id: roleId } });
           return { organisation, role };
         }),
       ),

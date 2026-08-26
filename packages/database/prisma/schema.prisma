@@ -43,6 +43,18 @@ enum OutboxStatus {
   FAILED
 }
 
+enum PersonStatus {
+  ACTIVE
+  ARCHIVED
+}
+
+enum PersonTypeCode {
+  CUSTOMER
+  STUDENT
+  MEMBER
+  EMPLOYEE
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
@@ -54,11 +66,12 @@ model User {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships   OrganisationMembership[]
-  invitations   OrganisationMembership[] @relation("MembershipInviter")
-  auditLogs     AuditLog[]
-  sessions      AuthSession[]
-  oauthAccounts OAuthAccount[]
+  memberships      OrganisationMembership[]
+  invitations      OrganisationMembership[] @relation("MembershipInviter")
+  auditLogs        AuditLog[]
+  sessions         AuthSession[]
+  oauthAccounts    OAuthAccount[]
+  personActivities PersonActivity[]
 
   @@map("users")
 }
@@ -137,13 +150,18 @@ model Organisation {
   createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships     OrganisationMembership[]
-  roles           Role[]
-  rolePermissions RolePermission[]
-  services        OrganisationService[]
-  auditLogs       AuditLog[]
-  outboxEvents    OutboxEvent[]
-  activeSessions  AuthSession[]            @relation("ActiveOrganisationSessions")
+  memberships      OrganisationMembership[]
+  roles            Role[]
+  rolePermissions  RolePermission[]
+  services         OrganisationService[]
+  auditLogs        AuditLog[]
+  outboxEvents     OutboxEvent[]
+  activeSessions   AuthSession[]            @relation("ActiveOrganisationSessions")
+  people           Person[]
+  tags             Tag[]
+  personTypes      PersonTypeAssignment[]
+  personTags       PersonTag[]
+  personActivities PersonActivity[]
 
   @@map("organisations")
 }
@@ -305,4 +323,94 @@ model OutboxEvent {
   @@index([status, availableAt])
   @@index([organisationId, createdAt(sort: Desc)])
   @@map("outbox_events")
+}
+
+model Person {
+  id                     String       @id @default(uuid()) @db.Uuid
+  organisationId         String       @map("organisation_id") @db.Uuid
+  displayName            String       @map("display_name") @db.VarChar(180)
+  primaryPhone           String?      @map("primary_phone") @db.VarChar(32)
+  primaryPhoneNormalised String?      @map("primary_phone_normalised") @db.VarChar(24)
+  alternatePhone         String?      @map("alternate_phone") @db.VarChar(32)
+  email                  String?      @db.VarChar(320)
+  emailNormalised        String?      @map("email_normalised") @db.VarChar(320)
+  address                Json?        @map("address_json")
+  status                 PersonStatus @default(ACTIVE)
+  notes                  String?
+  archivedAt             DateTime?    @map("archived_at") @db.Timestamptz(6)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation Organisation           @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  types        PersonTypeAssignment[]
+  tags         PersonTag[]
+  activities   PersonActivity[]
+
+  @@index([organisationId, status, displayName])
+  @@index([organisationId, primaryPhoneNormalised])
+  @@index([organisationId, emailNormalised])
+  @@map("people")
+}
+
+model PersonTypeAssignment {
+  organisationId String         @map("organisation_id") @db.Uuid
+  personId       String         @map("person_id") @db.Uuid
+  type           PersonTypeCode
+  createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@id([personId, type])
+  @@index([organisationId, type])
+  @@map("person_types")
+}
+
+model Tag {
+  id             String   @id @default(uuid()) @db.Uuid
+  organisationId String   @map("organisation_id") @db.Uuid
+  name           String   @db.VarChar(80)
+  colour         String   @default("#64748B") @db.VarChar(7)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  people       PersonTag[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId])
+  @@map("tags")
+}
+
+model PersonTag {
+  organisationId String   @map("organisation_id") @db.Uuid
+  personId       String   @map("person_id") @db.Uuid
+  tagId          String   @map("tag_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  tag          Tag          @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([personId, tagId])
+  @@index([organisationId, tagId])
+  @@map("person_tags")
+}
+
+model PersonActivity {
+  id             String   @id @default(uuid()) @db.Uuid
+  organisationId String   @map("organisation_id") @db.Uuid
+  personId       String   @map("person_id") @db.Uuid
+  actorUserId    String?  @map("actor_user_id") @db.Uuid
+  action         String   @db.VarChar(100)
+  summary        String   @db.VarChar(240)
+  metadata       Json?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person       Person       @relation(fields: [personId], references: [id], onDelete: Cascade)
+  actor        User?        @relation(fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, personId, createdAt(sort: Desc)])
+  @@map("person_activities")
 }

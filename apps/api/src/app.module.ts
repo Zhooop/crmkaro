@@ -8,6 +8,7 @@ import { DatabaseModule } from "./database/database.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { OrganisationsModule } from "./organisations/organisations.module.js";
 import { AccessModule } from "./access/access.module.js";
+import { PeopleModule } from "./people/people.module.js";
 
 @Module({
   imports: [
@@ -17,6 +18,7 @@ import { AccessModule } from "./access/access.module.js";
     AuthModule,
     OrganisationsModule,
     AccessModule,
+    PeopleModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

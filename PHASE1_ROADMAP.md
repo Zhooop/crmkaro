@@ -47,7 +47,7 @@
 - Design tokens, reusable UI components and accessibility baseline
 - Dashboard framework, global search and notifications shell
 
-## 6. Shared People module `[ ]`
+## 6. Shared People module `[x]`
 
 - People schema, CRUD, archive and duplicate detection
 - Person types and tags
