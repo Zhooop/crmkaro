@@ -14,6 +14,8 @@ CRMKaro is a modular business operating system for organisations that need CRM, 
 - [Product plan](./PROJECT_PLAN.md)
 - [Technical design](./TECHNICAL_DESIGN.md)
 - [Phase 1 roadmap](./PHASE1_ROADMAP.md)
+- [Operations runbook](./docs/OPERATIONS_RUNBOOK.md)
+- [Release checklist](./docs/PHASE1_RELEASE_CHECKLIST.md)
 
 ## Local development
 
@@ -30,5 +32,4 @@ pnpm install
 pnpm dev
 ```
 
-The local infrastructure and database schema will be added in Phase 1.2.
-
+Start PostgreSQL and Redis with `docker compose -f infrastructure/compose.yaml up -d`, then apply migrations with `pnpm db:deploy` and seed local service/permission data with `pnpm db:seed`.

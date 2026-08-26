@@ -13,6 +13,7 @@ import { CrmModule } from "./crm/crm.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
 import { PayrollModule } from "./payroll/payroll.module.js";
 import { InventoryModule } from "./inventory/inventory.module.js";
+import { DashboardModule } from "./dashboard/dashboard.module.js";
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { InventoryModule } from "./inventory/inventory.module.js";
     FinanceModule,
     PayrollModule,
     InventoryModule,
+    DashboardModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

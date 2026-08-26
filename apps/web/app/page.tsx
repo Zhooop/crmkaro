@@ -1,33 +1,262 @@
-import { AppShell, Icon, SectionCard, StatCard, type NavItem } from "@crmkaro/ui";
+"use client";
 
-const nav: NavItem[] = [
-  { label: "Overview", icon: "home" }, { label: "People", icon: "people" },
-  { label: "Leads & CRM", icon: "crm", badge: "12" }, { label: "Finance", icon: "finance" },
-  { label: "Payroll", icon: "payroll" }, { label: "Inventory", icon: "inventory", badge: "3" },
-  { label: "Reports", icon: "reports" }, { label: "Settings", icon: "settings" },
-];
+import {
+  AppShell,
+  Icon,
+  SectionCard,
+  StatCard,
+  type IconName,
+  type NavItem,
+} from "@crmkaro/ui";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 
-const activities = [
-  ["people", "New customer added", "Ananya Sharma was added to People", "8 min ago"],
-  ["finance", "Payment received", "Invoice #INV-1042 · ₹18,500", "24 min ago"],
-  ["crm", "Lead moved to Qualified", "Orion Fitness · Website enquiry", "1 hr ago"],
-  ["inventory", "Stock running low", "Premium Yoga Mat · 4 units left", "2 hrs ago"],
-] as const;
+type Dashboard = {
+  organisation: { name: string; currency: string; timezone: string };
+  user: { name: string | null; email: string };
+  role: { name: string; code: string } | null;
+  services: string[];
+  cards: Array<{
+    key: string;
+    label: string;
+    value: number;
+    detail: string;
+    format: "number" | "money";
+  }>;
+  notifications: Array<{
+    id: string;
+    module: string;
+    title: string;
+    detail: string;
+    severity: string;
+  }>;
+  activity: Array<{
+    id: string;
+    action: string;
+    entityType: string;
+    createdAt: string;
+  }>;
+  generatedAt: string;
+};
+
+const icons: Record<string, IconName> = {
+  people: "people",
+  crm: "crm",
+  finance: "finance",
+  payroll: "payroll",
+  inventory: "inventory",
+};
+const serviceNav: Record<string, NavItem> = {
+  people: { label: "People", icon: "people", href: "/people" },
+  crm: { label: "Leads & CRM", icon: "crm", href: "/crm" },
+  finance: { label: "Finance", icon: "finance", href: "/finance" },
+  payroll: { label: "Payroll", icon: "payroll", href: "/payroll" },
+  inventory: { label: "Inventory", icon: "inventory", href: "/inventory" },
+};
+
+function money(value: number, currency: string) {
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 0,
+  }).format(value / 100);
+}
+
+function DashboardLoading() {
+  return (
+    <main className="dashboard-state" aria-live="polite">
+      <div className="state-spinner" />
+      <h1>Loading your workspace…</h1>
+      <p>Fetching the latest business overview.</p>
+    </main>
+  );
+}
 
 export default function HomePage() {
-  return <AppShell product="CRMKaro" organisation="Acme Wellness" nav={nav}>
-    <div className="page-heading"><div><p className="eyebrow"><Icon name="activity" size={14}/>Tuesday overview</p><h1>Good morning, Pushpaindu</h1><p className="subheading">Here&apos;s what&apos;s happening across your business today.</p></div><span className="date-chip">26 August 2026 · 09:30 AM</span></div>
-    <div className="stats-grid">
-      <StatCard label="Active people" value="1,248" change="↑ 8.2% this month" icon="people" />
-      <StatCard label="Open leads" value="84" change="12 need follow-up" icon="crm" tone="teal" />
-      <StatCard label="Payments due" value="₹2.48L" change="18 invoices pending" icon="finance" tone="amber" />
-      <StatCard label="Low stock items" value="7" change="3 need attention" icon="inventory" tone="rose" />
-    </div>
-    <div className="content-grid">
-      <SectionCard title="Recent activity" subtitle="Updates from across your workspace" action="View all"><ul className="activity-list">{activities.map(([icon,title,detail,time]) => <li key={title}><span className="activity-dot"><Icon name={icon}/></span><span className="activity-copy"><strong>{title}</strong><span>{detail}</span></span><time>{time}</time></li>)}</ul></SectionCard>
-      <SectionCard title="Lead pipeline" subtitle="Current pipeline distribution" action="Open CRM"><div className="pipeline"><div className="pipeline-bars">{[["New",72],["Contacted",54],["Qualified",82],["Proposal",40],["Won",62]].map(([label,height]) => <div className="pipeline-bar" key={label}><i style={{height:`${height}%`}}/><span>{label}</span></div>)}</div><div className="pipeline-legend"><span>Total pipeline value</span><strong>₹14.8L</strong></div></div></SectionCard>
-      <SectionCard title="Quick actions" subtitle="Common tasks, one click away"><div className="quick-grid"><button className="quick-tile"><Icon name="people"/>Add person</button><button className="quick-tile"><Icon name="crm"/>Create lead</button><button className="quick-tile"><Icon name="finance"/>New invoice</button><button className="quick-tile"><Icon name="inventory"/>Adjust stock</button></div></SectionCard>
-      <SectionCard title="Today’s focus" subtitle="Prioritised for your role" action="See tasks"><ul className="activity-list"><li><span className="activity-dot"><Icon name="bell"/></span><span className="activity-copy"><strong>7 follow-ups due</strong><span>Oldest follow-up is 2 days overdue</span></span><time>CRM</time></li><li><span className="activity-dot"><Icon name="payroll"/></span><span className="activity-copy"><strong>August payroll draft</strong><span>Ready for owner approval</span></span><time>Payroll</time></li></ul></SectionCard>
-    </div>
-  </AppShell>;
+  const router = useRouter();
+  const [data, setData] = useState<Dashboard | null>(null);
+  const [error, setError] = useState("");
+  useEffect(() => {
+    const api =
+      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+    fetch(`${api}/dashboard`, { credentials: "include" })
+      .then(async (response) => {
+        if (response.status === 401) {
+          router.replace("/login");
+          return null;
+        }
+        if (!response.ok)
+          throw new Error("Your dashboard could not be loaded.");
+        return response.json() as Promise<Dashboard>;
+      })
+      .then((dashboard) => dashboard && setData(dashboard))
+      .catch((reason: Error) => setError(reason.message));
+  }, [router]);
+  if (error)
+    return (
+      <main className="dashboard-state">
+        <Icon name="activity" size={32} />
+        <h1>Dashboard unavailable</h1>
+        <p>{error}</p>
+        <button
+          className="primary-button"
+          onClick={() => window.location.reload()}
+        >
+          Try again
+        </button>
+      </main>
+    );
+  if (!data) return <DashboardLoading />;
+  const nav: NavItem[] = [
+    { label: "Overview", icon: "home", href: "/" },
+    ...data.services
+      .map((service) => serviceNav[service])
+      .filter((item): item is NavItem => Boolean(item)),
+    { label: "Reports", icon: "reports", href: "/reports" },
+    { label: "Settings", icon: "settings", href: "/settings" },
+  ];
+  const displayName =
+    data.user.name ?? data.user.email.split("@")[0] ?? "there";
+  return (
+    <AppShell
+      product="CRMKaro"
+      organisation={data.organisation.name}
+      nav={nav}
+      userName={displayName}
+      userRole={data.role?.name ?? "Member"}
+      notificationCount={data.notifications.length}
+    >
+      <div className="page-heading">
+        <div>
+          <p className="eyebrow">
+            <Icon name="activity" size={14} />
+            Live business overview
+          </p>
+          <h1>Welcome back, {displayName}</h1>
+          <p className="subheading">
+            Only the modules and data available to your role are shown here.
+          </p>
+        </div>
+        <span className="date-chip">Updated just now</span>
+      </div>
+      <div className="stats-grid">
+        {data.cards.map((card, index) => (
+          <StatCard
+            key={card.key}
+            label={card.label}
+            value={
+              card.format === "money"
+                ? money(card.value, data.organisation.currency)
+                : new Intl.NumberFormat("en-IN").format(card.value)
+            }
+            change={card.detail}
+            icon={icons[card.key] ?? "reports"}
+            tone={["blue", "teal", "amber", "rose"][index % 4]}
+          />
+        ))}
+      </div>
+      <div className="content-grid">
+        <SectionCard
+          title="Recent activity"
+          subtitle="Audited updates visible to your role"
+        >
+          <ul className="activity-list">
+            {data.activity.length ? (
+              data.activity.map((item) => (
+                <li key={item.id}>
+                  <span className="activity-dot">
+                    <Icon name={icons[item.entityType] ?? "activity"} />
+                  </span>
+                  <span className="activity-copy">
+                    <strong>{item.action.split(".").join(" ")}</strong>
+                    <span>{item.entityType.replaceAll("_", " ")}</span>
+                  </span>
+                  <time>
+                    {new Intl.RelativeTimeFormat("en", {
+                      numeric: "auto",
+                    }).format(
+                      Math.round(
+                        (new Date(item.createdAt).getTime() -
+                          new Date(data.generatedAt).getTime()) /
+                          60000,
+                      ),
+                      "minute",
+                    )}
+                  </time>
+                </li>
+              ))
+            ) : (
+              <li className="empty-row">
+                <span className="activity-copy">
+                  <strong>No recent activity</strong>
+                  <span>New workspace events will appear here.</span>
+                </span>
+              </li>
+            )}
+          </ul>
+        </SectionCard>
+        <SectionCard
+          title="Notifications"
+          subtitle="Prioritised operational signals"
+        >
+          <ul className="activity-list">
+            {data.notifications.length ? (
+              data.notifications.map((item) => (
+                <li key={item.id}>
+                  <span className={`activity-dot severity-${item.severity}`}>
+                    <Icon name={icons[item.module] ?? "bell"} />
+                  </span>
+                  <span className="activity-copy">
+                    <strong>{item.title}</strong>
+                    <span>{item.detail}</span>
+                  </span>
+                  <time>{item.module}</time>
+                </li>
+              ))
+            ) : (
+              <li className="empty-row">
+                <span className="activity-copy">
+                  <strong>You’re all caught up</strong>
+                  <span>No operational alerts need attention.</span>
+                </span>
+              </li>
+            )}
+          </ul>
+        </SectionCard>
+        <SectionCard
+          title="Quick actions"
+          subtitle="Available services in this workspace"
+        >
+          <div className="quick-grid">
+            {data.services.slice(0, 6).map((service) => (
+              <a
+                className="quick-tile"
+                href={serviceNav[service]?.href ?? "#"}
+                key={service}
+              >
+                <Icon name={icons[service] ?? "services"} />
+                {serviceNav[service]?.label ?? service}
+              </a>
+            ))}
+          </div>
+        </SectionCard>
+        <SectionCard title="Access context" subtitle="Current session scope">
+          <div className="access-summary">
+            <span>
+              <small>Role</small>
+              <strong>{data.role?.name ?? "Member"}</strong>
+            </span>
+            <span>
+              <small>Enabled modules</small>
+              <strong>{data.services.length}</strong>
+            </span>
+            <span>
+              <small>Data boundary</small>
+              <strong>Organisation only</strong>
+            </span>
+          </div>
+        </SectionCard>
+      </div>
+    </AppShell>
+  );
 }

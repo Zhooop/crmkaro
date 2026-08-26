@@ -76,7 +76,7 @@
 - Products, categories and stock movements
 - Low-stock alerts and inventory reports
 
-## 10. Dashboards, QA and release `[ ]`
+## 10. Dashboards, QA and release `[~]`
 
 - Role-aware dashboards and notifications
 - Connected MVP end-to-end scenario

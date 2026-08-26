@@ -19,6 +19,7 @@
     "@nestjs/platform-express": "latest",
     "@nestjs/throttler": "latest",
     "cookie-parser": "latest",
+    "helmet": "^8.3.0",
     "nodemailer": "latest",
     "pdfkit": "^0.20.1",
     "reflect-metadata": "latest",

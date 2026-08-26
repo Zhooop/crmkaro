@@ -1,12 +1,20 @@
 import { NestFactory } from "@nestjs/core";
 import cookieParser from "cookie-parser";
+import helmet from "helmet";
 import { AppModule } from "./app.module.js";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
+  app.use(helmet());
   app.use(cookieParser());
+  if (process.env.NODE_ENV === "production") {
+    app.getHttpAdapter().getInstance().set("trust proxy", 1);
+  }
   app.enableCors({
-    origin: [process.env.WEB_URL ?? "http://localhost:3000", process.env.ADMIN_URL ?? "http://localhost:3001"],
+    origin: [
+      process.env.WEB_URL ?? "http://localhost:3000",
+      process.env.ADMIN_URL ?? "http://localhost:3001",
+    ],
     credentials: true,
   });
   app.setGlobalPrefix("api/v1");
