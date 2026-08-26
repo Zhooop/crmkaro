@@ -62,7 +62,7 @@
 - Transactional lead-to-customer conversion
 - CRM dashboard metrics
 
-## 8. Finance, invoices and payments `[ ]`
+## 8. Finance, invoices and payments `[x]`
 
 - Invoices and line items
 - Partial/final payments, receipts and dues

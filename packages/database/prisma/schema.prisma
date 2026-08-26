@@ -67,6 +67,25 @@ enum FollowUpStatus {
   CANCELLED
 }
 
+enum InvoiceStatus {
+  DRAFT
+  ISSUED
+  PARTIALLY_PAID
+  PAID
+  VOID
+}
+
+enum PaymentStatus {
+  COMPLETED
+  PARTIALLY_REFUNDED
+  REFUNDED
+}
+
+enum ExpenseStatus {
+  RECORDED
+  VOID
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
@@ -86,6 +105,9 @@ model User {
   personActivities PersonActivity[]
   leadNotes        LeadNote[]
   leadActivities   LeadActivity[]
+  recordedPayments Payment[]
+  recordedExpenses Expense[]
+  issuedRefunds    PaymentRefund[]
 
   @@map("users")
 }
@@ -182,6 +204,12 @@ model Organisation {
   followUps        FollowUp[]
   leadNotes        LeadNote[]
   leadActivities   LeadActivity[]
+  invoiceSequences OrganisationSequence[]
+  invoices         Invoice[]
+  invoiceItems     InvoiceItem[]
+  payments         Payment[]
+  paymentRefunds   PaymentRefund[]
+  expenses         Expense[]
 
   @@map("organisations")
 }
@@ -368,6 +396,8 @@ model Person {
   tags         PersonTag[]
   activities   PersonActivity[]
   leads        Lead[]
+  invoices     Invoice[]
+  payments     Payment[]
 
   @@index([organisationId, status, displayName])
   @@index([organisationId, primaryPhoneNormalised])
@@ -563,4 +593,129 @@ model LeadActivity {
 
   @@index([organisationId, leadId, createdAt(sort: Desc)])
   @@map("lead_activities")
+}
+
+model OrganisationSequence {
+  organisationId String       @map("organisation_id") @db.Uuid
+  code           String       @db.VarChar(40)
+  currentValue   Int          @default(0) @map("current_value")
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@id([organisationId, code])
+  @@map("organisation_sequences")
+}
+
+model Invoice {
+  id              String        @id @default(uuid()) @db.Uuid
+  organisationId  String        @map("organisation_id") @db.Uuid
+  personId        String        @map("person_id") @db.Uuid
+  invoiceNumber   String        @map("invoice_number") @db.VarChar(60)
+  issueDate       DateTime      @map("issue_date") @db.Date
+  dueDate         DateTime      @map("due_date") @db.Date
+  status          InvoiceStatus @default(DRAFT)
+  currency        String        @default("INR") @db.Char(3)
+  subtotalMinor   Int           @map("subtotal_minor")
+  discountMinor   Int           @default(0) @map("discount_minor")
+  taxMinor        Int           @default(0) @map("tax_minor")
+  grandTotalMinor Int           @map("grand_total_minor")
+  paidTotalMinor  Int           @default(0) @map("paid_total_minor")
+  balanceDueMinor Int           @map("balance_due_minor")
+  notes           String?       @db.VarChar(2000)
+  issuedAt        DateTime?     @map("issued_at") @db.Timestamptz(6)
+  voidedAt        DateTime?     @map("voided_at") @db.Timestamptz(6)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation    Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person          Person        @relation(fields: [personId], references: [id], onDelete: Restrict)
+  items           InvoiceItem[]
+  payments        Payment[]
+
+  @@unique([organisationId, invoiceNumber])
+  @@index([organisationId, status, dueDate])
+  @@index([organisationId, personId, issueDate(sort: Desc)])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  invoiceId      String       @map("invoice_id") @db.Uuid
+  description    String       @db.VarChar(500)
+  quantity       Decimal      @db.Decimal(12, 3)
+  unitPriceMinor Int          @map("unit_price_minor")
+  discountMinor  Int          @default(0) @map("discount_minor")
+  taxRateBps     Int          @default(0) @map("tax_rate_bps")
+  taxMinor       Int          @default(0) @map("tax_minor")
+  lineTotalMinor Int          @map("line_total_minor")
+  position       Int
+  invoice        Invoice      @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@index([organisationId, invoiceId])
+  @@map("invoice_items")
+}
+
+model Payment {
+  id             String          @id @default(uuid()) @db.Uuid
+  organisationId String          @map("organisation_id") @db.Uuid
+  invoiceId      String?         @map("invoice_id") @db.Uuid
+  personId       String          @map("person_id") @db.Uuid
+  recordedById   String?         @map("recorded_by_id") @db.Uuid
+  receiptNumber  String          @map("receipt_number") @db.VarChar(60)
+  amountMinor    Int             @map("amount_minor")
+  refundedMinor  Int             @default(0) @map("refunded_minor")
+  method         String          @db.VarChar(60)
+  reference      String?         @db.VarChar(160)
+  status         PaymentStatus   @default(COMPLETED)
+  receivedAt     DateTime        @map("received_at") @db.Timestamptz(6)
+  notes          String?         @db.VarChar(1000)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation   Organisation    @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  invoice        Invoice?        @relation(fields: [invoiceId], references: [id], onDelete: Restrict)
+  person         Person          @relation(fields: [personId], references: [id], onDelete: Restrict)
+  recordedBy     User?           @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+  refunds        PaymentRefund[]
+
+  @@unique([organisationId, receiptNumber])
+  @@index([organisationId, personId, receivedAt(sort: Desc)])
+  @@index([organisationId, invoiceId])
+  @@map("payments")
+}
+
+model PaymentRefund {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  paymentId      String       @map("payment_id") @db.Uuid
+  issuedById     String?      @map("issued_by_id") @db.Uuid
+  amountMinor    Int          @map("amount_minor")
+  reason         String       @db.VarChar(500)
+  refundedAt     DateTime     @default(now()) @map("refunded_at") @db.Timestamptz(6)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  payment        Payment      @relation(fields: [paymentId], references: [id], onDelete: Restrict)
+  issuedBy       User?        @relation(fields: [issuedById], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, paymentId])
+  @@map("payment_refunds")
+}
+
+model Expense {
+  id             String        @id @default(uuid()) @db.Uuid
+  organisationId String        @map("organisation_id") @db.Uuid
+  recordedById   String?       @map("recorded_by_id") @db.Uuid
+  category       String        @db.VarChar(100)
+  vendor         String?       @db.VarChar(180)
+  description    String        @db.VarChar(500)
+  amountMinor    Int           @map("amount_minor")
+  currency       String        @default("INR") @db.Char(3)
+  expenseDate    DateTime      @map("expense_date") @db.Date
+  status         ExpenseStatus @default(RECORDED)
+  reference      String?       @db.VarChar(160)
+  voidedAt       DateTime?     @map("voided_at") @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  recordedBy     User?         @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, status, expenseDate(sort: Desc)])
+  @@map("expenses")
 }

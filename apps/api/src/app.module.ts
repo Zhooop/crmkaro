@@ -10,6 +10,7 @@ import { OrganisationsModule } from "./organisations/organisations.module.js";
 import { AccessModule } from "./access/access.module.js";
 import { PeopleModule } from "./people/people.module.js";
 import { CrmModule } from "./crm/crm.module.js";
+import { FinanceModule } from "./finance/finance.module.js";
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { CrmModule } from "./crm/crm.module.js";
     AccessModule,
     PeopleModule,
     CrmModule,
+    FinanceModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
