@@ -2,7 +2,7 @@ import { ConflictException, ForbiddenException, Inject, Injectable, NotFoundExce
 import { randomUUID } from "node:crypto";
 import type { DatabaseClient } from "@crmkaro/database";
 import { withTenant, withUser } from "@crmkaro/database";
-import { permissions } from "@crmkaro/permissions";
+import { rolePresets } from "@crmkaro/permissions";
 import { DATABASE } from "../database/database.module.js";
 import { SessionService } from "../auth/session.service.js";
 
@@ -34,7 +34,6 @@ export class OrganisationsService {
 
   async create(userId: string, sessionId: string, input: CreateOrganisationInput) {
     const organisationId = randomUUID();
-    const roleId = randomUUID();
 
     const organisation = await withTenant(this.database, organisationId, userId, async (transaction) => {
       const selectedServices = await transaction.service.findMany({
@@ -57,25 +56,33 @@ export class OrganisationsService {
         },
       });
 
-      await transaction.role.create({
-        data: { id: roleId, organisationId, code: "owner", name: "Owner", isSystem: false },
-      });
+      const createdRoles = await Promise.all(Object.entries(rolePresets).map(([code, preset]) =>
+        transaction.role.create({
+          data: { organisationId, code, name: preset.name, isSystem: false },
+        }),
+      ));
+      const ownerRole = createdRoles.find((role) => role.code === "owner");
+      if (!ownerRole) throw new ConflictException("Owner role could not be created.");
       await transaction.organisationMembership.create({
         data: {
           organisationId,
           userId,
-          roleId,
+          roleId: ownerRole.id,
           status: "ACTIVE",
           joinedAt: new Date(),
         },
       });
 
       const permissionRows = await transaction.permission.findMany({
-        where: { code: { in: [...permissions] } },
-        select: { id: true },
+        select: { id: true, code: true },
       });
       await transaction.rolePermission.createMany({
-        data: permissionRows.map(({ id }) => ({ organisationId, roleId, permissionId: id })),
+        data: createdRoles.flatMap((role) => {
+          const preset = rolePresets[role.code as keyof typeof rolePresets];
+          return permissionRows
+            .filter(({ code }) => (preset.permissions as readonly string[]).includes(code))
+            .map(({ id }) => ({ organisationId, roleId: role.id, permissionId: id }));
+        }),
       });
       await transaction.organisationService.createMany({
         data: selectedServices.map(({ id }) => ({

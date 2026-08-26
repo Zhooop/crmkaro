@@ -32,7 +32,7 @@
 - Memberships and active-organisation switching
 - Login security, rate limiting and session revocation
 
-## 4. Permissions, entitlements and audit `[ ]`
+## 4. Permissions, entitlements and audit `[x]`
 
 - Permission catalogue and fixed role presets
 - Backend guards and policy checks

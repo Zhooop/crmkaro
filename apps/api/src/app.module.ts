@@ -7,6 +7,7 @@ import { validateEnvironment } from "./config/environment.js";
 import { DatabaseModule } from "./database/database.module.js";
 import { AuthModule } from "./auth/auth.module.js";
 import { OrganisationsModule } from "./organisations/organisations.module.js";
+import { AccessModule } from "./access/access.module.js";
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import { OrganisationsModule } from "./organisations/organisations.module.js";
     DatabaseModule,
     AuthModule,
     OrganisationsModule,
+    AccessModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],
