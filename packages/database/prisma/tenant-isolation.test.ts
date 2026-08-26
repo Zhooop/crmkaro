@@ -53,6 +53,18 @@ async function verifyTenantIsolation() {
        ('60000000-0000-4000-8000-000000000002', $2, '20000000-0000-4000-8000-000000000002', 'RLS-B-001', CURRENT_DATE, CURRENT_DATE, 10000, 10000, 10000, now(), now()) ON CONFLICT (id) DO NOTHING`,
     [organisationA, organisationB],
   );
+  await ownerPool.query(
+    `INSERT INTO employees (id, organisation_id, person_id, employee_code, joining_date, status, created_at, updated_at) VALUES
+       ('70000000-0000-4000-8000-000000000001', $1, '20000000-0000-4000-8000-000000000001', 'EMP-A', CURRENT_DATE, 'ACTIVE', now(), now()),
+       ('70000000-0000-4000-8000-000000000002', $2, '20000000-0000-4000-8000-000000000002', 'EMP-B', CURRENT_DATE, 'ACTIVE', now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
+  await ownerPool.query(
+    `INSERT INTO products (id, organisation_id, sku, name, current_stock, low_stock_threshold, created_at, updated_at) VALUES
+       ('80000000-0000-4000-8000-000000000001', $1, 'SKU-A', 'Tenant A Product', 10, 2, now(), now()),
+       ('80000000-0000-4000-8000-000000000002', $2, 'SKU-B', 'Tenant B Product', 10, 2, now(), now()) ON CONFLICT (id) DO NOTHING`,
+    [organisationA, organisationB],
+  );
 
   const connection = await applicationPool.connect();
 
@@ -141,9 +153,30 @@ async function verifyTenantIsolation() {
       throw new Error("RLS failed: tenant A modified tenant B invoices.");
     }
 
+    for (const table of ["employees", "products"] as const) {
+      const rows = await connection.query<{ organisation_id: string }>(
+        `SELECT organisation_id FROM ${table}`,
+      );
+      if (
+        rows.rowCount !== 1 ||
+        rows.rows[0]?.organisation_id !== organisationA
+      ) {
+        throw new Error(
+          `RLS failed: tenant A could read another tenant's ${table}.`,
+        );
+      }
+      const update = await connection.query(
+        `UPDATE ${table} SET updated_at = now() WHERE organisation_id = $1`,
+        [organisationB],
+      );
+      if (update.rowCount !== 0) {
+        throw new Error(`RLS failed: tenant A modified tenant B ${table}.`);
+      }
+    }
+
     await connection.query("ROLLBACK");
     console.info(
-      "Tenant isolation verified: organisations, People, CRM and Finance enforce scoped reads and cross-tenant write protection.",
+      "Tenant isolation verified: organisations, People, CRM, Finance, Payroll and Inventory enforce scoped reads and cross-tenant write protection.",
     );
   } finally {
     connection.release();

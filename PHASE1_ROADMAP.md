@@ -69,7 +69,7 @@
 - Expenses, refunds and financial audit trail
 - PDF generation and finance reports
 
-## 9. Payroll and inventory `[ ]`
+## 9. Payroll and inventory `[x]`
 
 - Employees and salary structures
 - Monthly payroll, approval, payment and salary slips

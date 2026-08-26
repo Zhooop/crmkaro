@@ -11,6 +11,8 @@ import { AccessModule } from "./access/access.module.js";
 import { PeopleModule } from "./people/people.module.js";
 import { CrmModule } from "./crm/crm.module.js";
 import { FinanceModule } from "./finance/finance.module.js";
+import { PayrollModule } from "./payroll/payroll.module.js";
+import { InventoryModule } from "./inventory/inventory.module.js";
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { FinanceModule } from "./finance/finance.module.js";
     PeopleModule,
     CrmModule,
     FinanceModule,
+    PayrollModule,
+    InventoryModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

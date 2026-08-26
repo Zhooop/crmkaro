@@ -86,6 +86,27 @@ enum ExpenseStatus {
   VOID
 }
 
+enum EmployeeStatus {
+  ACTIVE
+  EXITED
+}
+
+enum PayrollRunStatus {
+  DRAFT
+  APPROVED
+  PAID
+}
+
+enum StockMovementType {
+  OPENING
+  PURCHASE
+  SALE
+  RETURN_IN
+  RETURN_OUT
+  ADJUSTMENT_IN
+  ADJUSTMENT_OUT
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
@@ -97,17 +118,21 @@ model User {
   createdAt   DateTime   @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships      OrganisationMembership[]
-  invitations      OrganisationMembership[] @relation("MembershipInviter")
-  auditLogs        AuditLog[]
-  sessions         AuthSession[]
-  oauthAccounts    OAuthAccount[]
-  personActivities PersonActivity[]
-  leadNotes        LeadNote[]
-  leadActivities   LeadActivity[]
-  recordedPayments Payment[]
-  recordedExpenses Expense[]
-  issuedRefunds    PaymentRefund[]
+  memberships         OrganisationMembership[]
+  invitations         OrganisationMembership[] @relation("MembershipInviter")
+  auditLogs           AuditLog[]
+  sessions            AuthSession[]
+  oauthAccounts       OAuthAccount[]
+  personActivities    PersonActivity[]
+  leadNotes           LeadNote[]
+  leadActivities      LeadActivity[]
+  recordedPayments    Payment[]
+  recordedExpenses    Expense[]
+  issuedRefunds       PaymentRefund[]
+  preparedPayrollRuns PayrollRun[]             @relation("PayrollPreparedBy")
+  approvedPayrollRuns PayrollRun[]             @relation("PayrollApprovedBy")
+  paidPayrollRuns     PayrollRun[]             @relation("PayrollPaidBy")
+  stockMovements      StockMovement[]
 
   @@map("users")
 }
@@ -186,30 +211,37 @@ model Organisation {
   createdAt    DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships      OrganisationMembership[]
-  roles            Role[]
-  rolePermissions  RolePermission[]
-  services         OrganisationService[]
-  auditLogs        AuditLog[]
-  outboxEvents     OutboxEvent[]
-  activeSessions   AuthSession[]            @relation("ActiveOrganisationSessions")
-  people           Person[]
-  tags             Tag[]
-  personTypes      PersonTypeAssignment[]
-  personTags       PersonTag[]
-  personActivities PersonActivity[]
-  pipelines        Pipeline[]
-  pipelineStages   PipelineStage[]
-  leads            Lead[]
-  followUps        FollowUp[]
-  leadNotes        LeadNote[]
-  leadActivities   LeadActivity[]
-  invoiceSequences OrganisationSequence[]
-  invoices         Invoice[]
-  invoiceItems     InvoiceItem[]
-  payments         Payment[]
-  paymentRefunds   PaymentRefund[]
-  expenses         Expense[]
+  memberships       OrganisationMembership[]
+  roles             Role[]
+  rolePermissions   RolePermission[]
+  services          OrganisationService[]
+  auditLogs         AuditLog[]
+  outboxEvents      OutboxEvent[]
+  activeSessions    AuthSession[]            @relation("ActiveOrganisationSessions")
+  people            Person[]
+  tags              Tag[]
+  personTypes       PersonTypeAssignment[]
+  personTags        PersonTag[]
+  personActivities  PersonActivity[]
+  pipelines         Pipeline[]
+  pipelineStages    PipelineStage[]
+  leads             Lead[]
+  followUps         FollowUp[]
+  leadNotes         LeadNote[]
+  leadActivities    LeadActivity[]
+  invoiceSequences  OrganisationSequence[]
+  invoices          Invoice[]
+  invoiceItems      InvoiceItem[]
+  payments          Payment[]
+  paymentRefunds    PaymentRefund[]
+  expenses          Expense[]
+  employees         Employee[]
+  salaryStructures  SalaryStructure[]
+  payrollRuns       PayrollRun[]
+  payrollItems      PayrollItem[]
+  productCategories ProductCategory[]
+  products          Product[]
+  stockMovements    StockMovement[]
 
   @@map("organisations")
 }
@@ -398,6 +430,7 @@ model Person {
   leads        Lead[]
   invoices     Invoice[]
   payments     Payment[]
+  employee     Employee?
 
   @@index([organisationId, status, displayName])
   @@index([organisationId, primaryPhoneNormalised])
@@ -718,4 +751,146 @@ model Expense {
 
   @@index([organisationId, status, expenseDate(sort: Desc)])
   @@map("expenses")
+}
+
+model Employee {
+  id               String            @id @default(uuid()) @db.Uuid
+  organisationId   String            @map("organisation_id") @db.Uuid
+  personId         String            @unique @map("person_id") @db.Uuid
+  employeeCode     String            @map("employee_code") @db.VarChar(40)
+  department       String?           @db.VarChar(100)
+  designation      String?           @db.VarChar(100)
+  joiningDate      DateTime          @map("joining_date") @db.Date
+  exitDate         DateTime?         @map("exit_date") @db.Date
+  status           EmployeeStatus    @default(ACTIVE)
+  createdAt        DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime          @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation     Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person           Person            @relation(fields: [personId], references: [id], onDelete: Restrict)
+  salaryStructures SalaryStructure[]
+  payrollItems     PayrollItem[]
+
+  @@unique([organisationId, employeeCode])
+  @@index([organisationId, status])
+  @@map("employees")
+}
+
+model SalaryStructure {
+  id              String       @id @default(uuid()) @db.Uuid
+  organisationId  String       @map("organisation_id") @db.Uuid
+  employeeId      String       @map("employee_id") @db.Uuid
+  effectiveFrom   DateTime     @map("effective_from") @db.Date
+  basicMinor      Int          @map("basic_minor")
+  allowancesMinor Int          @default(0) @map("allowances_minor")
+  deductionsMinor Int          @default(0) @map("deductions_minor")
+  currency        String       @default("INR") @db.Char(3)
+  components      Json?
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  employee        Employee     @relation(fields: [employeeId], references: [id], onDelete: Cascade)
+
+  @@unique([employeeId, effectiveFrom])
+  @@index([organisationId, effectiveFrom(sort: Desc)])
+  @@map("salary_structures")
+}
+
+model PayrollRun {
+  id               String           @id @default(uuid()) @db.Uuid
+  organisationId   String           @map("organisation_id") @db.Uuid
+  year             Int
+  month            Int
+  status           PayrollRunStatus @default(DRAFT)
+  preparedById     String?          @map("prepared_by_id") @db.Uuid
+  approvedById     String?          @map("approved_by_id") @db.Uuid
+  paidById         String?          @map("paid_by_id") @db.Uuid
+  approvedAt       DateTime?        @map("approved_at") @db.Timestamptz(6)
+  paidAt           DateTime?        @map("paid_at") @db.Timestamptz(6)
+  paymentReference String?          @map("payment_reference") @db.VarChar(160)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation     Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  preparedBy       User?            @relation("PayrollPreparedBy", fields: [preparedById], references: [id], onDelete: SetNull)
+  approvedBy       User?            @relation("PayrollApprovedBy", fields: [approvedById], references: [id], onDelete: SetNull)
+  paidBy           User?            @relation("PayrollPaidBy", fields: [paidById], references: [id], onDelete: SetNull)
+  items            PayrollItem[]
+
+  @@unique([organisationId, year, month])
+  @@index([organisationId, status])
+  @@map("payroll_runs")
+}
+
+model PayrollItem {
+  id              String       @id @default(uuid()) @db.Uuid
+  organisationId  String       @map("organisation_id") @db.Uuid
+  payrollRunId    String       @map("payroll_run_id") @db.Uuid
+  employeeId      String       @map("employee_id") @db.Uuid
+  basicMinor      Int          @map("basic_minor")
+  allowancesMinor Int          @map("allowances_minor")
+  deductionsMinor Int          @map("deductions_minor")
+  grossMinor      Int          @map("gross_minor")
+  netMinor        Int          @map("net_minor")
+  currency        String       @db.Char(3)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation    Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  payrollRun      PayrollRun   @relation(fields: [payrollRunId], references: [id], onDelete: Cascade)
+  employee        Employee     @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+
+  @@unique([payrollRunId, employeeId])
+  @@index([organisationId, employeeId])
+  @@map("payroll_items")
+}
+
+model ProductCategory {
+  id             String       @id @default(uuid()) @db.Uuid
+  organisationId String       @map("organisation_id") @db.Uuid
+  name           String       @db.VarChar(100)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation   Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  products       Product[]
+
+  @@unique([organisationId, name])
+  @@map("product_categories")
+}
+
+model Product {
+  id                 String           @id @default(uuid()) @db.Uuid
+  organisationId     String           @map("organisation_id") @db.Uuid
+  categoryId         String?          @map("category_id") @db.Uuid
+  sku                String           @db.VarChar(80)
+  name               String           @db.VarChar(180)
+  unit               String           @default("unit") @db.VarChar(30)
+  purchasePriceMinor Int?             @map("purchase_price_minor")
+  salePriceMinor     Int?             @map("sale_price_minor")
+  currentStock       Decimal          @default(0) @map("current_stock") @db.Decimal(14, 3)
+  lowStockThreshold  Decimal          @default(0) @map("low_stock_threshold") @db.Decimal(14, 3)
+  isActive           Boolean          @default(true) @map("is_active")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  organisation       Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  category           ProductCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+  movements          StockMovement[]
+
+  @@unique([organisationId, sku])
+  @@index([organisationId, isActive, name])
+  @@map("products")
+}
+
+model StockMovement {
+  id             String            @id @default(uuid()) @db.Uuid
+  organisationId String            @map("organisation_id") @db.Uuid
+  productId      String            @map("product_id") @db.Uuid
+  recordedById   String?           @map("recorded_by_id") @db.Uuid
+  type           StockMovementType
+  quantity       Decimal           @db.Decimal(14, 3)
+  stockAfter     Decimal           @map("stock_after") @db.Decimal(14, 3)
+  unitCostMinor  Int?              @map("unit_cost_minor")
+  reference      String?           @db.VarChar(160)
+  notes          String?           @db.VarChar(500)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  organisation   Organisation      @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  product        Product           @relation(fields: [productId], references: [id], onDelete: Restrict)
+  recordedBy     User?             @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@index([organisationId, productId, createdAt(sort: Desc)])
+  @@map("stock_movements")
 }
