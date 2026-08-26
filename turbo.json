@@ -1,5 +1,25 @@
 {
   "$schema": "https://turbo.build/schema.json",
+  "globalEnv": [
+    "NODE_ENV",
+    "WEB_URL",
+    "ADMIN_URL",
+    "API_URL",
+    "NEXT_PUBLIC_API_URL",
+    "DATABASE_URL",
+    "DIRECT_DATABASE_URL",
+    "REDIS_URL",
+    "SESSION_SECRET",
+    "GOOGLE_CLIENT_ID",
+    "GOOGLE_CLIENT_SECRET",
+    "GOOGLE_REDIRECT_URI",
+    "SMTP_HOST",
+    "SMTP_PORT",
+    "SMTP_SECURE",
+    "SMTP_USER",
+    "SMTP_PASSWORD",
+    "AUTH_EMAIL_FROM"
+  ],
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
@@ -21,4 +41,3 @@
     }
   }
 }
-
