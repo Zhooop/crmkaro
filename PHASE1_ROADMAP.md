@@ -40,7 +40,7 @@
 - Audit event model and append-only logging
 - Cross-tenant security test suite
 
-## 5. Client and Super Admin shells `[ ]`
+## 5. Client and Super Admin shells `[x]`
 
 - CRM workspace navigation and responsive shell
 - Super Admin shell and separate authentication surface

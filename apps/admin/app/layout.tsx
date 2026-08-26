@@ -3,8 +3,8 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "CRMKaro Admin",
-  description: "CRMKaro platform administration.",
+  title: "CRMKaro Admin — Platform Operations",
+  description: "Secure CRMKaro platform operations console.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
@@ -14,4 +14,3 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
     </html>
   );
 }
-

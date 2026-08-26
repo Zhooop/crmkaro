@@ -1,4 +1,5 @@
-import { CanActivate, ExecutionContext, ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import { ForbiddenException, Inject, Injectable } from "@nestjs/common";
+import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import type { DatabaseClient } from "@crmkaro/database";
 import { withTenant } from "@crmkaro/database";
 import { DATABASE } from "../database/database.module.js";

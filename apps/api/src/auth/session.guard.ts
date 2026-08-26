@@ -1,4 +1,5 @@
-import { CanActivate, ExecutionContext, Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import type { CanActivate, ExecutionContext } from "@nestjs/common";
 import type { Request } from "express";
 import { SESSION_COOKIE, SessionService } from "./session.service.js";
 import type { AuthenticatedRequest } from "./auth.types.js";
