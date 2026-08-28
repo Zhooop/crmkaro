@@ -28,6 +28,7 @@ const services = [
 
 async function seed() {
   console.log("Seeding services and permissions...");
+  await database.$executeRaw`SELECT set_config('app.is_platform_admin', 'true', true)`;
   for (const service of services) {
     await database.service.upsert({
       where: { code: service.code },

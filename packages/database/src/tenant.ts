@@ -26,3 +26,13 @@ export async function withUser<T>(
     return operation(transaction);
   });
 }
+
+export async function withPlatformAdmin<T>(
+  database: DatabaseClient,
+  operation: (transaction: TenantTransaction) => Promise<T>,
+): Promise<T> {
+  return database.$transaction(async (transaction) => {
+    await transaction.$executeRaw`SELECT set_config('app.is_platform_admin', 'true', true)`;
+    return operation(transaction);
+  });
+}
