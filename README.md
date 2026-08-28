@@ -11,9 +11,11 @@ CRMKaro is a modular business operating system for organisations that need CRM, 
 
 ## Documentation
 
+- [Current project status](./CURRENT_STATUS.md) — live source of truth
 - [Product plan](./PROJECT_PLAN.md)
 - [Technical design](./TECHNICAL_DESIGN.md)
 - [Phase 1 roadmap](./PHASE1_ROADMAP.md)
+- [Local-to-live deployment workflow](./docs/LIVE_DEPLOYMENT_WORKFLOW.md)
 - [Operations runbook](./docs/OPERATIONS_RUNBOOK.md)
 - [Release checklist](./docs/PHASE1_RELEASE_CHECKLIST.md)
 

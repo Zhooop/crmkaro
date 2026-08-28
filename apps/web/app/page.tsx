@@ -7,6 +7,7 @@ import {
   StatCard,
   type IconName,
   type NavItem,
+  type OrganisationSummary,
 } from "@crmkaro/ui";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -28,7 +29,7 @@ type Dashboard = {
     module: string;
     title: string;
     detail: string;
-    severity: string;
+    severity: "info" | "warning" | "critical";
   }>;
   activity: Array<{
     id: string;
@@ -40,7 +41,7 @@ type Dashboard = {
 };
 
 type OrganisationEntry = {
-  organisation: { id: string; name: string } | null;
+  organisation: { id: string; name: string; businessType?: string } | null;
 };
 
 const availableServices = [
@@ -103,6 +104,7 @@ function DashboardLoading() {
 export default function HomePage() {
   const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
+  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
   const [error, setError] = useState("");
   const [needsSetup, setNeedsSetup] = useState(false);
   const [organisationName, setOrganisationName] = useState("");
@@ -133,9 +135,9 @@ export default function HomePage() {
       }
       if (!organisationsResponse.ok)
         throw new Error("Your workspace could not be loaded.");
-      const organisations =
+      const orgs =
         (await organisationsResponse.json()) as OrganisationEntry[];
-      const firstOrganisation = organisations.find(
+      const firstOrganisation = orgs.find(
         ({ organisation }) => organisation,
       )?.organisation;
       if (!firstOrganisation) {
@@ -158,13 +160,40 @@ export default function HomePage() {
     }
     if (!response.ok) throw new Error("Your dashboard could not be loaded.");
     setData((await response.json()) as Dashboard);
+
+    // Also fetch organisations list for the switcher
+    try {
+      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      if (orgsRes.ok) {
+        const orgList = await orgsRes.json();
+        setOrganisations(
+          orgList
+            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
+            .filter(Boolean),
+        );
+      }
+    } catch {
+      // ignore
+    }
   }, [api, router]);
 
   useEffect(() => {
-    // Initial client-side session resolution intentionally updates page state.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadDashboard().catch((reason: Error) => setError(reason.message));
   }, [loadDashboard]);
+
+  async function handleSwitchOrg(orgId: string) {
+    try {
+      const res = await fetch(`${api}/organisations/${orgId}/activate`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        window.location.reload();
+      }
+    } catch {
+      // ignore
+    }
+  }
 
   async function createWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -282,6 +311,7 @@ export default function HomePage() {
         </section>
       </main>
     );
+
   if (error)
     return (
       <main className="dashboard-state">
@@ -296,25 +326,33 @@ export default function HomePage() {
         </button>
       </main>
     );
+
   if (!data) return <DashboardLoading />;
+
   const nav: NavItem[] = [
-    { label: "Overview", icon: "home", href: "/" },
+    { label: "Dashboard", icon: "home", href: "/" },
     ...data.services
       .map((service) => serviceNav[service])
       .filter((item): item is NavItem => Boolean(item)),
-    { label: "Reports", icon: "reports", href: "/reports" },
     { label: "Settings", icon: "settings", href: "/settings" },
   ];
+
   const displayName =
     data.user.name ?? data.user.email.split("@")[0] ?? "there";
+
   return (
     <AppShell
       product="CRMKaro"
       organisation={data.organisation.name}
+      organisations={organisations}
+      currentPath="/"
       nav={nav}
       userName={displayName}
+      userEmail={data.user.email}
       userRole={data.role?.name ?? "Member"}
-      notificationCount={data.notifications.length}
+      notifications={data.notifications}
+      onSwitchOrganisation={handleSwitchOrg}
+      onCreateOrganisation={() => setNeedsSetup(true)}
     >
       <div className="page-heading">
         <div>
@@ -329,26 +367,33 @@ export default function HomePage() {
         </div>
         <span className="date-chip">Updated just now</span>
       </div>
+
+      {/* Live Stat Cards */}
       <div className="stats-grid">
-        {data.cards.map((card, index) => (
-          <StatCard
-            key={card.key}
-            label={card.label}
-            value={
-              card.format === "money"
-                ? money(card.value, data.organisation.currency)
-                : new Intl.NumberFormat("en-IN").format(card.value)
-            }
-            change={card.detail}
-            icon={icons[card.key] ?? "reports"}
-            tone={["blue", "teal", "amber", "rose"][index % 4]}
-          />
-        ))}
+        {data.cards.map((card, index) => {
+          const targetHref = serviceNav[card.key]?.href;
+          return (
+            <StatCard
+              key={card.key}
+              label={card.label}
+              value={
+                card.format === "money"
+                  ? money(card.value, data.organisation.currency)
+                  : new Intl.NumberFormat("en-IN").format(card.value)
+              }
+              change={card.detail}
+              icon={icons[card.key] ?? "reports"}
+              tone={["blue", "teal", "amber", "rose", "purple"][index % 5] as any}
+              onClick={targetHref ? () => router.push(targetHref) : undefined}
+            />
+          );
+        })}
       </div>
+
       <div className="content-grid">
         <SectionCard
           title="Recent activity"
-          subtitle="Audited updates visible to your role"
+          subtitle="Audited updates in this workspace"
         >
           <ul className="activity-list">
             {data.activity.length ? (
@@ -385,6 +430,7 @@ export default function HomePage() {
             )}
           </ul>
         </SectionCard>
+
         <SectionCard
           title="Notifications"
           subtitle="Prioritised operational signals"
@@ -413,6 +459,7 @@ export default function HomePage() {
             )}
           </ul>
         </SectionCard>
+
         <SectionCard
           title="Quick actions"
           subtitle="Available services in this workspace"
@@ -425,11 +472,15 @@ export default function HomePage() {
                 key={service}
               >
                 <Icon name={icons[service] ?? "services"} />
-                {serviceNav[service]?.label ?? service}
+                <div>
+                  <strong>{serviceNav[service]?.label ?? service}</strong>
+                  <small>Open module</small>
+                </div>
               </a>
             ))}
           </div>
         </SectionCard>
+
         <SectionCard title="Access context" subtitle="Current session scope">
           <div className="access-summary">
             <span>

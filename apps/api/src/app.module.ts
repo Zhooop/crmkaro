@@ -14,6 +14,8 @@ import { FinanceModule } from "./finance/finance.module.js";
 import { PayrollModule } from "./payroll/payroll.module.js";
 import { InventoryModule } from "./inventory/inventory.module.js";
 import { DashboardModule } from "./dashboard/dashboard.module.js";
+import { SearchModule } from "./search/search.module.js";
+import { PlatformModule } from "./platform/platform.module.js";
 
 @Module({
   imports: [
@@ -29,6 +31,8 @@ import { DashboardModule } from "./dashboard/dashboard.module.js";
     PayrollModule,
     InventoryModule,
     DashboardModule,
+    SearchModule,
+    PlatformModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

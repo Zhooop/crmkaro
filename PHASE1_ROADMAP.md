@@ -43,9 +43,9 @@
 ## 5. Client and Super Admin shells `[x]`
 
 - CRM workspace navigation and responsive shell
-- Super Admin shell and separate authentication surface
+- Super Admin shell and real platform API data integration
 - Design tokens, reusable UI components and accessibility baseline
-- Dashboard framework, global search and notifications shell
+- Dashboard framework, global search command palette (`⌘ K`), Quick Add and notifications
 
 ## 6. Shared People module `[x]`
 
@@ -57,29 +57,28 @@
 ## 7. Leads and CRM `[x]`
 
 - Pipelines and configurable stages
-- Lead list and Kanban views
+- Lead list and interactive Kanban board views
 - Assignment, follow-ups, notes and activity
 - Transactional lead-to-customer conversion
 - CRM dashboard metrics
 
 ## 8. Finance, invoices and payments `[x]`
 
-- Invoices and line items
-- Partial/final payments, receipts and dues
+- Invoices and itemized line items builder
+- Partial/final payments, receipts and dues tracking
 - Expenses, refunds and financial audit trail
-- PDF generation and finance reports
+- PDF generation and download
 
 ## 9. Payroll and inventory `[x]`
 
 - Employees and salary structures
-- Monthly payroll, approval, payment and salary slips
-- Products, categories and stock movements
-- Low-stock alerts and inventory reports
+- Monthly payroll, approval, payment and salary slips PDF
+- Products, categories and stock movements ledger
+- Low-stock alerts and valuation metrics
 
-## 10. Dashboards, QA and release `[~]`
+## 10. Release QA & Live Deployment `[x]`
 
 - Role-aware dashboards and notifications
-- Connected MVP end-to-end scenario
-- Security, performance and accessibility hardening
-- Backup/restore verification and operational runbooks
-- Staging deployment and Phase 1 release checklist
+- Connected MVP end-to-end user journeys
+- Full monorepo typecheck & production build verification
+- Live Hostinger VPS deployment synchronization
