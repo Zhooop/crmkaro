@@ -1,7 +1,14 @@
-import "dotenv/config";
+import dotenv from "dotenv";
+import { fileURLToPath } from "node:url";
+import { dirname, resolve } from "node:path";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+dotenv.config({ path: resolve(__dirname, "../../../.env") });
+dotenv.config();
+
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/client.js";
-import { permissions, rolePresets } from "@crmkaro/permissions";
+import { permissions, rolePresets } from "../../permissions/src/index.js";
 
 const connectionString = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
 
