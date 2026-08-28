@@ -12,7 +12,7 @@ This document is the source of truth for the project's current implementation st
 | --- | --- | --- |
 | Repository & Monorepo | Working | Web, Admin, API and Worker applications organised in a pnpm/Turborepo workspace. |
 | Live Deployment | Working | Web (`crmkaro.com`), Admin (`admin.crmkaro.com`), and API (`api.crmkaro.com`) live on Hostinger VPS (`72.61.169.18`). |
-| Authentication & Sessions | Working | Secure HTTP-only cookie sessions, Email OTP authentication, role resolution and tenant context. |
+| Authentication & Sessions | Working | Secure HTTP-only cookie sessions, Email OTP & Google OAuth authentication, role resolution and tenant context. |
 | Organisation & Tenancy | Working | Multi-org onboarding, active organisation switcher, PostgreSQL RLS tenant isolation on all queries. |
 | People & Directory | Working | Full contact lifecycle, multi-type tags, duplicate checking, profile drawer, notes, CSV import/export. |
 | Leads & CRM | Working | Switchable Kanban board & Table views, pipelines & stages, follow-ups scheduling, notes timeline, lead-to-customer conversion. |
