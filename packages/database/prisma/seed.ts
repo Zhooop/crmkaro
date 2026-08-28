@@ -215,19 +215,23 @@ async function seed() {
           organisationId: org.id,
           name: "Standard Sales Pipeline",
           isDefault: true,
-          stages: {
-            create: [
-              { name: "New Inquiries", position: 1, isConverted: false, isLost: false, colour: "#3b82f6" },
-              { name: "Consultation Booked", position: 2, isConverted: false, isLost: false, colour: "#8b5cf6" },
-              { name: "Proposal Sent", position: 3, isConverted: false, isLost: false, colour: "#f59e0b" },
-              { name: "Won / Enrolled", position: 4, isConverted: true, isLost: false, colour: "#10b981" },
-            ],
-          },
         },
-        include: { stages: true },
       });
 
-      const firstStage = pipeline.stages[0];
+      const [firstStage] = await Promise.all([
+        database.pipelineStage.create({
+          data: { organisationId: org.id, pipelineId: pipeline.id, name: "New Inquiries", position: 1, isConverted: false, isLost: false, colour: "#3b82f6" },
+        }),
+        database.pipelineStage.create({
+          data: { organisationId: org.id, pipelineId: pipeline.id, name: "Consultation Booked", position: 2, isConverted: false, isLost: false, colour: "#8b5cf6" },
+        }),
+        database.pipelineStage.create({
+          data: { organisationId: org.id, pipelineId: pipeline.id, name: "Proposal Sent", position: 3, isConverted: false, isLost: false, colour: "#f59e0b" },
+        }),
+        database.pipelineStage.create({
+          data: { organisationId: org.id, pipelineId: pipeline.id, name: "Won / Enrolled", position: 4, isConverted: true, isLost: false, colour: "#10b981" },
+        }),
+      ]);
       if (firstStage) {
         await database.lead.createMany({
           data: [
