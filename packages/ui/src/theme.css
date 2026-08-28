@@ -402,8 +402,16 @@ a {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 18px 20px;
+  padding: 18px 24px;
   border-bottom: 1px solid var(--line);
+}
+.section-card-content {
+  padding: 24px;
+}
+.section-card-content:has(.activity-list),
+.section-card-content:has(.table-wrap),
+.section-card-content:has(.data-table) {
+  padding: 0;
 }
 .section-card h2 {
   margin: 0;
@@ -2019,13 +2027,13 @@ a {
 .key-value-list {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 .key-value-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 0;
+  padding: 12px 0;
   border-bottom: 1px solid #f1f5f9;
 }
 .key-value-row:last-child {
@@ -2036,23 +2044,25 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: 13px;
   color: var(--muted);
   font-weight: 600;
+  flex-shrink: 0;
 }
 .key-value-value {
   font-size: 13px;
   font-weight: 650;
   color: var(--ink);
   text-align: right;
+  padding-left: 16px;
 }
 
 /* Workspace Profile Hero & Cards */
 .workspace-profile-wrap {
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  max-width: 1050px;
+  gap: 24px;
+  max-width: 1100px;
 }
 .workspace-hero-card {
   display: flex;
@@ -2140,14 +2150,14 @@ a {
 /* Profile Detail Grid */
 .profile-detail-grid {
   display: grid;
-  grid-template-columns: 1.1fr 1fr;
-  gap: 20px;
+  grid-template-columns: 1.15fr 1fr;
+  gap: 24px;
 }
 .code-chip {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 6px 10px;
   border-radius: 6px;
   background: #f1f5f9;
   border: 1px solid #e2e8f0;
@@ -2160,7 +2170,7 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   background: #f0fdf4;
   border: 1px solid #bbf7d0;
   border-radius: 10px;
@@ -2177,10 +2187,10 @@ a {
 .security-item {
   display: flex;
   align-items: flex-start;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 12px;
+  padding: 12px 14px;
   background: #f8fafc;
-  border: 1px solid #f1f5f9;
+  border: 1px solid #e2e8f0;
   border-radius: 8px;
 }
 .security-item-icon {
@@ -2195,10 +2205,10 @@ a {
   color: var(--ink);
 }
 .security-item-text p {
-  margin: 2px 0 0;
+  margin: 3px 0 0;
   font-size: 11px;
   color: var(--muted);
-  line-height: 1.4;
+  line-height: 1.45;
 }
 
 @media (max-width: 900px) {

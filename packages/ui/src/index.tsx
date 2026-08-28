@@ -950,7 +950,7 @@ export function SectionCard({
           </button>
         )}
       </header>
-      {children}
+      <div className="section-card-content">{children}</div>
     </section>
   );
 }
