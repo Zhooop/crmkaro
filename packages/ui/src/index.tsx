@@ -1182,118 +1182,168 @@ export function AuthPanel({
       <section className="auth-story">
         <div className="brand-row">
           <div className="brand-mark">
-            <img src="/brand/crmkaro-mark.png" alt="" />
+            <img src="/brand/crmkaro-mark.png" alt="CRMKaro Logo" />
           </div>
           <div>
             <strong>{admin ? "CRMKaro Admin" : "CRMKaro"}</strong>
             <span>
               {admin
-                ? "Restricted platform console"
-                : "Business, clearly organised"}
+                ? "Restricted Platform Operations Console"
+                : "Business Operating System"}
             </span>
           </div>
         </div>
-        <div>
+
+        <div className="auth-story-body">
           <p className="eyebrow">
             <Icon name={admin ? "shield" : "activity"} size={14} />
-            {admin ? "Authorised personnel only" : "One calm workspace"}
+            {admin ? "Authorised Personnel Only" : "One Unified Workspace"}
           </p>
           <h1>
             {admin
               ? "Operate the platform securely."
-              : "Run your whole business with clarity."}
+              : "Run your entire business with clarity."}
           </h1>
           <p>
             {admin
-              ? "Platform access is isolated from client workspaces and every administrative action is audited."
-              : "CRM, people, finance, payroll and inventory—connected without the clutter."}
+              ? "Platform access is strictly isolated with PostgreSQL Row-Level Security, multi-tenant monitoring, and immutable audit trails."
+              : "CRM pipelines, people directory, GST invoices, automated payroll, and inventory stock—all unified without the clutter."}
           </p>
+
+          <div className="auth-security-badges">
+            <span className="security-chip">
+              <Icon name="shield" size={13} />
+              <span>{admin ? "RLS Tenant Isolation" : "PostgreSQL Isolated"}</span>
+            </span>
+            <span className="security-chip">
+              <Icon name="checkCircle" size={13} />
+              <span>{admin ? "Append-Only Audit" : "Role-Based Access"}</span>
+            </span>
+            <span className="security-chip">
+              <Icon name="activity" size={13} />
+              <span>{admin ? "Real-Time Observability" : "Automated Workflows"}</span>
+            </span>
+          </div>
         </div>
-        {!admin && (
-          <div className="auth-story-visual" aria-hidden="true">
-            <img src="/brand/crmkaro-workspace-hero.png" alt="" />
-            <span className="auth-visual-pill pill-one">
-              One secure workspace
-            </span>
-            <span className="auth-visual-pill pill-two">
-              Every team connected
-            </span>
-          </div>
-        )}
-        <small>Secure sessions · Tenant isolation · Audit logging</small>
+
+        <div className="auth-story-visual" aria-hidden="true">
+          <img
+            src={admin ? "/brand/crmkaro-admin-hero.jpg" : "/brand/crmkaro-admin-hero.jpg"}
+            alt="CRMKaro Workspace Console"
+          />
+          <span className="auth-visual-pill pill-one">
+            {admin ? "⚡ Live Platform Metrics" : "🚀 All Modules Active"}
+          </span>
+          <span className="auth-visual-pill pill-two">
+            {admin ? "🔒 256-Bit Encrypted Session" : "💼 GST & TDS Ready"}
+          </span>
+        </div>
+
+        <small className="auth-story-footer">
+          {admin
+            ? "CRMKaro Platform Engine · Zero-Trust Access Architecture"
+            : "Secure sessions · Tenant isolation · Audit logging"}
+        </small>
       </section>
+
       <section className="auth-form-wrap">
-        <form className="auth-form" onSubmit={submit}>
-          <h2>{admin ? "Admin sign in" : "Welcome back"}</h2>
-          <p>
-            {admin
-              ? "Use your authorised platform account."
-              : "Sign in to continue to your workspace."}
-          </p>
-          {!admin && (
-            <a className="google-button" href={`${apiUrl}/auth/google/start`}>
-              <span>G</span>Continue with Google
-            </a>
-          )}
-          <div className="auth-divider">
-            <span>or use email</span>
-          </div>
-          <label htmlFor={challengeId ? "code" : "email"}>
-            {challengeId ? "Secure login code" : "Work email"}
-          </label>
-          {challengeId ? (
-            <input
-              id="code"
-              inputMode="numeric"
-              pattern="[0-9]{6}"
-              maxLength={6}
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-              placeholder="000000"
-              autoComplete="one-time-code"
-              required
-            />
-          ) : (
-            <input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              placeholder="you@company.com"
-              autoComplete="email"
-              required
-            />
-          )}
-          <button className="primary-button auth-submit" disabled={busy}>
-            {busy
-              ? "Please wait…"
-              : challengeId
-                ? "Verify and continue"
-                : "Send secure login code"}
-          </button>
-          {challengeId && (
-            <button
-              className="auth-back"
-              type="button"
-              onClick={() => {
-                setChallengeId("");
-                setCode("");
-                setMessage("");
-              }}
-            >
-              Use a different email
-            </button>
-          )}
-          {message && (
-            <p className="auth-message" role="status">
-              {message}
+        <div className="auth-form-card">
+          <form className="auth-form" onSubmit={submit}>
+            <h2>{admin ? "Platform Sign In" : "Welcome Back"}</h2>
+            <p>
+              {admin
+                ? "Sign in with your verified platform administrator credentials."
+                : "Sign in to access your business organisation."}
             </p>
-          )}
-          <p className="auth-note">
-            <Icon name="shield" size={14} />
-            We’ll use a secure, short-lived session.
-          </p>
-        </form>
+
+            <a className="google-button" href={`${apiUrl}/auth/google/start`}>
+              <svg width="18" height="18" viewBox="0 0 18 18">
+                <path
+                  fill="#4285F4"
+                  d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.717v2.258h2.908c1.702-1.567 2.684-3.874 2.684-6.616z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M9 18c2.43 0 4.467-.806 5.956-2.184l-2.908-2.258c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M3.964 10.707c-.18-.54-.282-1.117-.282-1.707s.102-1.167.282-1.707V4.961H.957C.347 6.173 0 7.547 0 9s.348 2.827.957 4.039l3.007-2.332z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
+                />
+              </svg>
+              <span>Continue with Google</span>
+            </a>
+
+            <div className="auth-divider">
+              <span>or sign in with email</span>
+            </div>
+
+            <label htmlFor={challengeId ? "code" : "email"}>
+              {challengeId ? "6-Digit Verification Code" : "Work Email Address"}
+            </label>
+            {challengeId ? (
+              <input
+                id="code"
+                inputMode="numeric"
+                pattern="[0-9]{6}"
+                maxLength={6}
+                value={code}
+                onChange={(event) => setCode(event.target.value)}
+                placeholder="000000"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+              />
+            ) : (
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                autoComplete="email"
+                required
+              />
+            )}
+
+            <button className="primary-button auth-submit" disabled={busy}>
+              {busy
+                ? "Verifying…"
+                : challengeId
+                  ? "Verify Code & Sign In"
+                  : "Send Login Code"}
+            </button>
+
+            {challengeId && (
+              <button
+                className="auth-back"
+                type="button"
+                onClick={() => {
+                  setChallengeId("");
+                  setCode("");
+                  setMessage("");
+                }}
+              >
+                ← Use a different email
+              </button>
+            )}
+
+            {message && (
+              <p className="auth-message" role="status">
+                {message}
+              </p>
+            )}
+
+            <p className="auth-note">
+              <Icon name="shield" size={13} />
+              <span>Protected by high-security token exchange</span>
+            </p>
+          </form>
+        </div>
       </section>
     </main>
   );
