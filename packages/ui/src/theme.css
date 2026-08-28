@@ -2017,12 +2017,200 @@ a {
 
 /* Key-Value Lists & Detail Grid */
 .key-value-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.key-value-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #f1f5f9;
+}
+.key-value-row:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+.key-value-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+.key-value-value {
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--ink);
+  text-align: right;
+}
+
+/* Workspace Profile Hero & Cards */
+.workspace-profile-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1050px;
+}
+.workspace-hero-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 28px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.03);
+}
+.workspace-hero-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+}
+.workspace-avatar {
+  width: 56px;
+  height: 56px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2563eb, #38bdf8);
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 800;
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  place-items: center;
+  box-shadow: 0 8px 16px rgba(37, 99, 235, 0.25);
+  letter-spacing: -0.02em;
+}
+.workspace-title-wrap h2 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--ink);
+  letter-spacing: -0.02em;
+}
+.workspace-meta-tags {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+}
+.workspace-meta-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  font-size: 11px;
+  font-weight: 600;
+}
+.workspace-hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.copy-id-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: #334155;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.copy-id-button:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+.copy-id-button.copied {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #059669;
+}
+
+/* Profile Detail Grid */
+.profile-detail-grid {
+  display: grid;
+  grid-template-columns: 1.1fr 1fr;
+  gap: 20px;
+}
+.code-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #0f172a;
+  word-break: break-all;
+}
+.security-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  background: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  border-radius: 10px;
+  color: #166534;
+  font-size: 12px;
+  font-weight: 650;
+  margin-bottom: 16px;
+}
+.security-checklist {
+  display: flex;
+  flex-direction: column;
   gap: 12px;
 }
-.key-value-item label { font-size: 11px; color: var(--muted); font-weight: 600; display: block; }
-.key-value-item span { font-size: 13px; font-weight: 600; color: var(--ink); display: block; margin-top: 2px; }
+.security-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 12px;
+  background: #f8fafc;
+  border: 1px solid #f1f5f9;
+  border-radius: 8px;
+}
+.security-item-icon {
+  color: #059669;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.security-item-text strong {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ink);
+}
+.security-item-text p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+@media (max-width: 900px) {
+  .workspace-hero-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+  .profile-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
 
 /* Animations */
 @keyframes fadeIn {
@@ -2037,4 +2225,5 @@ a {
   from { transform: translateX(100%); }
   to { transform: translateX(0); }
 }
+
 
