@@ -200,7 +200,7 @@ export default function HomePage() {
       <main className="onboarding-page">
         <section className="onboarding-card">
           <div className="onboarding-intro">
-            <span className="onboarding-mark">C</span>
+            <span className="onboarding-mark" aria-hidden="true" />
             <p className="eyebrow">First workspace</p>
             <h1>Let’s set up your business.</h1>
             <p>

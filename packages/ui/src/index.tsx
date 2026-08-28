@@ -167,7 +167,9 @@ export function AppShell({
       )}
       <aside className={`sidebar${open ? " is-open" : ""}`}>
         <div className="brand-row">
-          <div className="brand-mark">C</div>
+          <div className="brand-mark">
+            <img src="/brand/crmkaro-mark.png" alt="" />
+          </div>
           <div>
             <strong>{product}</strong>
             <span>{dark ? "Platform console" : "Business workspace"}</span>
@@ -366,7 +368,9 @@ export function AuthPanel({
     <main className={`auth-page${admin ? " admin-auth" : ""}`}>
       <section className="auth-story">
         <div className="brand-row">
-          <div className="brand-mark">C</div>
+          <div className="brand-mark">
+            <img src="/brand/crmkaro-mark.png" alt="" />
+          </div>
           <div>
             <strong>{admin ? "CRMKaro Admin" : "CRMKaro"}</strong>
             <span>
@@ -392,6 +396,17 @@ export function AuthPanel({
               : "CRM, people, finance, payroll and inventory—connected without the clutter."}
           </p>
         </div>
+        {!admin && (
+          <div className="auth-story-visual" aria-hidden="true">
+            <img src="/brand/crmkaro-workspace-hero.png" alt="" />
+            <span className="auth-visual-pill pill-one">
+              One secure workspace
+            </span>
+            <span className="auth-visual-pill pill-two">
+              Every team connected
+            </span>
+          </div>
+        )}
         <small>Secure sessions · Tenant isolation · Audit logging</small>
       </section>
       <section className="auth-form-wrap">
