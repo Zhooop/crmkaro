@@ -145,8 +145,7 @@ async function seed() {
           if ((preset.permissions as readonly string[]).includes(pRow.code)) {
             await database.rolePermission.upsert({
               where: {
-                organisationId_roleId_permissionId: {
-                  organisationId: org.id,
+                roleId_permissionId: {
                   roleId: role.id,
                   permissionId: pRow.id,
                 },
