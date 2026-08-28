@@ -8,7 +8,7 @@ import {
   type IconName,
   type NavItem,
 } from "@crmkaro/ui";
-import { useEffect, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type Dashboard = {
@@ -38,6 +38,34 @@ type Dashboard = {
   }>;
   generatedAt: string;
 };
+
+type OrganisationEntry = {
+  organisation: { id: string; name: string } | null;
+};
+
+const availableServices = [
+  {
+    code: "people",
+    label: "People",
+    detail: "Students, members and employees",
+  },
+  {
+    code: "crm",
+    label: "Leads & CRM",
+    detail: "Pipeline, leads and follow-ups",
+  },
+  {
+    code: "finance",
+    label: "Finance",
+    detail: "Payments, invoices and expenses",
+  },
+  { code: "payroll", label: "Payroll", detail: "Salaries, runs and payslips" },
+  {
+    code: "inventory",
+    label: "Inventory",
+    detail: "Products, stock and movements",
+  },
+] as const;
 
 const icons: Record<string, IconName> = {
   people: "people",
@@ -76,22 +104,184 @@ export default function HomePage() {
   const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
   const [error, setError] = useState("");
+  const [needsSetup, setNeedsSetup] = useState(false);
+  const [organisationName, setOrganisationName] = useState("");
+  const [businessType, setBusinessType] = useState("");
+  const [selectedServices, setSelectedServices] = useState<string[]>(
+    availableServices.map(({ code }) => code),
+  );
+  const [setupBusy, setSetupBusy] = useState(false);
+  const [setupError, setSetupError] = useState("");
+
+  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+
+  const loadDashboard = useCallback(async () => {
+    const response = await fetch(`${api}/dashboard`, {
+      credentials: "include",
+    });
+    if (response.status === 401) {
+      router.replace("/login");
+      return;
+    }
+    if (response.status === 403) {
+      const organisationsResponse = await fetch(`${api}/organisations`, {
+        credentials: "include",
+      });
+      if (organisationsResponse.status === 401) {
+        router.replace("/login");
+        return;
+      }
+      if (!organisationsResponse.ok)
+        throw new Error("Your workspace could not be loaded.");
+      const organisations =
+        (await organisationsResponse.json()) as OrganisationEntry[];
+      const firstOrganisation = organisations.find(
+        ({ organisation }) => organisation,
+      )?.organisation;
+      if (!firstOrganisation) {
+        setNeedsSetup(true);
+        return;
+      }
+      const activationResponse = await fetch(
+        `${api}/organisations/${firstOrganisation.id}/activate`,
+        { method: "POST", credentials: "include" },
+      );
+      if (!activationResponse.ok)
+        throw new Error("Your workspace could not be activated.");
+      const activatedDashboardResponse = await fetch(`${api}/dashboard`, {
+        credentials: "include",
+      });
+      if (!activatedDashboardResponse.ok)
+        throw new Error("Your dashboard could not be loaded.");
+      setData((await activatedDashboardResponse.json()) as Dashboard);
+      return;
+    }
+    if (!response.ok) throw new Error("Your dashboard could not be loaded.");
+    setData((await response.json()) as Dashboard);
+  }, [api, router]);
+
   useEffect(() => {
-    const api =
-      process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
-    fetch(`${api}/dashboard`, { credentials: "include" })
-      .then(async (response) => {
-        if (response.status === 401) {
-          router.replace("/login");
-          return null;
-        }
-        if (!response.ok)
-          throw new Error("Your dashboard could not be loaded.");
-        return response.json() as Promise<Dashboard>;
-      })
-      .then((dashboard) => dashboard && setData(dashboard))
-      .catch((reason: Error) => setError(reason.message));
-  }, [router]);
+    // Initial client-side session resolution intentionally updates page state.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadDashboard().catch((reason: Error) => setError(reason.message));
+  }, [loadDashboard]);
+
+  async function createWorkspace(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setSetupBusy(true);
+    setSetupError("");
+    try {
+      const response = await fetch(`${api}/organisations`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          name: organisationName,
+          businessType: businessType || undefined,
+          timezone: "Asia/Kolkata",
+          currency: "INR",
+          serviceCodes: selectedServices,
+        }),
+      });
+      const body = (await response.json()) as { message?: string };
+      if (!response.ok)
+        throw new Error(body.message ?? "Workspace setup failed.");
+      setNeedsSetup(false);
+      await loadDashboard();
+    } catch (reason) {
+      setSetupError((reason as Error).message);
+    } finally {
+      setSetupBusy(false);
+    }
+  }
+
+  if (needsSetup)
+    return (
+      <main className="onboarding-page">
+        <section className="onboarding-card">
+          <div className="onboarding-intro">
+            <span className="onboarding-mark">C</span>
+            <p className="eyebrow">First workspace</p>
+            <h1>Let’s set up your business.</h1>
+            <p>
+              Create a private workspace. You can invite your team and adjust
+              modules later.
+            </p>
+          </div>
+          <form className="onboarding-form" onSubmit={createWorkspace}>
+            <label htmlFor="organisation-name">
+              Business or workspace name
+            </label>
+            <input
+              id="organisation-name"
+              value={organisationName}
+              onChange={(event) => setOrganisationName(event.target.value)}
+              minLength={2}
+              maxLength={180}
+              placeholder="Example: Sunrise Academy"
+              autoFocus
+              required
+            />
+            <label htmlFor="business-type">Business type (optional)</label>
+            <input
+              id="business-type"
+              value={businessType}
+              onChange={(event) => setBusinessType(event.target.value)}
+              maxLength={80}
+              placeholder="Example: Coaching institute"
+            />
+            <fieldset>
+              <legend>Start with these modules</legend>
+              <div className="onboarding-modules">
+                {availableServices.map((service) => {
+                  const selected = selectedServices.includes(service.code);
+                  return (
+                    <label
+                      className={`module-choice${selected ? " selected" : ""}`}
+                      key={service.code}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() =>
+                          setSelectedServices((current) =>
+                            selected
+                              ? current.filter((code) => code !== service.code)
+                              : [...current, service.code],
+                          )
+                        }
+                      />
+                      <span>
+                        <strong>{service.label}</strong>
+                        <small>{service.detail}</small>
+                      </span>
+                    </label>
+                  );
+                })}
+              </div>
+            </fieldset>
+            <button
+              className="primary-button onboarding-submit"
+              disabled={
+                setupBusy ||
+                organisationName.trim().length < 2 ||
+                selectedServices.length === 0
+              }
+            >
+              {setupBusy ? "Creating workspace…" : "Create my workspace"}
+            </button>
+            {setupError && (
+              <p className="onboarding-error" role="alert">
+                {setupError}
+              </p>
+            )}
+            <small className="onboarding-security">
+              Your workspace data is isolated from every other organisation.
+            </small>
+          </form>
+        </section>
+      </main>
+    );
   if (error)
     return (
       <main className="dashboard-state">
