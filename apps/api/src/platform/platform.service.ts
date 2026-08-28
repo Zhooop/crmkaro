@@ -131,6 +131,202 @@ export class PlatformService {
     };
   }
 
+  async updateOrganisationStatus(orgId: string, status: "ACTIVE" | "SUSPENDED" | "CLOSED", actorUserId?: string) {
+    const updated = await this.database.organisation.update({
+      where: { id: orgId },
+      data: { status },
+    });
+
+    if (actorUserId) {
+      await this.database.auditLog.create({
+        data: {
+          organisationId: orgId,
+          actorUserId,
+          action: `organisation.status.${status.toLowerCase()}`,
+          entityType: "ORGANISATION",
+          entityId: orgId,
+          metadata: { status },
+        },
+      });
+    }
+
+    return { organisation: updated };
+  }
+
+  async updateOrganisationServices(orgId: string, serviceCodes: string[], actorUserId?: string) {
+    const allServices = await this.database.service.findMany();
+    const serviceMap = new Map(allServices.map((s) => [s.code, s.id]));
+
+    // Deactivate services not in serviceCodes
+    await this.database.organisationService.updateMany({
+      where: {
+        organisationId: orgId,
+        service: { code: { notIn: serviceCodes } },
+      },
+      data: { status: "DISABLED" },
+    });
+
+    // Activate or upsert services in serviceCodes
+    for (const code of serviceCodes) {
+      const serviceId = serviceMap.get(code);
+      if (serviceId) {
+        await this.database.organisationService.upsert({
+          where: {
+            organisationId_serviceId: { organisationId: orgId, serviceId },
+          },
+          update: { status: "ACTIVE" },
+          create: { organisationId: orgId, serviceId, status: "ACTIVE" },
+        });
+      }
+    }
+
+    if (actorUserId) {
+      await this.database.auditLog.create({
+        data: {
+          organisationId: orgId,
+          actorUserId,
+          action: "organisation.services.updated",
+          entityType: "ORGANISATION",
+          entityId: orgId,
+          metadata: { serviceCodes },
+        },
+      });
+    }
+
+    return { success: true, serviceCodes };
+  }
+
+  async createOrganisation(
+    input: {
+      name: string;
+      businessType?: string;
+      currency?: string;
+      timezone?: string;
+      ownerEmail?: string;
+      serviceCodes?: string[];
+    },
+    actorUserId?: string,
+  ) {
+    const slug = input.name
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .concat("-", Math.random().toString(36).slice(2, 6));
+
+    const org = await this.database.organisation.create({
+      data: {
+        name: input.name,
+        slug,
+        businessType: input.businessType || "General",
+        currency: input.currency || "INR",
+        timezone: input.timezone || "Asia/Kolkata",
+        status: "ACTIVE",
+      },
+    });
+
+    // If owner email provided, link or create user and owner role
+    if (input.ownerEmail) {
+      const user = await this.database.user.upsert({
+        where: { email: input.ownerEmail.toLowerCase().trim() },
+        update: {},
+        create: {
+          email: input.ownerEmail.toLowerCase().trim(),
+          name: input.name + " Admin",
+          status: "ACTIVE",
+        },
+      });
+
+      const ownerRole = await this.database.role.findFirst({
+        where: { code: "owner" },
+      });
+
+      if (ownerRole) {
+        await this.database.organisationMembership.create({
+          data: {
+            organisationId: org.id,
+            userId: user.id,
+            roleId: ownerRole.id,
+            status: "ACTIVE",
+          },
+        });
+      }
+    }
+
+    // Assign services
+    const serviceCodes = input.serviceCodes || ["crm", "finance", "people", "payroll", "inventory"];
+    const allServices = await this.database.service.findMany();
+    for (const s of allServices) {
+      if (serviceCodes.includes(s.code)) {
+        await this.database.organisationService.create({
+          data: {
+            organisationId: org.id,
+            serviceId: s.id,
+            status: "ACTIVE",
+          },
+        });
+      }
+    }
+
+    if (actorUserId) {
+      await this.database.auditLog.create({
+        data: {
+          organisationId: org.id,
+          actorUserId,
+          action: "organisation.created",
+          entityType: "ORGANISATION",
+          entityId: org.id,
+          metadata: { name: org.name, slug: org.slug },
+        },
+      });
+    }
+
+    return { organisation: org };
+  }
+
+  async getHealth() {
+    const [
+      totalUsers,
+      totalOrganisations,
+      totalPeople,
+      totalInvoices,
+      totalLeads,
+      totalAuditLogs,
+    ] = await Promise.all([
+      this.database.user.count(),
+      this.database.organisation.count(),
+      this.database.person.count(),
+      this.database.invoice.count(),
+      this.database.lead.count(),
+      this.database.auditLog.count(),
+    ]);
+
+    const memoryUsage = process.memoryUsage();
+
+    return {
+      status: "HEALTHY",
+      timestamp: new Date().toISOString(),
+      uptimeSeconds: Math.floor(process.uptime()),
+      database: {
+        status: "CONNECTED",
+        counts: {
+          users: totalUsers,
+          organisations: totalOrganisations,
+          people: totalPeople,
+          invoices: totalInvoices,
+          leads: totalLeads,
+          auditLogs: totalAuditLogs,
+        },
+      },
+      system: {
+        nodeVersion: process.version,
+        platform: process.platform,
+        rssMemoryMb: Math.round(memoryUsage.rss / 1024 / 1024),
+        heapUsedMb: Math.round(memoryUsage.heapUsed / 1024 / 1024),
+      },
+    };
+  }
+
   async listAudit(limit = 50) {
     const logs = await this.database.auditLog.findMany({
       take: limit,
