@@ -113,6 +113,26 @@ const ALL_AVAILABLE_SERVICES = [
   { code: "inventory", name: "Stock & Inventory", desc: "SKU catalog, stock movements, and low inventory tracking" },
 ];
 
+const BUSINESS_TYPE_OPTIONS = [
+  "Beauty, Salon & Spa",
+  "Coaching & Education Institute",
+  "Real Estate & Property Consulting",
+  "Healthcare, Clinic & Diagnostic",
+  "Automotive & Dealership",
+  "Software, IT & SaaS Agency",
+  "Retail & E-commerce Store",
+  "Restaurant, Cafe & Hospitality",
+  "Manufacturing & Distribution",
+  "Financial & Legal Consulting",
+  "Event Management & Wedding Planning",
+  "Fitness, Gym & Sports Club",
+  "Construction & Interior Design",
+  "Logistics, Transport & Supply Chain",
+  "Trading & Wholesale",
+  "Marketing & Advertising Agency",
+  "Other",
+] as const;
+
 export default function AdminHomePage() {
   const router = useRouter();
   const api =
@@ -149,7 +169,8 @@ export default function AdminHomePage() {
 
   // Create Org Form State
   const [newOrgName, setNewOrgName] = useState("");
-  const [newOrgBusinessType, setNewOrgBusinessType] = useState("General Business");
+  const [newOrgBusinessType, setNewOrgBusinessType] = useState<string>("Beauty, Salon & Spa");
+  const [newOrgCustomBusinessType, setNewOrgCustomBusinessType] = useState<string>("");
   const [newOrgCurrency, setNewOrgCurrency] = useState("INR");
   const [newOrgOwnerEmail, setNewOrgOwnerEmail] = useState("");
   const [newOrgServices, setNewOrgServices] = useState<string[]>(["crm", "finance", "people", "payroll", "inventory"]);
@@ -278,6 +299,18 @@ export default function AdminHomePage() {
   async function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
     if (!newOrgName.trim()) return;
+
+    const effectiveBusinessType =
+      newOrgBusinessType === "Other"
+        ? newOrgCustomBusinessType.trim()
+        : newOrgBusinessType;
+
+    if (!effectiveBusinessType) {
+      setFeedback({ message: "Business type is required.", type: "error" });
+      setTimeout(() => setFeedback(null), 3000);
+      return;
+    }
+
     setSavingOrg(true);
     try {
       const res = await fetch(`${api}/platform/organisations`, {
@@ -286,7 +319,7 @@ export default function AdminHomePage() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: newOrgName.trim(),
-          businessType: newOrgBusinessType,
+          businessType: effectiveBusinessType,
           currency: newOrgCurrency,
           ownerEmail: newOrgOwnerEmail.trim() || undefined,
           serviceCodes: newOrgServices,
@@ -297,6 +330,7 @@ export default function AdminHomePage() {
       
       setCreateModalOpen(false);
       setNewOrgName("");
+      setNewOrgCustomBusinessType("");
       setNewOrgOwnerEmail("");
       setFeedback({ message: `Tenant "${data.organisation.name}" onboarded successfully!`, type: "success" });
       setTimeout(() => setFeedback(null), 3000);
@@ -1250,17 +1284,22 @@ export default function AdminHomePage() {
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                 <div className="field">
-                  <label>Business Type</label>
+                  <label>Business Type *</label>
                   <select
                     value={newOrgBusinessType}
-                    onChange={(e) => setNewOrgBusinessType(e.target.value)}
+                    onChange={(e) => {
+                      setNewOrgBusinessType(e.target.value);
+                      if (e.target.value !== "Other") {
+                        setNewOrgCustomBusinessType("");
+                      }
+                    }}
+                    required
                   >
-                    <option value="General Business">General Business</option>
-                    <option value="Agency & Services">Agency & Services</option>
-                    <option value="Beauty & Wellness">Beauty & Wellness</option>
-                    <option value="Retail & Commerce">Retail & Commerce</option>
-                    <option value="Manufacturing">Manufacturing</option>
-                    <option value="Consulting & Legal">Consulting & Legal</option>
+                    {BUSINESS_TYPE_OPTIONS.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
@@ -1278,6 +1317,20 @@ export default function AdminHomePage() {
                   </select>
                 </div>
               </div>
+
+              {newOrgBusinessType === "Other" && (
+                <div className="field" style={{ animation: "slideDown 0.2s ease-out" }}>
+                  <label>Specify Custom Business Type *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Photography Studio, Event Decor, Solar Solutions…"
+                    value={newOrgCustomBusinessType}
+                    onChange={(e) => setNewOrgCustomBusinessType(e.target.value)}
+                    autoFocus
+                  />
+                </div>
+              )}
 
               <div className="field">
                 <label>Initial Owner / Admin Email (Optional)</label>

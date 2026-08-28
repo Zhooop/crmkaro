@@ -14,7 +14,7 @@ const updateServicesSchema = z.object({
 
 const createOrgSchema = z.object({
   name: z.string().min(2),
-  businessType: z.string().optional(),
+  businessType: z.string().trim().min(2, "Business type is required"),
   currency: z.string().optional(),
   timezone: z.string().optional(),
   ownerEmail: z.string().email().optional(),

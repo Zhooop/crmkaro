@@ -103,6 +103,26 @@ function DashboardLoading() {
   );
 }
 
+const BUSINESS_TYPE_OPTIONS = [
+  "Beauty, Salon & Spa",
+  "Coaching & Education Institute",
+  "Real Estate & Property Consulting",
+  "Healthcare, Clinic & Diagnostic",
+  "Automotive & Dealership",
+  "Software, IT & SaaS Agency",
+  "Retail & E-commerce Store",
+  "Restaurant, Cafe & Hospitality",
+  "Manufacturing & Distribution",
+  "Financial & Legal Consulting",
+  "Event Management & Wedding Planning",
+  "Fitness, Gym & Sports Club",
+  "Construction & Interior Design",
+  "Logistics, Transport & Supply Chain",
+  "Trading & Wholesale",
+  "Marketing & Advertising Agency",
+  "Other",
+] as const;
+
 export default function HomePage() {
   const router = useRouter();
   const [data, setData] = useState<Dashboard | null>(null);
@@ -110,7 +130,8 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [needsSetup, setNeedsSetup] = useState(false);
   const [organisationName, setOrganisationName] = useState("");
-  const [businessType, setBusinessType] = useState("");
+  const [selectedBusinessType, setSelectedBusinessType] = useState("");
+  const [customBusinessType, setCustomBusinessType] = useState("");
   const [selectedServices, setSelectedServices] = useState<string[]>(
     availableServices.map(({ code }) => code),
   );
@@ -203,6 +224,16 @@ export default function HomePage() {
 
   async function createWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const effectiveBusinessType =
+      selectedBusinessType === "Other"
+        ? customBusinessType.trim()
+        : selectedBusinessType;
+
+    if (!effectiveBusinessType) {
+      setSetupError("Please select or enter your business type.");
+      return;
+    }
+
     setSetupBusy(true);
     setSetupError("");
     try {
@@ -211,8 +242,8 @@ export default function HomePage() {
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          name: organisationName,
-          businessType: businessType || undefined,
+          name: organisationName.trim(),
+          businessType: effectiveBusinessType,
           timezone: "Asia/Kolkata",
           currency: "INR",
           serviceCodes: selectedServices,
@@ -245,7 +276,7 @@ export default function HomePage() {
           </div>
           <form className="onboarding-form" onSubmit={createWorkspace}>
             <label htmlFor="organisation-name">
-              Business or workspace name
+              Business or workspace name <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <input
               id="organisation-name"
@@ -257,14 +288,48 @@ export default function HomePage() {
               autoFocus
               required
             />
-            <label htmlFor="business-type">Business type (optional)</label>
-            <input
-              id="business-type"
-              value={businessType}
-              onChange={(event) => setBusinessType(event.target.value)}
-              maxLength={80}
-              placeholder="Example: Coaching institute"
-            />
+
+            <label htmlFor="business-type-select">
+              Business type <span style={{ color: "#ef4444" }}>*</span>
+            </label>
+            <select
+              id="business-type-select"
+              value={selectedBusinessType}
+              onChange={(event) => {
+                setSelectedBusinessType(event.target.value);
+                if (event.target.value !== "Other") {
+                  setCustomBusinessType("");
+                }
+              }}
+              required
+            >
+              <option value="" disabled>
+                -- Select your business type --
+              </option>
+              {BUSINESS_TYPE_OPTIONS.map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
+            </select>
+
+            {selectedBusinessType === "Other" && (
+              <div className="onboarding-custom-field">
+                <label htmlFor="custom-business-type">
+                  Specify your business type <span style={{ color: "#ef4444" }}>*</span>
+                </label>
+                <input
+                  id="custom-business-type"
+                  value={customBusinessType}
+                  onChange={(event) => setCustomBusinessType(event.target.value)}
+                  maxLength={80}
+                  placeholder="e.g. Photography Studio, Event Decor, Solar Solutions…"
+                  required
+                  autoFocus
+                />
+              </div>
+            )}
+
             <fieldset>
               <legend>Start with these modules</legend>
               <div className="onboarding-modules">
@@ -300,6 +365,8 @@ export default function HomePage() {
               disabled={
                 setupBusy ||
                 organisationName.trim().length < 2 ||
+                !selectedBusinessType ||
+                (selectedBusinessType === "Other" && customBusinessType.trim().length < 2) ||
                 selectedServices.length === 0
               }
             >

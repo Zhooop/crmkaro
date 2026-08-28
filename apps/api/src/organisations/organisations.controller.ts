@@ -7,7 +7,7 @@ import { OrganisationsService } from "./organisations.service.js";
 
 const createOrganisationSchema = z.object({
   name: z.string().trim().min(2).max(180),
-  businessType: z.string().trim().max(80).optional(),
+  businessType: z.string().trim().min(2, "Business type is required").max(80),
   industry: z.string().trim().max(100).optional(),
   timezone: z.string().trim().min(1).max(64).default("Asia/Kolkata"),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).default("INR"),
