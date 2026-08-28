@@ -1,8 +1,9 @@
 import "dotenv/config";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "../src/generated/client.js";
+import { permissions, rolePresets } from "@crmkaro/permissions";
 
-const connectionString = process.env.DATABASE_URL;
+const connectionString = process.env.DIRECT_DATABASE_URL || process.env.DATABASE_URL;
 
 if (!connectionString) {
   throw new Error("DATABASE_URL is required for database seeding.");
@@ -11,49 +12,15 @@ if (!connectionString) {
 const database = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const services = [
-  { code: "people", name: "People", sortOrder: 10 },
-  { code: "crm", name: "CRM", sortOrder: 20 },
-  { code: "finance", name: "Finance", sortOrder: 30 },
+  { code: "people", name: "People & HR", sortOrder: 10 },
+  { code: "crm", name: "Sales CRM", sortOrder: 20 },
+  { code: "finance", name: "Invoicing & Finance", sortOrder: 30 },
   { code: "payroll", name: "Payroll", sortOrder: 40 },
-  { code: "inventory", name: "Inventory", sortOrder: 50 },
-] as const;
-
-const permissionCodes = [
-  "organisation.settings.read",
-  "organisation.settings.update",
-  "organisation.member.manage",
-  "organisation.service.manage",
-  "people.read",
-  "people.create",
-  "people.update",
-  "people.archive",
-  "people.import",
-  "people.export",
-  "crm.lead.read",
-  "crm.lead.create",
-  "crm.lead.update",
-  "crm.lead.assign",
-  "crm.lead.convert",
-  "finance.invoice.read",
-  "finance.invoice.manage",
-  "finance.payment.read",
-  "finance.payment.create",
-  "finance.payment.refund",
-  "finance.expense.manage",
-  "payroll.employee.read",
-  "payroll.employee.manage",
-  "payroll.salary.view",
-  "payroll.run.prepare",
-  "payroll.run.approve",
-  "payroll.run.markPaid",
-  "inventory.product.read",
-  "inventory.product.manage",
-  "inventory.stock.manage",
-  "inventory.negativeStock.override",
-  "audit.read",
+  { code: "inventory", name: "Stock & Inventory", sortOrder: 50 },
 ] as const;
 
 async function seed() {
+  console.log("Seeding services and permissions...");
   for (const service of services) {
     await database.service.upsert({
       where: { code: service.code },
@@ -62,7 +29,7 @@ async function seed() {
     });
   }
 
-  for (const code of permissionCodes) {
+  for (const code of permissions) {
     await database.permission.upsert({
       where: { code },
       update: {},
@@ -72,6 +39,241 @@ async function seed() {
       },
     });
   }
+
+  // 1. Ensure Super Admin / Owner User exists
+  const ownerEmail = "zhoopinfotech@gmail.com";
+  const user = await database.user.upsert({
+    where: { email: ownerEmail },
+    update: { name: "Pushpaindu Nath", status: "ACTIVE" },
+    create: {
+      email: ownerEmail,
+      name: "Pushpaindu Nath",
+      status: "ACTIVE",
+    },
+  });
+
+  const permissionRows = await database.permission.findMany({ select: { id: true, code: true } });
+  const allServices = await database.service.findMany();
+
+  // 2. Seed Sample Organisations
+  const sampleOrgs = [
+    {
+      name: "Parlour Go",
+      slug: "parlour-go",
+      businessType: "Beauty & Wellness Salon",
+      currency: "INR",
+      timezone: "Asia/Kolkata",
+    },
+    {
+      name: "Zhooop Tech Ventures",
+      slug: "zhooop-tech",
+      businessType: "Software & Technology",
+      currency: "INR",
+      timezone: "Asia/Kolkata",
+    },
+    {
+      name: "Gautam Motors",
+      slug: "gautam-motors",
+      businessType: "Automotive Dealership",
+      currency: "INR",
+      timezone: "Asia/Kolkata",
+    },
+  ];
+
+  for (const orgData of sampleOrgs) {
+    const org = await database.organisation.upsert({
+      where: { slug: orgData.slug },
+      update: { name: orgData.name, businessType: orgData.businessType, status: "ACTIVE" },
+      create: {
+        name: orgData.name,
+        slug: orgData.slug,
+        businessType: orgData.businessType,
+        currency: orgData.currency,
+        timezone: orgData.timezone,
+        status: "ACTIVE",
+      },
+    });
+
+    // Create Roles for organisation
+    const createdRoles = [];
+    for (const [code, preset] of Object.entries(rolePresets)) {
+      let role = await database.role.findFirst({
+        where: { organisationId: org.id, code },
+      });
+      if (!role) {
+        role = await database.role.create({
+          data: {
+            organisationId: org.id,
+            code,
+            name: preset.name,
+            isSystem: false,
+          },
+        });
+      }
+      createdRoles.push(role);
+    }
+
+    const ownerRole = createdRoles.find((r) => r.code === "owner");
+    if (ownerRole) {
+      await database.organisationMembership.upsert({
+        where: {
+          organisationId_userId: { organisationId: org.id, userId: user.id },
+        },
+        update: { status: "ACTIVE", roleId: ownerRole.id },
+        create: {
+          organisationId: org.id,
+          userId: user.id,
+          roleId: ownerRole.id,
+          status: "ACTIVE",
+        },
+      });
+    }
+
+    // Role permissions
+    for (const role of createdRoles) {
+      const preset = rolePresets[role.code as keyof typeof rolePresets];
+      if (preset) {
+        for (const pRow of permissionRows) {
+          if ((preset.permissions as readonly string[]).includes(pRow.code)) {
+            await database.rolePermission.upsert({
+              where: {
+                organisationId_roleId_permissionId: {
+                  organisationId: org.id,
+                  roleId: role.id,
+                  permissionId: pRow.id,
+                },
+              },
+              update: {},
+              create: {
+                organisationId: org.id,
+                roleId: role.id,
+                permissionId: pRow.id,
+              },
+            });
+          }
+        }
+      }
+    }
+
+    // Entitle all services
+    for (const s of allServices) {
+      await database.organisationService.upsert({
+        where: {
+          organisationId_serviceId: { organisationId: org.id, serviceId: s.id },
+        },
+        update: { status: "ACTIVE" },
+        create: {
+          organisationId: org.id,
+          serviceId: s.id,
+          status: "ACTIVE",
+        },
+      });
+    }
+
+    // Seed sample People
+    const existingPerson = await database.person.findFirst({ where: { organisationId: org.id } });
+    if (!existingPerson) {
+      await database.person.createMany({
+        data: [
+          {
+            organisationId: org.id,
+            displayName: "Aarav Sharma",
+            legalName: "Aarav Sharma",
+            primaryEmail: "aarav.sharma@example.com",
+            primaryPhone: "+91 9876543210",
+            status: "ACTIVE",
+          },
+          {
+            organisationId: org.id,
+            displayName: "Priya Patel",
+            legalName: "Priya Patel",
+            primaryEmail: "priya.patel@example.com",
+            primaryPhone: "+91 9811223344",
+            status: "ACTIVE",
+          },
+          {
+            organisationId: org.id,
+            displayName: "Rohit Verma",
+            legalName: "Rohit Verma",
+            primaryEmail: "rohit.verma@example.com",
+            primaryPhone: "+91 9899001122",
+            status: "ACTIVE",
+          },
+        ],
+      });
+    }
+
+    // Seed sample CRM Pipeline & Leads
+    const existingPipeline = await database.pipeline.findFirst({ where: { organisationId: org.id } });
+    if (!existingPipeline) {
+      const pipeline = await database.pipeline.create({
+        data: {
+          organisationId: org.id,
+          name: "Standard Sales Pipeline",
+          isDefault: true,
+          stages: {
+            create: [
+              { name: "New Inquiries", sortOrder: 10, isWon: false, isLost: false },
+              { name: "Consultation Booked", sortOrder: 20, isWon: false, isLost: false },
+              { name: "Proposal Sent", sortOrder: 30, isWon: false, isLost: false },
+              { name: "Won / Enrolled", sortOrder: 40, isWon: true, isLost: false },
+            ],
+          },
+        },
+        include: { stages: true },
+      });
+
+      const firstStage = pipeline.stages[0];
+      if (firstStage) {
+        await database.lead.createMany({
+          data: [
+            {
+              organisationId: org.id,
+              pipelineId: pipeline.id,
+              stageId: firstStage.id,
+              title: "Corporate Annual Package - 25 Members",
+              estimatedValue: 125000,
+              currency: "INR",
+              status: "OPEN",
+            },
+            {
+              organisationId: org.id,
+              pipelineId: pipeline.id,
+              stageId: firstStage.id,
+              title: "Premium Client VIP Membership",
+              estimatedValue: 45000,
+              currency: "INR",
+              status: "OPEN",
+            },
+          ],
+        });
+      }
+    }
+
+    // Seed Sample Audit Logs
+    await database.auditLog.createMany({
+      data: [
+        {
+          organisationId: org.id,
+          actorUserId: user.id,
+          action: "organisation.onboarded",
+          entityType: "ORGANISATION",
+          entityId: org.id,
+          metadata: { name: org.name, slug: org.slug },
+        },
+        {
+          organisationId: org.id,
+          actorUserId: user.id,
+          action: "service.entitled.all",
+          entityType: "SERVICE",
+          entityId: org.id,
+          metadata: { services: ["people", "crm", "finance", "payroll", "inventory"] },
+        },
+      ],
+    });
+  }
+
+  console.log("Seeding completed successfully!");
 }
 
 seed()
@@ -81,4 +283,3 @@ seed()
     await database.$disconnect();
     process.exitCode = 1;
   });
-
