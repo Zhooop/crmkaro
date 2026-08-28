@@ -1130,7 +1130,7 @@ export function EmptyState({
 
 export function AuthPanel({
   admin = false,
-  apiUrl = "http://localhost:4000/api/v1",
+  apiUrl,
   onAuthenticated,
 }: {
   admin?: boolean;
@@ -1143,13 +1143,30 @@ export function AuthPanel({
   const [message, setMessage] = useState("");
   const [busy, setBusy] = useState(false);
 
+  const resolvedApiUrl =
+    apiUrl ||
+    (typeof window !== "undefined" &&
+    (window.location.hostname === "crmkaro.com" ||
+      window.location.hostname.endsWith(".crmkaro.com"))
+      ? "https://api.crmkaro.com/api/v1"
+      : "http://localhost:4000/api/v1");
+
+  const returnUrl =
+    typeof window !== "undefined"
+      ? window.location.origin
+      : admin
+        ? "https://admin.crmkaro.com"
+        : "https://crmkaro.com";
+
+  const googleStartUrl = `${resolvedApiUrl}/auth/google/start?returnTo=${encodeURIComponent(returnUrl)}`;
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setBusy(true);
     setMessage("");
     try {
       const response = await fetch(
-        `${apiUrl}/auth/email/${challengeId ? "verify-otp" : "request-otp"}`,
+        `${resolvedApiUrl}/auth/email/${challengeId ? "verify-otp" : "request-otp"}`,
         {
           method: "POST",
           credentials: "include",
@@ -1256,7 +1273,7 @@ export function AuthPanel({
                 : "Sign in to access your business organisation."}
             </p>
 
-            <a className="google-button" href={`${apiUrl}/auth/google/start`}>
+            <a className="google-button" href={googleStartUrl}>
               <svg width="18" height="18" viewBox="0 0 18 18">
                 <path
                   fill="#4285F4"

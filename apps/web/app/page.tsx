@@ -115,7 +115,11 @@ export default function HomePage() {
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupError, setSetupError] = useState("");
 
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const api =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
+      ? "https://api.crmkaro.com/api/v1"
+      : "http://localhost:4000/api/v1");
 
   const loadDashboard = useCallback(async () => {
     const response = await fetch(`${api}/dashboard`, {

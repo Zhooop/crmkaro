@@ -96,7 +96,11 @@ const MONTH_NAMES = [
 
 export default function PayrollPage() {
   const router = useRouter();
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const api =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
+      ? "https://api.crmkaro.com/api/v1"
+      : "http://localhost:4000/api/v1");
 
   // Data states
   const [activeTab, setActiveTab] = useState<"employees" | "runs">("employees");

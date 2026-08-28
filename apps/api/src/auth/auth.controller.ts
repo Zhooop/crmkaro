@@ -26,6 +26,7 @@ function setSessionCookie(response: Response, token: string, production: boolean
     httpOnly: true,
     secure: production,
     sameSite: "lax",
+    domain: production ? ".crmkaro.com" : undefined,
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: "/",
   });
@@ -55,8 +56,8 @@ export class AuthController {
   }
 
   @Get("google/start")
-  async googleStart(@Res() response: Response) {
-    response.redirect(await this.auth.beginGoogle());
+  async googleStart(@Query("returnTo") returnTo: string | undefined, @Res() response: Response) {
+    response.redirect(await this.auth.beginGoogle(returnTo));
   }
 
   @Get("google/callback")
@@ -81,7 +82,10 @@ export class AuthController {
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const cookies = (request as Request & { cookies?: Record<string, string> }).cookies;
     await this.sessions.revoke(cookies?.[SESSION_COOKIE]);
-    response.clearCookie(SESSION_COOKIE, { path: "/" });
+    response.clearCookie(SESSION_COOKIE, {
+      path: "/",
+      domain: process.env.NODE_ENV === "production" ? ".crmkaro.com" : undefined,
+    });
     return { success: true };
   }
 }

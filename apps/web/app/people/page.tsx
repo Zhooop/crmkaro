@@ -62,7 +62,11 @@ type Person = {
 function PeopleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const api =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
+      ? "https://api.crmkaro.com/api/v1"
+      : "http://localhost:4000/api/v1");
 
   // Data states
   const [people, setPeople] = useState<Person[]>([]);

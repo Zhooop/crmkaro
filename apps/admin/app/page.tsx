@@ -71,7 +71,11 @@ type OrganisationDetail = {
 
 export default function AdminHomePage() {
   const router = useRouter();
-  const api = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/api/v1";
+  const api =
+    process.env.NEXT_PUBLIC_API_URL ||
+    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
+      ? "https://api.crmkaro.com/api/v1"
+      : "http://localhost:4000/api/v1");
 
   const [data, setData] = useState<PlatformOverview | null>(null);
   const [organisations, setOrganisations] = useState<OrganisationDetail[]>([]);

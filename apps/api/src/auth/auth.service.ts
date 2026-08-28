@@ -119,7 +119,7 @@ export class AuthService {
     return this.sessions.create(user.id, metadata);
   }
 
-  async beginGoogle() {
+  async beginGoogle(returnTo?: string) {
     const clientId = this.config.get("GOOGLE_CLIENT_ID", { infer: true });
     const redirectUri = this.config.get("GOOGLE_REDIRECT_URI", { infer: true });
 
@@ -127,11 +127,26 @@ export class AuthService {
       throw new ServiceUnavailableException("Google login is not configured.");
     }
 
+    const defaultUrl = this.config.get("WEB_URL", { infer: true });
+    let safeRedirectUri = defaultUrl;
+    if (returnTo) {
+      try {
+        const parsed = new URL(returnTo);
+        const webUrl = new URL(defaultUrl);
+        const adminUrl = new URL(this.config.get("ADMIN_URL", { infer: true }));
+        if (parsed.origin === webUrl.origin || parsed.origin === adminUrl.origin) {
+          safeRedirectUri = returnTo;
+        }
+      } catch {
+        // fallback to default
+      }
+    }
+
     const state = randomUUID();
     await this.database.oAuthState.create({
       data: {
         stateHash: createHmac("sha256", this.config.get("SESSION_SECRET", { infer: true })).update(state).digest("hex"),
-        redirectUri: this.config.get("WEB_URL", { infer: true }),
+        redirectUri: safeRedirectUri,
         expiresAt: new Date(Date.now() + 10 * 60 * 1000),
       },
     });
