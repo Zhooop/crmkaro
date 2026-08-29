@@ -90,5 +90,43 @@ export const expenseSchema = z
     expenseDate: val.expenseDate || val.date || new Date(),
     reference: val.reference,
   }));
+
+export const updateInvoiceSchema = z.object({
+  personId: z.string().uuid().optional(),
+  issueDate: z.coerce.date().optional(),
+  dueDate: z.coerce.date().optional().nullable(),
+  currency: z
+    .string()
+    .trim()
+    .length(3)
+    .transform((v) => v.toUpperCase())
+    .optional(),
+  notes: optionalText(2000),
+  items: z
+    .array(
+      z
+        .object({
+          description: z.string().trim().min(1).max(500),
+          quantity: z.number().positive().max(1_000_000),
+          unitPriceMinor: z.number().int().min(0).max(2_000_000_000),
+          discountMinor: z.number().int().min(0).max(2_000_000_000).default(0),
+          taxRateBps: z.number().int().min(0).max(10000).optional().default(0),
+          taxRateBasisPoints: z.number().int().min(0).max(10000).optional(),
+        })
+        .transform((item) => ({
+          description: item.description,
+          quantity: item.quantity,
+          unitPriceMinor: item.unitPriceMinor,
+          discountMinor: item.discountMinor,
+          taxRateBps: item.taxRateBasisPoints !== undefined ? item.taxRateBasisPoints : item.taxRateBps,
+        })),
+    )
+    .min(1)
+    .max(100)
+    .optional(),
+});
+
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
+export type UpdateInvoiceInput = z.infer<typeof updateInvoiceSchema>;
 export type PaymentInput = z.infer<typeof paymentSchema>;
+

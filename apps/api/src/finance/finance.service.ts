@@ -9,7 +9,7 @@ import type { DatabaseClient, Prisma } from "@crmkaro/database";
 import { withTenant } from "@crmkaro/database";
 import PDFDocument from "pdfkit";
 import { DATABASE } from "../database/database.module.js";
-import type { InvoiceInput, PaymentInput } from "./finance.schemas.js";
+import type { InvoiceInput, PaymentInput, UpdateInvoiceInput } from "./finance.schemas.js";
 import { calculateInvoice, formatMoney } from "./finance.utils.js";
 
 const invoiceInclude = {
@@ -66,7 +66,12 @@ export class FinanceService {
           personId: input.personId,
         },
         include: {
-          person: { select: { id: true, displayName: true, email: true } },
+          person: { select: { id: true, displayName: true, email: true, primaryPhone: true } },
+          items: { orderBy: { position: "asc" as const } },
+          payments: {
+            orderBy: { receivedAt: "desc" as const },
+            include: { refunds: true },
+          },
         },
         orderBy: [{ issueDate: "desc" }, { id: "desc" }],
         take: input.limit + 1,
@@ -147,6 +152,104 @@ export class FinanceService {
         },
       });
       return invoice;
+    });
+  }
+
+  updateInvoice(
+    organisationId: string,
+    userId: string,
+    id: string,
+    input: UpdateInvoiceInput,
+  ) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const invoice = await this.invoice(tx, organisationId, id);
+      if (invoice.status === "VOID") {
+        throw new ConflictException("Voided invoices cannot be edited.");
+      }
+      if (invoice.status !== "DRAFT" && input.items) {
+        if (invoice.paidTotalMinor > 0) {
+          throw new ConflictException(
+            "Invoices with recorded payments cannot have items modified.",
+          );
+        }
+      }
+
+      if (input.personId && input.personId !== invoice.personId) {
+        const person = await tx.person.findFirst({
+          where: { id: input.personId, organisationId, status: "ACTIVE" },
+        });
+        if (!person) throw new BadRequestException("Customer not found.");
+      }
+
+      let totalsUpdate: {
+        subtotalMinor?: number;
+        discountMinor?: number;
+        taxMinor?: number;
+        grandTotalMinor?: number;
+        balanceDueMinor?: number;
+      } = {};
+
+      if (input.items && input.items.length > 0) {
+        let totals;
+        try {
+          totals = calculateInvoice(input.items);
+        } catch (error) {
+          throw new BadRequestException((error as Error).message);
+        }
+
+        await tx.invoiceItem.deleteMany({
+          where: { invoiceId: id, organisationId },
+        });
+
+        await tx.invoiceItem.createMany({
+          data: totals.lines.map((line, index) => ({
+            organisationId,
+            invoiceId: id,
+            description: input.items![index]!.description,
+            quantity: input.items![index]!.quantity,
+            unitPriceMinor: line.unitPriceMinor,
+            discountMinor: line.discountMinor,
+            taxRateBps: line.taxRateBps,
+            taxMinor: line.taxMinor,
+            lineTotalMinor: line.lineTotalMinor,
+            position: index + 1,
+          })),
+        });
+
+        totalsUpdate = {
+          subtotalMinor: totals.subtotalMinor,
+          discountMinor: totals.discountMinor,
+          taxMinor: totals.taxMinor,
+          grandTotalMinor: totals.grandTotalMinor,
+          balanceDueMinor: Math.max(0, totals.grandTotalMinor - invoice.paidTotalMinor),
+        };
+      }
+
+      const updated = await tx.invoice.update({
+        where: { id },
+        data: {
+          ...(input.personId ? { personId: input.personId } : {}),
+          ...(input.issueDate ? { issueDate: input.issueDate } : {}),
+          ...(input.dueDate !== undefined ? { dueDate: input.dueDate || invoice.dueDate } : {}),
+          ...(input.currency ? { currency: input.currency } : {}),
+          ...(input.notes !== undefined ? { notes: input.notes } : {}),
+          ...totalsUpdate,
+        },
+        include: invoiceInclude,
+      });
+
+      await tx.auditLog.create({
+        data: {
+          organisationId,
+          actorUserId: userId,
+          action: "invoice.updated",
+          entityType: "invoice",
+          entityId: id,
+          metadata: { invoiceNumber: invoice.invoiceNumber, ...totalsUpdate },
+        },
+      });
+
+      return updated;
     });
   }
   issueInvoice(organisationId: string, userId: string, id: string) {

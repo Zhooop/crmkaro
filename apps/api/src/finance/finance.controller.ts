@@ -5,6 +5,7 @@ import {
   Inject,
   Param,
   ParseUUIDPipe,
+  Patch,
   Post,
   Query,
   Req,
@@ -28,6 +29,7 @@ import {
   invoiceSchema,
   paymentSchema,
   refundSchema,
+  updateInvoiceSchema,
 } from "./finance.schemas.js";
 import { FinanceService } from "./finance.service.js";
 
@@ -79,6 +81,19 @@ export class FinanceController {
     @Param("invoiceId", new ParseUUIDPipe({ version: "4" })) id: string,
   ) {
     return this.finance.getInvoice(...this.context(request), id);
+  }
+  @Patch("invoices/:invoiceId")
+  @RequirePermissions("finance.invoice.manage")
+  updateInvoice(
+    @Req() request: AuthenticatedRequest,
+    @Param("invoiceId", new ParseUUIDPipe({ version: "4" })) id: string,
+    @Body() body: unknown,
+  ) {
+    return this.finance.updateInvoice(
+      ...this.context(request),
+      id,
+      parseBody(updateInvoiceSchema, body),
+    );
   }
   @Post("invoices/:invoiceId/issue")
   @RequirePermissions("finance.invoice.manage")
