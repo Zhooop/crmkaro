@@ -390,6 +390,13 @@ export default function AdminHomePage() {
       currentPath={`#${activeTab}`}
       userName="Super Admin"
       userRole="Platform Administrator"
+      onNavigate={(href) => {
+        if (href.startsWith("#")) {
+          setActiveTab(href.slice(1) as any);
+        } else {
+          router.push(href);
+        }
+      }}
     >
       {/* Toast Feedback */}
       {feedback && (

@@ -213,6 +213,7 @@ export default function SettingsPage() {
       userName={userName}
       userRole={userRole}
       apiUrl={api}
+      onNavigate={(href) => router.push(href)}
     >
       <div className="page-heading">
         <div>

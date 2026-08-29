@@ -419,6 +419,7 @@ export default function HomePage() {
       notifications={data.notifications}
       apiUrl={api}
       onSwitchOrganisation={handleSwitchOrg}
+      onNavigate={(href) => router.push(href)}
     >
       <div className="page-heading">
         <div>

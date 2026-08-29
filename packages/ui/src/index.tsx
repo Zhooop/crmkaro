@@ -385,6 +385,7 @@ export function AppShell({
   onSwitchOrganisation,
   onCreateOrganisation,
   onLogout,
+  onNavigate,
 }: {
   product: string;
   organisation: string;
@@ -401,6 +402,7 @@ export function AppShell({
   onSwitchOrganisation?: (orgId: string) => void;
   onCreateOrganisation?: () => void;
   onLogout?: () => void;
+  onNavigate?: (href: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -412,6 +414,33 @@ export function AppShell({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+
+  const handleLinkClick =
+    (href?: string, extraOnClick?: () => void) =>
+    (e: React.MouseEvent<HTMLAnchorElement>) => {
+      extraOnClick?.();
+      if (
+        !href ||
+        href === "#" ||
+        href.startsWith("http://") ||
+        href.startsWith("https://") ||
+        href.startsWith("mailto:") ||
+        href.startsWith("tel:")
+      ) {
+        return;
+      }
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) {
+        return;
+      }
+      if (onNavigate) {
+        e.preventDefault();
+        onNavigate(href);
+        setOpen(false);
+        setSearchOpen(false);
+        setQuickAddOpen(false);
+        setUserMenuOpen(false);
+      }
+    };
 
   // Keyboard shortcut ⌘K for search
   useEffect(() => {
@@ -507,7 +536,16 @@ export function AppShell({
         />
       )}
       <aside className={`sidebar${open ? " is-open" : ""}`}>
-        <div className="brand-row">
+        <div
+          className="brand-row"
+          style={{ cursor: onNavigate ? "pointer" : undefined }}
+          onClick={() => {
+            if (onNavigate) {
+              onNavigate("/");
+              setOpen(false);
+            }
+          }}
+        >
           <div className="brand-mark">
             <img src="/brand/crmkaro-mark.png" alt="CRMKaro Logo" />
           </div>
@@ -517,7 +555,10 @@ export function AppShell({
           </div>
           <button
             className="icon-button mobile-close"
-            onClick={() => setOpen(false)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(false);
+            }}
             aria-label="Close menu"
           >
             <Icon name="close" />
@@ -596,6 +637,7 @@ export function AppShell({
                 aria-current={isActive ? "page" : undefined}
                 href={item.href ?? "#"}
                 key={item.label}
+                onClick={handleLinkClick(item.href)}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
@@ -649,7 +691,7 @@ export function AppShell({
               <a
                 href="/settings"
                 className="user-dropdown-link"
-                onClick={() => setUserMenuOpen(false)}
+                onClick={handleLinkClick("/settings", () => setUserMenuOpen(false))}
               >
                 <Icon name="settings" size={16} />
                 <span>Settings & Access</span>
@@ -742,7 +784,7 @@ export function AppShell({
                     key={`${item.type}-${item.id}`}
                     href={item.url}
                     className="palette-item"
-                    onClick={() => setSearchOpen(false)}
+                    onClick={handleLinkClick(item.url, () => setSearchOpen(false))}
                   >
                     <div className="palette-item-icon">
                       <Icon
@@ -810,7 +852,7 @@ export function AppShell({
               <a
                 href="/people?action=new"
                 className="quick-tile"
-                onClick={() => setQuickAddOpen(false)}
+                onClick={handleLinkClick("/people?action=new", () => setQuickAddOpen(false))}
               >
                 <div className="stat-icon teal">
                   <Icon name="people" />
@@ -823,7 +865,7 @@ export function AppShell({
               <a
                 href="/crm?action=new"
                 className="quick-tile"
-                onClick={() => setQuickAddOpen(false)}
+                onClick={handleLinkClick("/crm?action=new", () => setQuickAddOpen(false))}
               >
                 <div className="stat-icon blue">
                   <Icon name="crm" />
@@ -836,7 +878,7 @@ export function AppShell({
               <a
                 href="/finance?action=new-invoice"
                 className="quick-tile"
-                onClick={() => setQuickAddOpen(false)}
+                onClick={handleLinkClick("/finance?action=new-invoice", () => setQuickAddOpen(false))}
               >
                 <div className="stat-icon amber">
                   <Icon name="finance" />
@@ -849,7 +891,7 @@ export function AppShell({
               <a
                 href="/finance?action=new-expense"
                 className="quick-tile"
-                onClick={() => setQuickAddOpen(false)}
+                onClick={handleLinkClick("/finance?action=new-expense", () => setQuickAddOpen(false))}
               >
                 <div className="stat-icon rose">
                   <Icon name="rupee" />
@@ -862,7 +904,7 @@ export function AppShell({
               <a
                 href="/inventory?action=new-product"
                 className="quick-tile"
-                onClick={() => setQuickAddOpen(false)}
+                onClick={handleLinkClick("/inventory?action=new-product", () => setQuickAddOpen(false))}
               >
                 <div className="stat-icon teal">
                   <Icon name="inventory" />
