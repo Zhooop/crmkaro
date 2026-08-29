@@ -194,7 +194,7 @@ export default function AdminHomePage() {
     try {
       // 1. Overview data
       const res = await fetch(`${api}/platform/overview`, { credentials: "include" });
-      if (res.status === 401) {
+      if (res.status === 401 || res.status === 403) {
         router.replace("/login");
         return;
       }
@@ -228,6 +228,18 @@ export default function AdminHomePage() {
       setLoading(false);
     }
   }, [api, router]);
+
+  async function handleAdminLogout() {
+    try {
+      await fetch(`${api}/auth/logout`, {
+        method: "POST",
+        credentials: "include",
+      });
+    } catch {
+      // ignore
+    }
+    router.replace("/login");
+  }
 
   useEffect(() => {
     loadData();
@@ -435,6 +447,25 @@ export default function AdminHomePage() {
           >
             <Icon name="plus" size={15} />
             <span>+ Onboard Tenant</span>
+          </button>
+          <button
+            className="secondary-btn"
+            onClick={handleAdminLogout}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 14px",
+              borderRadius: 8,
+              color: "#f87171",
+              border: "1px solid #7f1d1d",
+              background: "rgba(127, 29, 29, 0.2)",
+              cursor: "pointer",
+            }}
+            title="Sign out of platform admin console"
+          >
+            <Icon name="logout" size={14} />
+            <span>Sign Out</span>
           </button>
         </div>
       </div>
@@ -903,7 +934,7 @@ export default function AdminHomePage() {
                               placeItems: "center",
                             }}
                           >
-                            <Icon name={s.code === "people" ? "people" : s.code === "crm" ? "activity" : s.code === "finance" ? "dollar" : s.code === "payroll" ? "calendar" : "tag"} size={20} />
+                            <Icon name={s.code === "people" ? "people" : s.code === "crm" ? "activity" : s.code === "finance" ? "rupee" : s.code === "payroll" ? "calendar" : "tag"} size={20} />
                           </div>
                           <div>
                             <strong style={{ color: "#ffffff", fontSize: 16, display: "block" }}>{s.name}</strong>
@@ -1183,7 +1214,7 @@ export default function AdminHomePage() {
                   </div>
                   <div className="key-value-row">
                     <span className="key-value-label">
-                      <Icon name="dollar" size={14} /> Currency & Timezone
+                      <Icon name="rupee" size={14} /> Currency & Timezone
                     </span>
                     <strong className="key-value-value" style={{ color: "#ffffff" }}>{selectedOrg.currency} · {selectedOrg.timezone}</strong>
                   </div>

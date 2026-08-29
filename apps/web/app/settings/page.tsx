@@ -16,11 +16,11 @@ import { useRouter } from "next/navigation";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
 

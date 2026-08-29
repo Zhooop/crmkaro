@@ -1,6 +1,7 @@
 import { Body, Controller, Get, Inject, Param, Patch, Post, Query, Req, UseGuards } from "@nestjs/common";
 import { z } from "zod";
 import { SessionGuard } from "../auth/session.guard.js";
+import { PlatformAdminGuard } from "./platform-admin.guard.js";
 import type { AuthenticatedRequest } from "../auth/auth.types.js";
 import { PlatformService } from "./platform.service.js";
 
@@ -22,7 +23,7 @@ const createOrgSchema = z.object({
 });
 
 @Controller("platform")
-@UseGuards(SessionGuard)
+@UseGuards(SessionGuard, PlatformAdminGuard)
 export class PlatformController {
   constructor(@Inject(PlatformService) private readonly platform: PlatformService) {}
 

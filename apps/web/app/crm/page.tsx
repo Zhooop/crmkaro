@@ -16,11 +16,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
 
@@ -143,6 +143,44 @@ function CrmContent() {
   const [followUpDue, setFollowUpDue] = useState("");
   const [followUpOutcome, setFollowUpOutcome] = useState("");
   const [followUpBusy, setFollowUpBusy] = useState(false);
+
+  function applyLeadTemplate(name: string, value: string, source: string) {
+    if (!formName.trim()) setFormName(name);
+    setFormValue(value);
+    setFormSource(source);
+  }
+
+  function setQuickFollowUpPreset(type: "TODAY_5PM" | "TOMORROW_11AM" | "IN_3_DAYS" | "NEXT_WEEK") {
+    const now = new Date();
+    const target = new Date();
+    let note = "Follow-up Call";
+
+    if (type === "TODAY_5PM") {
+      target.setHours(17, 0, 0, 0);
+      if (target <= now) target.setDate(target.getDate() + 1);
+      note = "Call & Fee Discussion";
+    } else if (type === "TOMORROW_11AM") {
+      target.setDate(target.getDate() + 1);
+      target.setHours(11, 0, 0, 0);
+      note = "WhatsApp & Course Details";
+    } else if (type === "IN_3_DAYS") {
+      target.setDate(target.getDate() + 3);
+      target.setHours(12, 0, 0, 0);
+      note = "Check Admission Decision";
+    } else if (type === "NEXT_WEEK") {
+      target.setDate(target.getDate() + 7);
+      target.setHours(15, 0, 0, 0);
+      note = "Demo Class Feedback & Closing";
+    }
+
+    const year = target.getFullYear();
+    const month = String(target.getMonth() + 1).padStart(2, "0");
+    const day = String(target.getDate()).padStart(2, "0");
+    const hours = String(target.getHours()).padStart(2, "0");
+    const mins = String(target.getMinutes()).padStart(2, "0");
+    setFollowUpDue(`${year}-${month}-${day}T${hours}:${mins}`);
+    setFollowUpOutcome(note);
+  }
 
   // Lost Reason Modal/Input
   const [lostReasonInput, setLostReasonInput] = useState("");
@@ -859,11 +897,42 @@ function CrmContent() {
                 )}
               </div>
             </div>
-
             {/* Follow-ups Section */}
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: 14 }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <label style={{ fontSize: 12, fontWeight: 700 }}>Follow-ups</label>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+                <label style={{ fontSize: 12, fontWeight: 700 }}>Follow-ups & Next Action</label>
+              </div>
+
+              {/* 1-Click Quick Follow-up Presets */}
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                <button
+                  type="button"
+                  onClick={() => setQuickFollowUpPreset("TODAY_5PM")}
+                  style={{ padding: "4px 8px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >
+                  📞 Call Today 5 PM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFollowUpPreset("TOMORROW_11AM")}
+                  style={{ padding: "4px 8px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >
+                  💬 WhatsApp Tomorrow 11 AM
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFollowUpPreset("IN_3_DAYS")}
+                  style={{ padding: "4px 8px", background: "#fefce8", border: "1px solid #fef08a", color: "#a16207", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >
+                  🤝 In 3 Days
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setQuickFollowUpPreset("NEXT_WEEK")}
+                  style={{ padding: "4px 8px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                >
+                  📅 Next Week Demo
+                </button>
               </div>
 
               {/* Schedule Form */}
@@ -936,37 +1005,36 @@ function CrmContent() {
               <form onSubmit={handleAddNote} style={{ display: "flex", gap: 8, marginTop: 8 }}>
                 <input
                   type="text"
-                  placeholder="Add a discussion note..."
+                  placeholder="Add a note or call update…"
                   value={newNote}
                   onChange={(e) => setNewNote(e.target.value)}
-                  style={{ flex: 1, padding: "7px 10px", border: "1px solid var(--line)", borderRadius: 7, fontSize: 12 }}
+                  style={{ flex: 1, padding: "6px 10px", border: "1px solid var(--line)", borderRadius: 7, fontSize: 12 }}
                   required
                 />
                 <button type="submit" className="btn btn-primary btn-sm" disabled={noteBusy}>
-                  Post
+                  Post Note
                 </button>
               </form>
-
-              <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0", display: "flex", flexDirection: "column", gap: 8 }}>
+              <ul style={{ listStyle: "none", padding: 0, margin: "10px 0 0", display: "flex", flexDirection: "column", gap: 6 }}>
                 {detailLead.notes && detailLead.notes.length > 0 ? (
                   detailLead.notes.map((n) => (
                     <li
                       key={n.id}
                       style={{
                         padding: "8px 10px",
-                        background: "#f8fafc",
+                        background: "var(--panel-soft)",
                         borderRadius: 8,
                         fontSize: 12,
                       }}
                     >
                       <p style={{ margin: 0 }}>{n.body}</p>
-                      <div style={{ color: "var(--muted)", fontSize: 10, marginTop: 4 }}>
+                      <small style={{ color: "var(--muted)", fontSize: 10 }}>
                         {new Date(n.createdAt).toLocaleString()} · {n.author?.name || "Team Member"}
-                      </div>
+                      </small>
                     </li>
                   ))
                 ) : (
-                  <small style={{ color: "var(--muted)" }}>No notes added yet.</small>
+                  <small style={{ color: "var(--muted)" }}>No notes logged.</small>
                 )}
               </ul>
             </div>
@@ -978,23 +1046,53 @@ function CrmContent() {
       <Modal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Create New Lead"
-        subtitle="Add prospective customer to the pipeline"
-        maxWidth={500}
+        title="Create New Lead / Inquiry"
+        subtitle="Add prospective student or client to the sales pipeline"
+        maxWidth={520}
       >
         <form onSubmit={handleCreateLead} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {formError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {formError}
             </div>
           )}
 
+          {/* Quick Lead Presets / 1-Click Templates */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              ⚡ 1-Click Quick Presets
+            </label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Full Course Admission Lead", "25000", "Walk-in")}
+                style={{ padding: "4px 9px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+              >
+                🎓 Full Course (₹25k)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Crash Course Inquiry", "8000", "Social Media")}
+                style={{ padding: "4px 9px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+              >
+                📖 Crash Course (₹8k)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Consulting Retainer Lead", "50000", "Referral")}
+                style={{ padding: "4px 9px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+              >
+                💼 Consulting (₹50k)
+              </button>
+            </div>
+          </div>
+
           <div className="form-grid">
             <div className="form-group full">
-              <label>Lead / Company Name *</label>
+              <label>Lead / Student / Client Name *</label>
               <input
                 type="text"
-                placeholder="e.g. Apex Tutorials or Vikram Verma"
+                placeholder="e.g. Vikram Verma or Apex Tutorials"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 required
@@ -1011,7 +1109,7 @@ function CrmContent() {
               />
             </div>
             <div className="form-group">
-              <label>Phone</label>
+              <label>Phone Number</label>
               <input
                 type="tel"
                 placeholder="+91 98765 43210"
@@ -1019,33 +1117,79 @@ function CrmContent() {
                 onChange={(e) => setFormPhone(e.target.value)}
               />
             </div>
-            <div className="form-group">
-              <label>Estimated Deal Value (₹)</label>
+            <div className="form-group full">
+              <label>Estimated Deal / Fee Value (₹)</label>
               <input
                 type="number"
-                placeholder="e.g. 50000"
+                placeholder="e.g. 25000"
                 value={formValue}
                 onChange={(e) => setFormValue(e.target.value)}
               />
+              {/* Quick Amount Chips */}
+              <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
+                {[5000, 10000, 25000, 50000, 100000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setFormValue(String(amt))}
+                    style={{
+                      padding: "2px 7px",
+                      borderRadius: 5,
+                      border: "1px solid #cbd5e1",
+                      background: formValue === String(amt) ? "#dbeafe" : "#ffffff",
+                      color: formValue === String(amt) ? "#1d4ed8" : "#475569",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    ₹{amt.toLocaleString("en-IN")}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="form-group">
-              <label>Source</label>
+            <div className="form-group full">
+              <label>Lead Source</label>
               <select
                 className="filter-select"
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
               >
-                <option value="Website">Website</option>
-                <option value="Google Search">Google Search</option>
-                <option value="Social Media">Social Media</option>
-                <option value="Referral">Referral</option>
-                <option value="Walk-in">Walk-in</option>
+                <option value="WhatsApp">📱 WhatsApp</option>
+                <option value="Walk-in">🚶 Walk-in / Center Visit</option>
+                <option value="Phone Call">📞 Phone Call</option>
+                <option value="Social Media">📸 Social Media / Instagram Ads</option>
+                <option value="Website">🌐 Website Inquiry</option>
+                <option value="Google Search">🔍 Google Search</option>
+                <option value="Referral">🤝 Student / Client Referral</option>
                 <option value="Other">Other</option>
               </select>
+              {/* Quick Source Chips */}
+              <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
+                {["WhatsApp", "Walk-in", "Phone Call", "Social Media", "Referral"].map((src) => (
+                  <button
+                    key={src}
+                    type="button"
+                    onClick={() => setFormSource(src)}
+                    style={{
+                      padding: "2px 7px",
+                      borderRadius: 5,
+                      border: "1px solid #cbd5e1",
+                      background: formSource === src ? "#dbeafe" : "#ffffff",
+                      color: formSource === src ? "#1d4ed8" : "#475569",
+                      fontSize: 11,
+                      fontWeight: 600,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {src}
+                  </button>
+                ))}
+              </div>
             </div>
             {stages.length > 0 && (
               <div className="form-group full">
-                <label>Initial Stage</label>
+                <label>Initial Pipeline Stage</label>
                 <select
                   className="filter-select"
                   value={formStageId}

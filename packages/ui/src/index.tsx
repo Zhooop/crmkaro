@@ -42,6 +42,7 @@ export type IconName =
   | "refresh"
   | "copy"
   | "dollar"
+  | "rupee"
   | "user"
   | "tag"
   | "mail"
@@ -79,7 +80,11 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
     ),
     finance: (
       <>
-        <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        <path d="M6 3h12" />
+        <path d="M6 8h12" />
+        <path d="m6 13 8.5 8" />
+        <path d="M6 13h3" />
+        <path d="M9 13c6.667 0 6.667-10 0-10" />
       </>
     ),
     payroll: (
@@ -194,8 +199,20 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
     ),
     dollar: (
       <>
-        <line x1="12" x2="12" y1="2" y2="22" />
-        <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        <path d="M6 3h12" />
+        <path d="M6 8h12" />
+        <path d="m6 13 8.5 8" />
+        <path d="M6 13h3" />
+        <path d="M9 13c6.667 0 6.667-10 0-10" />
+      </>
+    ),
+    rupee: (
+      <>
+        <path d="M6 3h12" />
+        <path d="M6 8h12" />
+        <path d="m6 13 8.5 8" />
+        <path d="M6 13h3" />
+        <path d="M9 13c6.667 0 6.667-10 0-10" />
       </>
     ),
     user: (
@@ -803,7 +820,7 @@ export function AppShell({
                 onClick={() => setQuickAddOpen(false)}
               >
                 <div className="stat-icon rose">
-                  <Icon name="dollar" />
+                  <Icon name="rupee" />
                 </div>
                 <div>
                   <strong>Record Expense</strong>

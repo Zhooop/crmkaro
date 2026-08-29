@@ -17,12 +17,33 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
+];
+
+const INVOICE_ITEM_PRESETS = [
+  "Tuition / Course Fees",
+  "Admission / Registration Fees",
+  "Monthly / Term Academic Fees",
+  "Examination / Certification Fees",
+  "Coaching / Training Workshop",
+  "Membership / Subscription Fees",
+  "Consulting / Professional Services",
+  "Monthly Retainer / Service Contract",
+  "Salary / Remuneration / Wages",
+  "Software Development & IT Services",
+  "Software License / Cloud Hosting",
+  "Product Sale / Goods & Materials",
+  "Annual Maintenance Contract (AMC)",
+  "Marketing & Advertising Services",
+  "Hostel / Accommodation Fees",
+  "Transportation / Logistics Charges",
+  "Security Deposit / Advance",
+  "Miscellaneous Charges",
 ];
 
 type InvoiceStatus = "DRAFT" | "ISSUED" | "PARTIALLY_PAID" | "PAID" | "VOID";
@@ -83,6 +104,8 @@ type PersonOption = {
   id: string;
   displayName: string;
   email: string | null;
+  primaryPhone?: string | null;
+  types?: Array<{ type: string }>;
 };
 
 function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
@@ -135,10 +158,14 @@ function FinanceContent() {
   const [formDueDate, setFormDueDate] = useState("");
   const [formNotes, setFormNotes] = useState("");
   const [formItems, setFormItems] = useState<
-    Array<{ description: string; quantity: number; unitPrice: number; taxRate: number }>
-  >([{ description: "Professional Services", quantity: 1, unitPrice: 5000, taxRate: 18 }]);
+    Array<{ description: string; quantity: number | string; unitPrice: number | string; taxRate: number }>
+  >([{ description: "", quantity: 1, unitPrice: "", taxRate: 18 }]);
   const [invoiceBusy, setInvoiceBusy] = useState(false);
   const [invoiceError, setInvoiceError] = useState("");
+  const [personSearchQuery, setPersonSearchQuery] = useState("");
+  const [personSearchLoading, setPersonSearchLoading] = useState(false);
+  const [searchResults, setSearchResults] = useState<PersonOption[]>([]);
+  const [isCustomerDropdownOpen, setIsCustomerDropdownOpen] = useState(false);
 
   // Form states - Record Payment
   const [paymentAmount, setPaymentAmount] = useState("");
@@ -146,19 +173,30 @@ function FinanceContent() {
   const [paymentRef, setPaymentRef] = useState("");
   const [paymentNotes, setPaymentNotes] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   // Form states - Refund
   const [refundAmount, setRefundAmount] = useState("");
   const [refundReason, setRefundReason] = useState("");
   const [refundBusy, setRefundBusy] = useState(false);
+  const [refundError, setRefundError] = useState("");
 
   // Form states - Record Expense
-  const [expCategory, setExpCategory] = useState("Office Supplies");
+  const [expCategory, setExpCategory] = useState("Office Rent & Maintenance");
   const [expVendor, setExpVendor] = useState("");
   const [expAmount, setExpAmount] = useState("");
   const [expDate, setExpDate] = useState(new Date().toISOString().slice(0, 10));
   const [expDesc, setExpDesc] = useState("");
   const [expBusy, setExpBusy] = useState(false);
+  const [expError, setExpError] = useState("");
+
+  // Toast notification feedback state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  }
 
   // Load session context
   const loadContext = useCallback(async () => {
@@ -256,12 +294,11 @@ function FinanceContent() {
     const action = searchParams.get("action");
     const personId = searchParams.get("personId");
     const invoiceId = searchParams.get("invoiceId");
+    const presetDesc = searchParams.get("description");
+    const presetPrice = searchParams.get("price");
 
     if (action === "new-invoice") {
-      if (personId) setFormPersonId(personId);
-      const randomNum = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-      setFormInvoiceNumber(randomNum);
-      setCreateInvoiceOpen(true);
+      openCreateInvoiceModal(personId || undefined, presetDesc || undefined, presetPrice || undefined);
     }
     if (action === "new-expense") {
       setCreateExpenseOpen(true);
@@ -275,6 +312,35 @@ function FinanceContent() {
         .catch(() => {});
     }
   }, [searchParams, api]);
+
+  // Debounced live search for customers/students when creating invoice
+  useEffect(() => {
+    if (!createInvoiceOpen || !personSearchQuery.trim()) {
+      setSearchResults([]);
+      setPersonSearchLoading(false);
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      setPersonSearchLoading(true);
+      try {
+        const res = await fetch(
+          `${api}/people?search=${encodeURIComponent(personSearchQuery.trim())}&limit=50`,
+          { credentials: "include" },
+        );
+        if (res.ok) {
+          const data = await res.json();
+          setSearchResults(data.items || []);
+        }
+      } catch {
+        // ignore
+      } finally {
+        setPersonSearchLoading(false);
+      }
+    }, 250);
+
+    return () => clearTimeout(timer);
+  }, [personSearchQuery, createInvoiceOpen, api]);
 
   // Calculate metrics
   const totalBilledMinor = invoices.reduce((acc, inv) => acc + inv.totalMinor, 0);
@@ -298,18 +364,29 @@ function FinanceContent() {
   async function handleCreateInvoice(e: FormEvent) {
     e.preventDefault();
     if (!formPersonId) {
-      setInvoiceError("Please select a customer.");
+      setInvoiceError("Please select a customer / student from the directory.");
+      return;
+    }
+    const validItems = formItems.filter((it) => it.description.trim() && Number(it.quantity) > 0);
+    if (validItems.length === 0) {
+      setInvoiceError("Please add at least one line item with description and valid price.");
       return;
     }
     setInvoiceBusy(true);
     setInvoiceError("");
     try {
-      const itemsPayload = formItems.map((item) => ({
-        description: item.description,
+      const itemsPayload = validItems.map((item) => ({
+        description: item.description.trim(),
         quantity: Number(item.quantity) || 1,
-        unitPriceMinor: Math.round(Number(item.unitPrice) * 100),
-        taxRateBasisPoints: Math.round(Number(item.taxRate) * 100),
+        unitPriceMinor: Math.round(Number(item.unitPrice) * 100) || 0,
+        taxRateBps: Math.round(Number(item.taxRate) * 100) || 0,
       }));
+
+      const now = new Date();
+      const issueDate = now.toISOString();
+      const dueDate = formDueDate
+        ? new Date(formDueDate).toISOString()
+        : new Date(now.getTime() + 15 * 86400000).toISOString();
 
       const res = await fetch(`${api}/finance/invoices`, {
         method: "POST",
@@ -317,13 +394,23 @@ function FinanceContent() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           personId: formPersonId,
-          dueDate: formDueDate ? new Date(formDueDate).toISOString() : undefined,
-          notes: formNotes || undefined,
+          issueDate,
+          dueDate,
+          notes: formNotes?.trim() || undefined,
           items: itemsPayload,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create invoice.");
+      if (!res.ok) {
+        let errMsg = data.message || "Failed to create invoice.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setCreateInvoiceOpen(false);
       loadInvoices();
     } catch (err) {
@@ -369,9 +456,14 @@ function FinanceContent() {
   async function handleRecordPayment(e: FormEvent) {
     e.preventDefault();
     if (!detailInvoice) return;
+    const amt = parseFloat(paymentAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setPaymentError("Please enter a valid payment amount.");
+      return;
+    }
     setPaymentBusy(true);
+    setPaymentError("");
     try {
-      const amt = parseFloat(paymentAmount);
       const res = await fetch(`${api}/finance/invoices/${detailInvoice.id}/payments`, {
         method: "POST",
         credentials: "include",
@@ -379,22 +471,31 @@ function FinanceContent() {
         body: JSON.stringify({
           amountMinor: Math.round(amt * 100),
           method: paymentMethod,
-          reference: paymentRef || undefined,
-          notes: paymentNotes || undefined,
+          reference: paymentRef?.trim() || undefined,
+          notes: paymentNotes?.trim() || undefined,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Payment recording failed.");
+      if (!res.ok) {
+        let errMsg = data.message || "Payment recording failed.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setRecordPaymentOpen(false);
       setPaymentAmount("");
       setPaymentRef("");
       setPaymentNotes("");
-      // refresh detail invoice
       const invRes = await fetch(`${api}/finance/invoices/${detailInvoice.id}`, { credentials: "include" });
       if (invRes.ok) setDetailInvoice(await invRes.json());
       loadInvoices();
+      showToast(`Payment of ₹${amt.toLocaleString("en-IN")} recorded successfully!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setPaymentError((err as Error).message);
     } finally {
       setPaymentBusy(false);
     }
@@ -403,27 +504,42 @@ function FinanceContent() {
   async function handleRefundPayment(e: FormEvent) {
     e.preventDefault();
     if (!selectedPaymentForRefund) return;
+    const amt = parseFloat(refundAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setRefundError("Please enter a valid refund amount.");
+      return;
+    }
     setRefundBusy(true);
+    setRefundError("");
     try {
-      const amt = parseFloat(refundAmount);
       const res = await fetch(`${api}/finance/payments/${selectedPaymentForRefund.id}/refund`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           amountMinor: Math.round(amt * 100),
-          reason: refundReason,
+          reason: refundReason?.trim() || "Customer requested refund",
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Refund failed.");
+      if (!res.ok) {
+        let errMsg = data.message || "Refund failed.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setRefundOpen(false);
       setSelectedPaymentForRefund(null);
       setRefundAmount("");
       setRefundReason("");
       loadInvoices();
+      showToast(`Refund of ₹${amt.toLocaleString("en-IN")} processed successfully!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setRefundError((err as Error).message);
     } finally {
       setRefundBusy(false);
     }
@@ -431,37 +547,95 @@ function FinanceContent() {
 
   async function handleRecordExpense(e: FormEvent) {
     e.preventDefault();
+    const amt = parseFloat(expAmount);
+    if (isNaN(amt) || amt <= 0) {
+      setExpError("Please enter a valid expense amount.");
+      return;
+    }
     setExpBusy(true);
+    setExpError("");
     try {
-      const amt = parseFloat(expAmount);
+      const now = expDate ? new Date(expDate) : new Date();
+      const expenseDate = isNaN(now.getTime()) ? new Date().toISOString() : now.toISOString();
+
       const res = await fetch(`${api}/finance/expenses`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           category: expCategory,
-          vendor: expVendor || undefined,
+          vendor: expVendor?.trim() || undefined,
           amountMinor: Math.round(amt * 100),
-          date: new Date(expDate).toISOString(),
-          description: expDesc || undefined,
+          expenseDate,
+          date: expenseDate,
+          description: expDesc?.trim() || expCategory,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to record expense.");
+      if (!res.ok) {
+        let errMsg = data.message || "Failed to record expense.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setCreateExpenseOpen(false);
       setExpVendor("");
       setExpAmount("");
       setExpDesc("");
       loadExpenses();
+      showToast(`Business expense of ₹${amt.toLocaleString("en-IN")} recorded successfully!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setExpError((err as Error).message);
     } finally {
       setExpBusy(false);
     }
   }
 
+  function openCreateInvoiceModal(presetPersonId?: string, presetDesc?: string, presetPrice?: string) {
+    const randomNum = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
+    setFormInvoiceNumber(randomNum);
+    setFormPersonId(presetPersonId || "");
+    setPersonSearchQuery("");
+    setSearchResults([]);
+    setIsCustomerDropdownOpen(false);
+    setFormDueDate("");
+    setFormNotes("");
+    setFormItems([{ description: presetDesc || "", quantity: 1, unitPrice: presetPrice || "", taxRate: 18 }]);
+    setInvoiceError("");
+    setCreateInvoiceOpen(true);
+  }
+
   function addItemRow() {
-    setFormItems([...formItems, { description: "", quantity: 1, unitPrice: 0, taxRate: 18 }]);
+    setFormItems([...formItems, { description: "", quantity: 1, unitPrice: "", taxRate: 18 }]);
+  }
+
+  function applyPreset(presetText: string, defaultPrice: string = "") {
+    if (formItems.length === 1 && !formItems[0]?.description.trim()) {
+      setFormItems([{ description: presetText, quantity: 1, unitPrice: defaultPrice || formItems[0]?.unitPrice || "", taxRate: 18 }]);
+    } else {
+      setFormItems([...formItems, { description: presetText, quantity: 1, unitPrice: defaultPrice, taxRate: 18 }]);
+    }
+  }
+
+  function applyMonthFee(monthName: string, year: number = new Date().getFullYear()) {
+    const feeDesc = `🎓 Monthly Academic / Tuition Fees — ${monthName} ${year}`;
+    applyPreset(feeDesc, "3500");
+  }
+
+  function applyQuarterFee(quarterName: string, year: number = new Date().getFullYear()) {
+    const feeDesc = `🎓 Quarterly Academic Fees — ${quarterName} ${year}`;
+    applyPreset(feeDesc, "10000");
+  }
+
+  function setQuickDueDate(daysFromNow: number) {
+    const d = new Date();
+    d.setDate(d.getDate() + daysFromNow);
+    const dateStr = d.toISOString().split("T")[0];
+    if (dateStr) setFormDueDate(dateStr);
   }
 
   function removeItemRow(index: number) {
@@ -480,10 +654,27 @@ function FinanceContent() {
   );
   const invoiceGrandTotal = invoiceSubtotal + invoiceTax;
 
+  const selectedPerson =
+    people.find((p) => p.id === formPersonId) ||
+    searchResults.find((p) => p.id === formPersonId);
+
+  const displayedPeople = personSearchQuery.trim()
+    ? searchResults.length > 0
+      ? searchResults
+      : people.filter((p) => {
+          const q = personSearchQuery.toLowerCase();
+          return (
+            p.displayName.toLowerCase().includes(q) ||
+            (p.email && p.email.toLowerCase().includes(q)) ||
+            (p.primaryPhone && p.primaryPhone.includes(q))
+          );
+        })
+    : people.slice(0, 40);
+
   const tabItems = [
-    { id: "invoices", label: "Invoices", count: invoices.length },
-    { id: "payments", label: "Payments Received", count: allPayments.length },
-    { id: "expenses", label: "Expenses", count: expenses.length },
+    { id: "invoices", label: "Invoices & Student Fees", count: invoices.length },
+    { id: "payments", label: "Fee Collections & Receipts", count: allPayments.length },
+    { id: "expenses", label: "Kharcha / Expenses", count: expenses.length },
   ];
 
   return (
@@ -499,31 +690,29 @@ function FinanceContent() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            <Icon name="finance" size={14} /> Revenue & Expenses
+            <Icon name="finance" size={14} /> Revenue, Fees & Kharcha
           </p>
-          <h1>Finance & Billing</h1>
+          <h1>Finance & Fees Billing</h1>
           <p className="subheading">
-            Manage client invoices, collect payments, track dues, and monitor expenses.
+            Track student fees, issue client invoices, collect payments, and log company kharcha / operating expenses.
           </p>
         </div>
         <div className="toolbar-actions">
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setCreateExpenseOpen(true)}
+            title="Log company operating expenses (rent, bills, ads, vendor costs)"
           >
-            <Icon name="dollar" size={15} />
-            <span>Record Expense</span>
+            <Icon name="rupee" size={15} />
+            <span>Record Kharcha (Expense)</span>
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              const randomNum = `INV-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
-              setFormInvoiceNumber(randomNum);
-              setCreateInvoiceOpen(true);
-            }}
+            onClick={() => openCreateInvoiceModal()}
+            title="Generate a bill or invoice for your student or customer"
           >
             <Icon name="plus" size={15} />
-            <span>Create Invoice</span>
+            <span>+ Create Invoice / Bill</span>
           </button>
         </div>
       </div>
@@ -531,31 +720,31 @@ function FinanceContent() {
       {/* Metrics Bar */}
       <div className="stats-grid">
         <StatCard
-          label="Total Billed"
+          label="Total Fees & Billed"
           value={formatMoney(totalBilledMinor)}
-          change="All invoices"
+          change="All invoices & fees"
           icon="finance"
           tone="blue"
         />
         <StatCard
           label="Total Collected"
           value={formatMoney(totalPaidMinor)}
-          change="Payments received"
+          change="Fee payments received"
           icon="checkCircle"
           tone="teal"
         />
         <StatCard
-          label="Payments Due"
+          label="Pending Fees & Dues"
           value={formatMoney(totalBalanceDueMinor)}
-          change="Outstanding dues"
+          change="Outstanding balances"
           icon="alertCircle"
           tone={totalBalanceDueMinor > 0 ? "rose" : "teal"}
         />
         <StatCard
-          label="Total Expenses"
+          label="Total Kharcha"
           value={formatMoney(totalExpensesMinor)}
           change="Recorded outflows"
-          icon="dollar"
+          icon="rupee"
           tone="amber"
         />
       </div>
@@ -569,6 +758,22 @@ function FinanceContent() {
       {/* Invoices Tab */}
       {activeTab === "invoices" && (
         <>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#eff6ff", borderRadius: 10, border: "1px solid #bfdbfe", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>🧾</span>
+              <div>
+                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Customer Invoices & Billing (Income / Inflow)</strong>
+                <div style={{ fontSize: 12, color: "#2563eb" }}>
+                  Create itemized tax bills for your students or clients, collect payments, and track pending dues.
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={() => openCreateInvoiceModal()} style={{ flexShrink: 0 }}>
+              <Icon name="plus" size={14} />
+              <span>+ Create Invoice</span>
+            </button>
+          </div>
+
           <div className="toolbar">
             <div className="toolbar-actions">
               <select
@@ -607,7 +812,7 @@ function FinanceContent() {
               title="No invoices found"
               description="Create and issue professional invoices for your products and services."
               actionLabel="Create Invoice"
-              onAction={() => setCreateInvoiceOpen(true)}
+              onAction={() => openCreateInvoiceModal()}
             />
           ) : (
             <div className="table-wrap">
@@ -683,6 +888,18 @@ function FinanceContent() {
       {/* Payments Tab */}
       {activeTab === "payments" && (
         <div className="table-wrap">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f0fdf4", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>💰</span>
+              <div>
+                <strong style={{ fontSize: 13, color: "#14532d" }}>Payment Collections & Receipts</strong>
+                <div style={{ fontSize: 12, color: "#16a34a" }}>
+                  Real-time transaction records of all payments collected from students/clients via UPI, Bank Transfer, Cash or Cards.
+                </div>
+              </div>
+            </div>
+          </div>
+
           {allPayments.length === 0 ? (
             <EmptyState
               icon="finance"
@@ -759,12 +976,28 @@ function FinanceContent() {
       {/* Expenses Tab */}
       {activeTab === "expenses" && (
         <div className="table-wrap">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>💸</span>
+              <div>
+                <strong style={{ fontSize: 13, color: "#78350f" }}>Company Operating Expenses (Outflow / Kharcha)</strong>
+                <div style={{ fontSize: 12, color: "#b45309" }}>
+                  Track business operating spending like office rent, staff stipends, electricity/Wi-Fi bills, software tools, and marketing ads.
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={() => setCreateExpenseOpen(true)} style={{ flexShrink: 0 }}>
+              <Icon name="rupee" size={14} />
+              <span>+ Record Business Expense</span>
+            </button>
+          </div>
+
           {expenses.length === 0 ? (
             <EmptyState
-              icon="dollar"
+              icon="rupee"
               title="No expenses recorded"
               description="Track operational expenses and vendor purchases."
-              actionLabel="Record Expense"
+              actionLabel="+ Record Business Expense"
               onAction={() => setCreateExpenseOpen(true)}
             />
           ) : (
@@ -874,9 +1107,27 @@ function FinanceContent() {
                     setPaymentAmount((detailInvoice.balanceDueMinor / 100).toString());
                     setRecordPaymentOpen(true);
                   }}
+                  style={{ background: "#16a34a", borderColor: "#15803d" }}
                 >
-                  <Icon name="dollar" size={14} />
-                  <span>Record Payment</span>
+                  <Icon name="rupee" size={14} />
+                  <span>
+                    {detailInvoice.status === "PARTIALLY_PAID"
+                      ? `Collect Next Installment (Due: ₹${(detailInvoice.balanceDueMinor / 100).toLocaleString("en-IN")})`
+                      : "Collect Fee / Record Payment"}
+                  </span>
+                </button>
+              )}
+              {detailInvoice.status === "PAID" && detailInvoice.personId && (
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    openCreateInvoiceModal(detailInvoice.personId);
+                  }}
+                  style={{ color: "#166534", border: "1.5px solid #86efac", background: "#f0fdf4" }}
+                >
+                  <Icon name="plus" size={14} />
+                  <span>+ Bill Next Month's Fees</span>
                 </button>
               )}
               {detailInvoice.status !== "VOID" && detailInvoice.status !== "PAID" && (
@@ -991,170 +1242,488 @@ function FinanceContent() {
         isOpen={createInvoiceOpen}
         onClose={() => setCreateInvoiceOpen(false)}
         title="Create New Invoice"
-        subtitle="Add line items and issue to customer"
-        maxWidth={640}
+        subtitle="Generate & issue itemized tax-compliant invoice with automatic GST calculation"
+        maxWidth={860}
       >
-        <form onSubmit={handleCreateInvoice} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <form onSubmit={handleCreateInvoice} className="invoice-modal-body">
           {invoiceError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {invoiceError}
             </div>
           )}
 
-          <div className="form-grid">
-            <div className="form-group">
-              <label>Customer *</label>
-              <select
-                className="filter-select"
-                value={formPersonId}
-                onChange={(e) => setFormPersonId(e.target.value)}
-                required
-              >
-                <option value="">Select customer from directory</option>
-                {people.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.displayName} {p.email ? `(${p.email})` : ""}
-                  </option>
-                ))}
-              </select>
+          {/* Top Card: Customer & Due Date */}
+          <div className="invoice-top-card">
+            {/* Customer Search / Selection */}
+            <div className="form-group" style={{ margin: 0, position: "relative" }}>
+              <label style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                <span>Billed To (Customer / Student / Client) *</span>
+                <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Live Directory Search</span>
+              </label>
+              {selectedPerson ? (
+                <div className="selected-person-card">
+                  <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0 }}>
+                    <div className="selected-person-avatar">
+                      {selectedPerson.displayName.charAt(0).toUpperCase()}
+                    </div>
+                    <div style={{ minWidth: 0 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <strong style={{ fontSize: 13, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                          {selectedPerson.displayName}
+                        </strong>
+                        {selectedPerson.types && selectedPerson.types.length > 0 && selectedPerson.types[0]?.type && (
+                          <span
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 750,
+                              background:
+                                selectedPerson.types[0]?.type === "STUDENT"
+                                  ? "#fef3c7"
+                                  : "#e0f2fe",
+                              color:
+                                selectedPerson.types[0]?.type === "STUDENT"
+                                  ? "#b45309"
+                                  : "#0369a1",
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              textTransform: "uppercase",
+                              flexShrink: 0,
+                            }}
+                          >
+                            {selectedPerson.types[0]?.type}
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>
+                        {selectedPerson.primaryPhone ? `📞 ${selectedPerson.primaryPhone} · ` : ""}
+                        {selectedPerson.email || "No email provided"}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="btn btn-secondary btn-sm"
+                    style={{ flexShrink: 0, marginLeft: 8, height: 32 }}
+                    onClick={() => {
+                      setFormPersonId("");
+                      setPersonSearchQuery("");
+                      setIsCustomerDropdownOpen(true);
+                    }}
+                  >
+                    Change
+                  </button>
+                </div>
+              ) : (
+                <div className="person-combobox-wrap">
+                  <input
+                    type="text"
+                    placeholder="🔍 Type customer name, student ID, phone number or email…"
+                    value={personSearchQuery}
+                    onChange={(e) => {
+                      setPersonSearchQuery(e.target.value);
+                      setIsCustomerDropdownOpen(true);
+                    }}
+                    onFocus={() => setIsCustomerDropdownOpen(true)}
+                  />
+                  {personSearchLoading && (
+                    <span
+                      style={{
+                        position: "absolute",
+                        right: 12,
+                        top: "50%",
+                        transform: "translateY(-50%)",
+                        fontSize: 11,
+                        color: "var(--muted)",
+                      }}
+                    >
+                      Searching…
+                    </span>
+                  )}
+
+                  {isCustomerDropdownOpen && (
+                    <div className="person-dropdown-menu">
+                      {displayedPeople.length === 0 ? (
+                        <div style={{ padding: 14, fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
+                          {personSearchLoading
+                            ? "Searching customer directory..."
+                            : `No customer or student found for "${personSearchQuery}".`}
+                        </div>
+                      ) : (
+                        displayedPeople.map((p) => {
+                          const pType =
+                            p.types && p.types.length > 0 && p.types[0]?.type
+                              ? p.types[0].type
+                              : "CUSTOMER";
+                          return (
+                            <div
+                              key={p.id}
+                              className="person-dropdown-item"
+                              onClick={() => {
+                                setFormPersonId(p.id);
+                                if (!people.some((existing) => existing.id === p.id)) {
+                                  setPeople((prev) => [p, ...prev]);
+                                }
+                                setIsCustomerDropdownOpen(false);
+                                setPersonSearchQuery("");
+                              }}
+                            >
+                              <div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span style={{ fontWeight: 600, fontSize: 13 }}>{p.displayName}</span>
+                                  <span
+                                    style={{
+                                      fontSize: 9,
+                                      fontWeight: 750,
+                                      background:
+                                        pType === "STUDENT"
+                                          ? "#fef3c7"
+                                          : "#e0f2fe",
+                                      color:
+                                        pType === "STUDENT"
+                                          ? "#b45309"
+                                          : "#0369a1",
+                                      padding: "1px 5px",
+                                      borderRadius: 4,
+                                    }}
+                                  >
+                                    {pType}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 2 }}>
+                                  {p.primaryPhone ? `${p.primaryPhone} · ` : ""}
+                                  {p.email || "No email"}
+                                </div>
+                              </div>
+                              <span style={{ fontSize: 11, color: "var(--brand)", fontWeight: 600 }}>Select →</span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
-            <div className="form-group">
-              <label>Due Date</label>
+
+            {/* Due Date & Quick Due Selectors */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)", margin: 0 }}>Payment Due Date</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDueDate(0)}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    Today
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDueDate(7)}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    +7d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDueDate(15)}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    +15d
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setQuickDueDate(30)}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    +30d
+                  </button>
+                </div>
+              </div>
               <input
                 type="date"
                 value={formDueDate}
                 onChange={(e) => setFormDueDate(e.target.value)}
+                style={{ width: "100%", padding: "10px 12px", borderRadius: 10, border: "1px solid var(--line)", fontSize: 13 }}
               />
             </div>
           </div>
 
           {/* Line Items Builder */}
           <div>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700 }}>Invoice Items</label>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
+              <div>
+                <label style={{ fontSize: 12.5, fontWeight: 800, color: "var(--ink)" }}>Line Items & Services</label>
+                <div style={{ fontSize: 11, color: "var(--muted)", marginTop: 1 }}>
+                  Type item name or choose from 1-click presets below
+                </div>
+              </div>
               <button type="button" className="btn btn-secondary btn-sm" onClick={addItemRow}>
                 <Icon name="plus" size={13} />
-                <span>Add Item</span>
+                <span>Add Custom Row</span>
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {formItems.map((item, idx) => (
-                <div
-                  key={idx}
+            {/* Quick Presets Bar */}
+            <div className="invoice-presets-bar" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", padding: "8px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid var(--line)" }}>
+              <span style={{ fontSize: 11, fontWeight: 750, color: "#64748b" }}>⚡ 1-Click Common Presets:</span>
+              {[
+                { name: "🎓 Full Course Fees", price: "25000" },
+                { name: "📝 Admission / Reg. Fee", price: "1000" },
+                { name: "📚 Books & Materials Kit", price: "2500" },
+                { name: "📝 Examination Fee", price: "800" },
+                { name: "💼 Consulting Retainer", price: "15000" },
+                { name: "💻 Software / AMC", price: "10000" },
+                { name: "📦 Product Sale", price: "" },
+              ].map((preset) => (
+                <button
+                  key={preset.name}
+                  type="button"
+                  className="invoice-preset-btn"
+                  onClick={() => applyPreset(preset.name, preset.price)}
+                  title={`Add ${preset.name} with price`}
                   style={{
-                    display: "grid",
-                    gridTemplateColumns: "2fr 1fr 1.2fr 1fr auto",
-                    gap: 8,
-                    alignItems: "center",
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#1e3a8a",
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: "pointer",
                   }}
                 >
-                  <input
-                    type="text"
-                    placeholder="Description / Service"
-                    value={item.description}
-                    onChange={(e) => {
-                      const updated = [...formItems];
-                      const current = updated[idx];
-                      if (current) {
-                        current.description = e.target.value;
-                        setFormItems(updated);
-                      }
-                    }}
-                    required
-                  />
-                  <input
-                    type="number"
-                    min="1"
-                    placeholder="Qty"
-                    value={item.quantity}
-                    onChange={(e) => {
-                      const updated = [...formItems];
-                      const current = updated[idx];
-                      if (current) {
-                        current.quantity = Number(e.target.value) || 1;
-                        setFormItems(updated);
-                      }
-                    }}
-                    required
-                  />
-                  <input
-                    type="number"
-                    min="0"
-                    placeholder="Price (₹)"
-                    value={item.unitPrice}
-                    onChange={(e) => {
-                      const updated = [...formItems];
-                      const current = updated[idx];
-                      if (current) {
-                        current.unitPrice = Number(e.target.value) || 0;
-                        setFormItems(updated);
-                      }
-                    }}
-                    required
-                  />
-                  <select
-                    className="filter-select"
-                    value={item.taxRate}
-                    onChange={(e) => {
-                      const updated = [...formItems];
-                      const current = updated[idx];
-                      if (current) {
-                        current.taxRate = Number(e.target.value) || 0;
-                        setFormItems(updated);
-                      }
-                    }}
-                  >
-                    <option value="0">0% GST</option>
-                    <option value="5">5% GST</option>
-                    <option value="12">12% GST</option>
-                    <option value="18">18% GST</option>
-                    <option value="28">28% GST</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="btn-icon"
-                    onClick={() => removeItemRow(idx)}
-                    disabled={formItems.length === 1}
-                  >
-                    <Icon name="trash" size={15} />
-                  </button>
-                </div>
+                  + {preset.name} {preset.price ? `(₹${Number(preset.price).toLocaleString("en-IN")})` : ""}
+                </button>
               ))}
             </div>
 
-            {/* Calculations Summary */}
-            <div
-              style={{
-                display: "flex",
-                justifyContent: "flex-end",
-                marginTop: 14,
-                padding: "10px 14px",
-                background: "#f8fafc",
-                borderRadius: 8,
-              }}
-            >
-              <div style={{ textAlign: "right", fontSize: 12 }}>
-                <div>Subtotal: ₹{invoiceSubtotal.toLocaleString("en-IN")}</div>
-                <div>Tax: ₹{invoiceTax.toLocaleString("en-IN")}</div>
-                <div style={{ fontSize: 15, fontWeight: 800, marginTop: 4 }}>
-                  Grand Total: ₹{invoiceGrandTotal.toLocaleString("en-IN")}
+            {/* Month-Wise Student Fees Selector Bar */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 12px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                <span style={{ fontSize: 11, fontWeight: 750, color: "#166534" }}>
+                  📅 Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
+                </span>
+                <span style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
+                  Click month to add monthly fee row (₹3,500/mo)
+                </span>
+              </div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {[
+                  "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
+                ].map((m) => {
+                  const fullMonth = {
+                    Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
+                    Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+                    Jan: "January", Feb: "February", Mar: "March"
+                  }[m] || m;
+                  const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => applyMonthFee(fullMonth, year)}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: 6,
+                        border: "1px solid #86efac",
+                        background: "#ffffff",
+                        color: "#166534",
+                        fontSize: 11,
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                      }}
+                      title={`Add fee bill for ${fullMonth} ${year}`}
+                    >
+                      + {m} {year}
+                    </button>
+                  );
+                })}
+              </div>
+              <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                {[
+                  { label: "Q1 (Apr–Jun)", name: "Q1 (Apr–Jun)" },
+                  { label: "Q2 (Jul–Sep)", name: "Q2 (Jul–Sep)" },
+                  { label: "Q3 (Oct–Dec)", name: "Q3 (Oct–Dec)" },
+                  { label: "Q4 (Jan–Mar)", name: "Q4 (Jan–Mar)" },
+                  { label: "Full Session 2026-27 (Annual)", name: "Annual Full Session 2026–27" },
+                ].map((q) => (
+                  <button
+                    key={q.label}
+                    type="button"
+                    onClick={() => applyQuarterFee(q.name)}
+                    style={{
+                      padding: "2px 7px",
+                      borderRadius: 5,
+                      border: "1px solid #86efac",
+                      background: "#f0fdf4",
+                      color: "#166534",
+                      fontSize: 10.5,
+                      fontWeight: 650,
+                      cursor: "pointer",
+                    }}
+                  >
+                    + {q.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <datalist id="invoice-item-presets">
+              {INVOICE_ITEM_PRESETS.map((preset) => (
+                <option key={preset} value={preset} />
+              ))}
+            </datalist>
+
+            <div className="invoice-items-table">
+              <div className="invoice-items-header">
+                <div>Item / Service / Fees / Salary</div>
+                <div>Qty</div>
+                <div>Price (₹)</div>
+                <div>GST Rate</div>
+                <div style={{ textAlign: "right", paddingRight: 4 }}>Amount (₹)</div>
+                <div></div>
+              </div>
+
+              {formItems.map((item, idx) => {
+                const lineAmount = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0);
+                const lineTax = lineAmount * ((Number(item.taxRate) || 0) / 100);
+                const lineTotal = lineAmount + lineTax;
+
+                return (
+                  <div key={idx} className="invoice-item-row">
+                    <input
+                      type="text"
+                      list="invoice-item-presets"
+                      placeholder="e.g. Tuition Fees, Salary, Consulting, Product SKU…"
+                      value={item.description}
+                      onChange={(e) => {
+                        const updated = [...formItems];
+                        const current = updated[idx];
+                        if (current) {
+                          current.description = e.target.value;
+                          setFormItems(updated);
+                        }
+                      }}
+                      required
+                    />
+                    <input
+                      type="number"
+                      min="1"
+                      placeholder="1"
+                      value={item.quantity}
+                      onChange={(e) => {
+                        const updated = [...formItems];
+                        const current = updated[idx];
+                        if (current) {
+                          current.quantity = e.target.value === "" ? "" : Number(e.target.value);
+                          setFormItems(updated);
+                        }
+                      }}
+                      required
+                    />
+                    <input
+                      type="number"
+                      min="0"
+                      step="any"
+                      placeholder="0.00"
+                      value={item.unitPrice}
+                      onChange={(e) => {
+                        const updated = [...formItems];
+                        const current = updated[idx];
+                        if (current) {
+                          current.unitPrice = e.target.value === "" ? "" : Number(e.target.value);
+                          setFormItems(updated);
+                        }
+                      }}
+                      required
+                    />
+                    <select
+                      className="filter-select"
+                      value={item.taxRate}
+                      onChange={(e) => {
+                        const updated = [...formItems];
+                        const current = updated[idx];
+                        if (current) {
+                          current.taxRate = Number(e.target.value) || 0;
+                          setFormItems(updated);
+                        }
+                      }}
+                    >
+                      <option value="0">0% (Nil)</option>
+                      <option value="5">5% GST</option>
+                      <option value="12">12% GST</option>
+                      <option value="18">18% GST</option>
+                      <option value="28">28% GST</option>
+                    </select>
+                    <div className="invoice-item-amount">
+                      ₹{lineTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })}
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      style={{ color: formItems.length === 1 ? "#cbd5e1" : "#ef4444" }}
+                      onClick={() => removeItemRow(idx)}
+                      disabled={formItems.length === 1}
+                      title="Remove item"
+                    >
+                      <Icon name="trash" size={14} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Bottom Grid: Notes & Summary Breakdown */}
+          <div className="invoice-summary-grid">
+            <div className="form-group" style={{ margin: 0, display: "flex", flexDirection: "column" }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
+                <label style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)", margin: 0 }}>Payment Terms & Bank / UPI Notes</label>
+                <div style={{ display: "flex", gap: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => setFormNotes("Bank: HDFC Bank | A/C: 50200012345678 | IFSC: HDFC0001234 | UPI: crmkaro@upi")}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    + Bank/UPI
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFormNotes("Payment due upon receipt. Thank you for your business!")}
+                    style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+                  >
+                    + Due Receipt
+                  </button>
                 </div>
+              </div>
+              <textarea
+                rows={4}
+                style={{ flex: 1, minHeight: 90, borderRadius: 10, border: "1px solid var(--line)", padding: "10px 12px", fontSize: 12.5 }}
+                placeholder="e.g. Payment due within 15 days. Bank details, UPI ID, or terms of service…"
+                value={formNotes}
+                onChange={(e) => setFormNotes(e.target.value)}
+              />
+            </div>
+
+            <div className="invoice-summary-card">
+              <div className="invoice-summary-row">
+                <span>Taxable Subtotal</span>
+                <strong>₹{invoiceSubtotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              </div>
+              <div className="invoice-summary-row">
+                <span>Total GST / Tax</span>
+                <strong>₹{invoiceTax.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</strong>
+              </div>
+              <div className="invoice-summary-total">
+                <span>Grand Total</span>
+                <span>₹{invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
               </div>
             </div>
           </div>
 
-          <div className="form-group">
-            <label>Payment Terms / Notes</label>
-            <textarea
-              rows={2}
-              placeholder="e.g. Bank transfer details, due within 15 days..."
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-            />
-          </div>
-
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-footer" style={{ margin: 0, marginTop: 8, padding: "14px 0 0 0", background: "transparent", borderTop: "1px solid var(--line)" }}>
             <button
               type="button"
               className="btn btn-secondary"
@@ -1162,8 +1731,13 @@ function FinanceContent() {
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={invoiceBusy}>
-              {invoiceBusy ? "Saving…" : "Save Invoice Draft"}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={invoiceBusy || !formPersonId || invoiceSubtotal <= 0}
+              style={{ minWidth: 160 }}
+            >
+              {invoiceBusy ? "Creating Invoice…" : `Save Invoice Draft (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`}
             </button>
           </div>
         </form>
@@ -1178,6 +1752,11 @@ function FinanceContent() {
         maxWidth={440}
       >
         <form onSubmit={handleRecordPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {paymentError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {paymentError}
+            </div>
+          )}
           <div className="form-group">
             <label>Amount Received (₹) *</label>
             <input
@@ -1241,11 +1820,16 @@ function FinanceContent() {
       <Modal
         isOpen={createExpenseOpen}
         onClose={() => setCreateExpenseOpen(false)}
-        title="Record Business Expense"
-        subtitle="Log operational outflow"
-        maxWidth={460}
+        title="Record Business Expense (Kharcha)"
+        subtitle="Track company operating costs like rent, staff stipends, electricity bills, software tools, and marketing ads"
+        maxWidth={500}
       >
         <form onSubmit={handleRecordExpense} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {expError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {expError}
+            </div>
+          )}
           <div className="form-group">
             <label>Expense Category *</label>
             <select
@@ -1253,38 +1837,102 @@ function FinanceContent() {
               value={expCategory}
               onChange={(e) => setExpCategory(e.target.value)}
             >
-              <option value="Office Supplies">Office Supplies</option>
-              <option value="Software & Subscriptions">Software & Subscriptions</option>
-              <option value="Rent & Utilities">Rent & Utilities</option>
-              <option value="Travel & Meals">Travel & Meals</option>
-              <option value="Marketing & Ads">Marketing & Ads</option>
-              <option value="Equipment & Hardware">Equipment & Hardware</option>
-              <option value="Professional Fees">Professional Fees</option>
-              <option value="Other">Other</option>
+              <option value="Office Rent & Maintenance">🏢 Office Rent & Maintenance</option>
+              <option value="Staff Stipends & Daily Wages">👥 Staff Stipends & Daily Wages</option>
+              <option value="Electricity & Utility Bills">⚡ Electricity & Utility Bills</option>
+              <option value="Internet & Phone Bills">🌐 Internet & Telephone Bills</option>
+              <option value="Marketing & Advertising (Ads)">📢 Marketing & Google/Meta Ads</option>
+              <option value="Software Subscriptions & Tools">💻 Software Subscriptions & SaaS Tools</option>
+              <option value="Office Supplies & Stationery">📦 Office Supplies & Stationery</option>
+              <option value="Food, Tea & Refreshments">☕ Food, Tea & Refreshments</option>
+              <option value="Travel, Fuel & Logistics">🚗 Travel, Fuel & Conveyance</option>
+              <option value="Hardware & Equipment Purchase">🔧 Hardware & Equipment Purchase</option>
+              <option value="Legal & Professional Fees">💼 Legal & Professional Fees</option>
+              <option value="Other">🏷️ Other / Miscellaneous Kharcha</option>
             </select>
+            {/* Quick Category Chips */}
+            <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
+              {[
+                { label: "🏢 Rent", val: "Office Rent & Facility" },
+                { label: "⚡ Electricity", val: "Electricity & Utility Bills" },
+                { label: "📶 Wi-Fi", val: "Internet & Phone Bills" },
+                { label: "📢 Ads", val: "Marketing & Advertising (Ads)" },
+                { label: "☕ Tea/Food", val: "Food, Tea & Refreshments" },
+                { label: "💻 Tools/SaaS", val: "Software Subscriptions & Tools" },
+              ].map((cat) => (
+                <button
+                  key={cat.val}
+                  type="button"
+                  onClick={() => setExpCategory(cat.val)}
+                  style={{
+                    padding: "2px 7px",
+                    borderRadius: 5,
+                    border: "1px solid #cbd5e1",
+                    background: expCategory === cat.val ? "#dbeafe" : "#ffffff",
+                    color: expCategory === cat.val ? "#1d4ed8" : "#475569",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="form-group">
-            <label>Vendor / Recipient</label>
+            <label>Vendor / Paid To</label>
             <input
               type="text"
-              placeholder="e.g. Amazon, Airtel, AWS"
+              placeholder="e.g. Landlord Name, Google Ads, Airtel, Amazon, Vendor Name"
               value={expVendor}
               onChange={(e) => setExpVendor(e.target.value)}
             />
           </div>
           <div className="form-group">
-            <label>Amount (₹) *</label>
+            <label>Amount Paid (₹) *</label>
             <input
               type="number"
               step="any"
-              placeholder="e.g. 2500"
+              placeholder="e.g. 5000"
               value={expAmount}
               onChange={(e) => setExpAmount(e.target.value)}
               required
             />
+            {/* Quick Amount Chips */}
+            <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
+              {[500, 1000, 2500, 5000, 10000, 25000].map((amt) => (
+                <button
+                  key={amt}
+                  type="button"
+                  onClick={() => setExpAmount(String(amt))}
+                  style={{
+                    padding: "2px 7px",
+                    borderRadius: 5,
+                    border: "1px solid #cbd5e1",
+                    background: expAmount === String(amt) ? "#dbeafe" : "#ffffff",
+                    color: expAmount === String(amt) ? "#1d4ed8" : "#475569",
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  ₹{amt.toLocaleString("en-IN")}
+                </button>
+              ))}
+            </div>
           </div>
           <div className="form-group">
-            <label>Date *</label>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+              <label style={{ margin: 0 }}>Expense Date *</label>
+              <button
+                type="button"
+                onClick={() => setExpDate(new Date().toISOString().split("T")[0] || "")}
+                style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+              >
+                Today
+              </button>
+            </div>
             <input
               type="date"
               value={expDate}
@@ -1296,7 +1944,7 @@ function FinanceContent() {
             <label>Description / Note</label>
             <input
               type="text"
-              placeholder="Details of the expense"
+              placeholder="e.g. Office rent for August, Broadband recharge, Facebook ad campaign…"
               value={expDesc}
               onChange={(e) => setExpDesc(e.target.value)}
             />
@@ -1311,7 +1959,7 @@ function FinanceContent() {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={expBusy}>
-              {expBusy ? "Recording…" : "Save Expense"}
+              {expBusy ? "Recording…" : "Save Business Expense"}
             </button>
           </div>
         </form>
@@ -1326,6 +1974,11 @@ function FinanceContent() {
         maxWidth={420}
       >
         <form onSubmit={handleRefundPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {refundError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {refundError}
+            </div>
+          )}
           <div className="form-group">
             <label>Refund Amount (₹) *</label>
             <input
@@ -1361,6 +2014,49 @@ function FinanceContent() {
           </div>
         </form>
       </Modal>
+
+      {/* Toast Notification Feedback Card */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 18px",
+            borderRadius: 12,
+            background: toast.type === "success" ? "#0f172a" : "#991b1b",
+            color: "#ffffff",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.25)",
+            fontSize: 13.5,
+            fontWeight: 600,
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+          }}
+        >
+          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            style={{
+              background: "rgba(255, 255, 255, 0.2)",
+              border: "none",
+              color: "#fff",
+              borderRadius: 6,
+              padding: "3px 8px",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 750,
+              marginLeft: 8,
+            }}
+          >
+            OK
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

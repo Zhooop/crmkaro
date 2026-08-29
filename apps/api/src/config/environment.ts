@@ -16,6 +16,9 @@ const environmentSchema = z.object({
   SMTP_USER: z.string().min(1).optional(),
   SMTP_PASSWORD: z.string().min(1).optional(),
   AUTH_EMAIL_FROM: z.string().min(3).optional(),
+  PLATFORM_ADMIN_EMAIL: z.string().email().default("admin@crmkaro.com"),
+  PLATFORM_ADMIN_PASSWORD: z.string().min(6).default("CRMKaro@Admin2026!"),
+  PLATFORM_ADMIN_EMAILS: z.string().optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

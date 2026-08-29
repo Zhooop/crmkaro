@@ -17,11 +17,11 @@ import { useRouter } from "next/navigation";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
 
@@ -78,6 +78,8 @@ type PersonOption = {
   id: string;
   displayName: string;
   email: string | null;
+  primaryPhone?: string | null;
+  types?: Array<{ type: string }>;
 };
 
 function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
@@ -110,6 +112,14 @@ export default function PayrollPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
+  // Toast feedback state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  }
+
   // Context & AppShell info
   const [orgName, setOrgName] = useState("CRMKaro Workspace");
   const [userName, setUserName] = useState("Workspace User");
@@ -140,15 +150,18 @@ export default function PayrollPage() {
   const [deductions, setDeductions] = useState("");
   const [effectiveDate, setEffectiveDate] = useState(new Date().toISOString().slice(0, 10));
   const [salaryBusy, setSalaryBusy] = useState(false);
+  const [salaryError, setSalaryError] = useState("");
 
   // Form states - Exit Employee
   const [exitDate, setExitDate] = useState(new Date().toISOString().slice(0, 10));
   const [exitBusy, setExitBusy] = useState(false);
+  const [exitError, setExitError] = useState("");
 
   // Form states - Prepare Run
   const [runYear, setRunYear] = useState(new Date().getFullYear());
   const [runMonth, setRunMonth] = useState(new Date().getMonth() + 1);
   const [runBusy, setRunBusy] = useState(false);
+  const [runError, setRunError] = useState("");
 
   // Load session context
   const loadContext = useCallback(async () => {
@@ -248,6 +261,27 @@ export default function PayrollPage() {
     return acc + (gross - latestSalary.deductionsMinor);
   }, 0);
 
+  const enrolledPersonIds = new Set(employees.map((e) => e.personId));
+  const availablePeople = people.filter((p) => !enrolledPersonIds.has(p.id));
+  const employeeContacts = availablePeople.filter((p) =>
+    p.types?.some((t) => t.type === "EMPLOYEE" || t.type === "STAFF")
+  );
+  const otherContacts = availablePeople.filter(
+    (p) => !p.types?.some((t) => t.type === "EMPLOYEE" || t.type === "STAFF")
+  );
+
+  function openAddEmployeeModal() {
+    const nextNum = employees.length + 1;
+    const seqCode = `EMP-${String(nextNum).padStart(2, "0")}`;
+    setFormCode(seqCode);
+    setFormPersonId("");
+    setFormDept("Operations");
+    setFormDesig("Associate");
+    setFormJoiningDate(new Date().toISOString().slice(0, 10));
+    setEmpError("");
+    setAddEmployeeOpen(true);
+  }
+
   async function handleAddEmployee(e: FormEvent) {
     e.preventDefault();
     if (!formPersonId) {
@@ -270,9 +304,19 @@ export default function PayrollPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create employee.");
+      if (!res.ok) {
+        let errMsg = data.message || "Failed to create employee.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setAddEmployeeOpen(false);
       loadEmployees();
+      showToast(`Employee ${formCode} enrolled into payroll successfully!`, "success");
     } catch (err) {
       setEmpError((err as Error).message);
     } finally {
@@ -284,6 +328,7 @@ export default function PayrollPage() {
     e.preventDefault();
     if (!selectedEmployee) return;
     setSalaryBusy(true);
+    setSalaryError("");
     try {
       const bPay = parseFloat(basicPay) || 0;
       const hPay = parseFloat(hra) || 0;
@@ -306,8 +351,9 @@ export default function PayrollPage() {
       if (!res.ok) throw new Error(data.message || "Failed to set salary structure.");
       setSalaryModalOpen(false);
       loadEmployees();
+      showToast(`Salary structure saved for ${selectedEmployee.person.displayName}!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setSalaryError((err as Error).message);
     } finally {
       setSalaryBusy(false);
     }
@@ -317,6 +363,7 @@ export default function PayrollPage() {
     e.preventDefault();
     if (!selectedEmployee) return;
     setExitBusy(true);
+    setExitError("");
     try {
       const res = await fetch(`${api}/payroll/employees/${selectedEmployee.id}/exit`, {
         method: "POST",
@@ -330,8 +377,9 @@ export default function PayrollPage() {
       if (!res.ok) throw new Error(data.message || "Failed to record exit.");
       setExitModalOpen(false);
       loadEmployees();
+      showToast(`Employee exit recorded.`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setExitError((err as Error).message);
     } finally {
       setExitBusy(false);
     }
@@ -340,6 +388,7 @@ export default function PayrollPage() {
   async function handlePrepareRun(e: FormEvent) {
     e.preventDefault();
     setRunBusy(true);
+    setRunError("");
     try {
       const res = await fetch(`${api}/payroll/runs`, {
         method: "POST",
@@ -355,8 +404,9 @@ export default function PayrollPage() {
       setPrepareRunOpen(false);
       loadRuns();
       setDetailRun(data);
+      showToast(`Payroll batch generated for ${MONTH_NAMES[runMonth - 1]} ${runYear}!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setRunError((err as Error).message);
     } finally {
       setRunBusy(false);
     }
@@ -372,6 +422,7 @@ export default function PayrollPage() {
         const updated = await res.json();
         setDetailRun(updated);
         loadRuns();
+        showToast("Payroll batch approved successfully!", "success");
       }
     } catch {
       // ignore
@@ -390,6 +441,7 @@ export default function PayrollPage() {
         const updated = await res.json();
         setDetailRun(updated);
         loadRuns();
+        showToast("Payroll batch marked as paid & disbursed!", "success");
       }
     } catch {
       // ignore
@@ -397,8 +449,8 @@ export default function PayrollPage() {
   }
 
   const tabItems = [
-    { id: "employees", label: "Employees & Salaries", count: employees.length },
-    { id: "runs", label: "Payroll Runs", count: runs.length },
+    { id: "employees", label: "Staff Salaries & Packages", count: employees.length },
+    { id: "runs", label: "Monthly Salary Runs", count: runs.length },
   ];
 
   return (
@@ -416,9 +468,9 @@ export default function PayrollPage() {
           <p className="eyebrow">
             <Icon name="payroll" size={14} /> HR & Staff Compensation
           </p>
-          <h1>Payroll & Employee Salaries</h1>
+          <h1>Staff Salaries & Payroll</h1>
           <p className="subheading">
-            Manage employee compensation structures, process monthly payroll, and issue payslips.
+            Manage employee monthly salary packages, advance deductions, payslips, and monthly salary disbursement.
           </p>
         </div>
         <div className="toolbar-actions">
@@ -427,18 +479,14 @@ export default function PayrollPage() {
             onClick={() => setPrepareRunOpen(true)}
           >
             <Icon name="calendar" size={15} />
-            <span>Prepare Monthly Run</span>
+            <span>Prepare Monthly Salary Run</span>
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              const code = `EMP-${Math.floor(100 + Math.random() * 900)}`;
-              setFormCode(code);
-              setAddEmployeeOpen(true);
-            }}
+            onClick={() => openAddEmployeeModal()}
           >
             <Icon name="plus" size={15} />
-            <span>Add Employee</span>
+            <span>+ Add Staff / Employee</span>
           </button>
         </div>
       </div>
@@ -448,21 +496,21 @@ export default function PayrollPage() {
         <StatCard
           label="Active Staff"
           value={activeEmployees.length}
-          change="On active payroll"
+          change="On active salary payroll"
           icon="people"
           tone="blue"
         />
         <StatCard
-          label="Monthly Payroll"
+          label="Monthly Salary Payout"
           value={formatMoney(totalMonthlyPayrollMinor)}
           change="Estimated net payout"
           icon="payroll"
           tone="teal"
         />
         <StatCard
-          label="Payroll Runs"
+          label="Salary Runs"
           value={runs.length}
-          change="Processed batches"
+          change="Disbursed batches"
           icon="calendar"
           tone="amber"
         />
@@ -575,7 +623,7 @@ export default function PayrollPage() {
                               setSalaryModalOpen(true);
                             }}
                           >
-                            <Icon name="dollar" size={13} />
+                            <Icon name="rupee" size={13} />
                             <span>Salary</span>
                           </button>
                           {emp.status === "ACTIVE" && (
@@ -737,7 +785,7 @@ export default function PayrollPage() {
                   className="btn btn-primary btn-sm"
                   onClick={() => handleMarkPaid(detailRun.id)}
                 >
-                  <Icon name="dollar" size={14} />
+                  <Icon name="rupee" size={14} />
                   <span>Mark as Paid & Disbursed</span>
                 </button>
               )}
@@ -798,12 +846,12 @@ export default function PayrollPage() {
         isOpen={addEmployeeOpen}
         onClose={() => setAddEmployeeOpen(false)}
         title="Add Staff Member"
-        subtitle="Enrol person into active employee payroll"
+        subtitle="Enrol team member into active employee payroll"
         maxWidth={480}
       >
         <form onSubmit={handleAddEmployee} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {empError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {empError}
             </div>
           )}
@@ -816,13 +864,40 @@ export default function PayrollPage() {
               onChange={(e) => setFormPersonId(e.target.value)}
               required
             >
-              <option value="">Select person</option>
-              {people.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.displayName} {p.email ? `(${p.email})` : ""}
+              <option value="">-- Select person from directory --</option>
+              {employeeContacts.length > 0 && (
+                <optgroup label="💼 Staff & Employees in Directory (Recommended)">
+                  {employeeContacts.map((p) => {
+                    const typeLabels = p.types?.map((t) => t.type).join(", ");
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.displayName} {typeLabels ? `[${typeLabels}]` : ""} {p.email ? `(${p.email})` : ""}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              )}
+              {otherContacts.length > 0 && (
+                <optgroup label="👥 Other Directory Contacts (Students, Customers, Leads)">
+                  {otherContacts.map((p) => {
+                    const typeLabels = p.types?.map((t) => t.type).join(", ");
+                    return (
+                      <option key={p.id} value={p.id}>
+                        {p.displayName} {typeLabels ? `[${typeLabels}]` : ""} {p.email ? `(${p.email})` : ""}
+                      </option>
+                    );
+                  })}
+                </optgroup>
+              )}
+              {availablePeople.length === 0 && (
+                <option disabled value="">
+                  No eligible contacts available (all directory contacts already enrolled)
                 </option>
-              ))}
+              )}
             </select>
+            <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
+              💡 <em>To add a new employee profile, you can also create them in <a href="/people" style={{ color: "#2563eb", textDecoration: "underline" }}>People Directory</a> with Person Type: <strong>Employee</strong>.</em>
+            </p>
           </div>
 
           <div className="form-grid">
@@ -832,6 +907,7 @@ export default function PayrollPage() {
                 type="text"
                 value={formCode}
                 onChange={(e) => setFormCode(e.target.value)}
+                placeholder="e.g. EMP-01"
                 required
               />
             </div>
@@ -851,7 +927,7 @@ export default function PayrollPage() {
               <label>Department</label>
               <input
                 type="text"
-                placeholder="e.g. Sales, Finance, Teaching"
+                placeholder="e.g. Operations, Sales, Teaching"
                 value={formDept}
                 onChange={(e) => setFormDept(e.target.value)}
               />
@@ -860,7 +936,7 @@ export default function PayrollPage() {
               <label>Designation</label>
               <input
                 type="text"
-                placeholder="e.g. Senior Executive"
+                placeholder="e.g. Senior Executive, Teacher"
                 value={formDesig}
                 onChange={(e) => setFormDesig(e.target.value)}
               />
@@ -891,6 +967,50 @@ export default function PayrollPage() {
         maxWidth={460}
       >
         <form onSubmit={handleSetSalary} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {salaryError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {salaryError}
+            </div>
+          )}
+
+          {/* 1-Click Salary Package Presets */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 750, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              ⚡ 1-Click Salary Templates:
+            </label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              {[
+                { label: "Junior / Intern (₹15k)", basic: "10000", hra: "3000", allowances: "2000", ded: "0" },
+                { label: "Associate / Staff (₹25k)", basic: "16000", hra: "6000", allowances: "4000", ded: "1000" },
+                { label: "Senior / Faculty (₹45k)", basic: "28000", hra: "11000", allowances: "8000", ded: "2000" },
+                { label: "Manager / Lead (₹65k)", basic: "40000", hra: "16000", allowances: "12000", ded: "3000" },
+              ].map((pkg) => (
+                <button
+                  key={pkg.label}
+                  type="button"
+                  onClick={() => {
+                    setBasicPay(pkg.basic);
+                    setHra(pkg.hra);
+                    setAllowances(pkg.allowances);
+                    setDeductions(pkg.ded);
+                  }}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#1e3a8a",
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: "pointer",
+                  }}
+                >
+                  {pkg.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="form-grid">
             <div className="form-group">
               <label>Basic Salary (₹/mo) *</label>
@@ -935,7 +1055,16 @@ export default function PayrollPage() {
           </div>
 
           <div className="form-group">
-            <label>Effective Date *</label>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+              <label style={{ margin: 0 }}>Effective Date *</label>
+              <button
+                type="button"
+                onClick={() => setEffectiveDate(new Date().toISOString().split("T")[0] || "")}
+                style={{ fontSize: 10, padding: "2px 6px", borderRadius: 4, border: "1px solid var(--line)", background: "#fff", cursor: "pointer", color: "var(--brand)" }}
+              >
+                Today
+              </button>
+            </div>
             <input
               type="date"
               value={effectiveDate}
@@ -989,6 +1118,12 @@ export default function PayrollPage() {
         maxWidth={400}
       >
         <form onSubmit={handleExitEmployee} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {exitError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {exitError}
+            </div>
+          )}
+
           <div className="form-group">
             <label>Official Exit Date *</label>
             <input
@@ -1023,6 +1158,12 @@ export default function PayrollPage() {
         maxWidth={420}
       >
         <form onSubmit={handlePrepareRun} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {runError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {runError}
+            </div>
+          )}
+
           <div className="form-grid">
             <div className="form-group">
               <label>Year *</label>
@@ -1063,6 +1204,49 @@ export default function PayrollPage() {
           </div>
         </form>
       </Modal>
+
+      {/* Toast Notification Feedback Card */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 18px",
+            borderRadius: 12,
+            background: toast.type === "success" ? "#0f172a" : "#991b1b",
+            color: "#ffffff",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.25)",
+            fontSize: 13.5,
+            fontWeight: 600,
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+          }}
+        >
+          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            style={{
+              background: "rgba(255, 255, 255, 0.2)",
+              border: "none",
+              color: "#fff",
+              borderRadius: 6,
+              padding: "3px 8px",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 750,
+              marginLeft: 8,
+            }}
+          >
+            OK
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

@@ -236,4 +236,48 @@ export class AuthService {
     const session = await this.sessions.create(user.id, metadata);
     return { ...session, redirectUri: oauthState.redirectUri };
   }
+
+  async adminLogin(
+    rawEmail: string,
+    rawPassword: string,
+    metadata: { ipAddress?: string; userAgent?: string },
+  ) {
+    const email = rawEmail.trim().toLowerCase();
+    const password = rawPassword.trim();
+
+    const configuredAdminEmail = this.config.get("PLATFORM_ADMIN_EMAIL", { infer: true })?.toLowerCase() || "admin@crmkaro.com";
+    const configuredAdminPassword = this.config.get("PLATFORM_ADMIN_PASSWORD", { infer: true }) || "CRMKaro@Admin2026!";
+    const allowedAdminEmailsStr = this.config.get("PLATFORM_ADMIN_EMAILS", { infer: true }) || "";
+    const allowedAdminEmails = allowedAdminEmailsStr
+      .split(",")
+      .map((e) => e.trim().toLowerCase())
+      .filter(Boolean);
+
+    const isEmailAllowed = email === configuredAdminEmail || allowedAdminEmails.includes(email);
+    const isPasswordValid = password === configuredAdminPassword;
+
+    if (!isEmailAllowed || !isPasswordValid) {
+      throw new UnauthorizedException("Invalid administrator credentials. Access restricted.");
+    }
+
+    const user = await this.database.user.upsert({
+      where: { email },
+      update: { name: "Platform Administrator", lastLoginAt: new Date() },
+      create: {
+        email,
+        name: "Platform Administrator",
+        lastLoginAt: new Date(),
+      },
+    });
+
+    const session = await this.sessions.create(user.id, metadata);
+    return {
+      session,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+      },
+    };
+  }
 }

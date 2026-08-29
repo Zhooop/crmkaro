@@ -49,24 +49,28 @@ type OrganisationEntry = {
 const availableServices = [
   {
     code: "people",
-    label: "People",
-    detail: "Students, members and employees",
+    label: "People & Directory",
+    detail: "Students, customers, staff and members",
   },
   {
     code: "crm",
     label: "Leads & CRM",
-    detail: "Pipeline, leads and follow-ups",
+    detail: "Pipeline, inquiries, and admissions",
   },
   {
     code: "finance",
-    label: "Finance",
-    detail: "Payments, invoices and expenses",
+    label: "Finance & Fees",
+    detail: "Student fees, invoices, payments, and kharcha",
   },
-  { code: "payroll", label: "Payroll", detail: "Salaries, runs and payslips" },
+  {
+    code: "payroll",
+    label: "Staff & Salary",
+    detail: "Staff salaries, monthly runs, and payslips",
+  },
   {
     code: "inventory",
-    label: "Inventory",
-    detail: "Products, stock and movements",
+    label: "Inventory & Stock",
+    detail: "Products, study materials, and stock ledger",
   },
 ] as const;
 
@@ -78,11 +82,11 @@ const icons: Record<string, IconName> = {
   inventory: "inventory",
 };
 const serviceNav: Record<string, NavItem> = {
-  people: { label: "People", icon: "people", href: "/people" },
+  people: { label: "People & Directory", icon: "people", href: "/people" },
   crm: { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  finance: { label: "Finance", icon: "finance", href: "/finance" },
-  payroll: { label: "Payroll", icon: "payroll", href: "/payroll" },
-  inventory: { label: "Inventory", icon: "inventory", href: "/inventory" },
+  finance: { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  payroll: { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  inventory: { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
 };
 
 function money(value: number, currency: string) {
@@ -425,7 +429,6 @@ export default function HomePage() {
       userRole={data.role?.name ?? "Member"}
       notifications={data.notifications}
       onSwitchOrganisation={handleSwitchOrg}
-      onCreateOrganisation={() => setNeedsSetup(true)}
     >
       <div className="page-heading">
         <div>

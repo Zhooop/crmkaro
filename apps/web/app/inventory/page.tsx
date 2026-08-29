@@ -16,11 +16,11 @@ import { useRouter, useSearchParams } from "next/navigation";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
 
@@ -114,6 +114,7 @@ function InventoryContent() {
   // Form states - Category
   const [newCatName, setNewCatName] = useState("");
   const [catBusy, setCatBusy] = useState(false);
+  const [catError, setCatError] = useState("");
 
   // Form states - Stock Adjustment
   const [adjustType, setAdjustType] = useState<
@@ -122,6 +123,28 @@ function InventoryContent() {
   const [adjustQty, setAdjustQty] = useState("10");
   const [adjustReason, setAdjustReason] = useState("");
   const [adjustBusy, setAdjustBusy] = useState(false);
+  const [adjustError, setAdjustError] = useState("");
+
+  // Toast feedback state
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  function showToast(message: string, type: "success" | "error" = "success") {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4500);
+  }
+
+  function openCreateProductModal() {
+    const nextNum = products.length + 1;
+    const seqSku = `SKU-${String(nextNum).padStart(3, "0")}`;
+    setFormSku(seqSku);
+    setFormName("");
+    setFormCost("");
+    setFormPrice("");
+    setFormOpeningStock("0");
+    setFormReorder("10");
+    setProdError("");
+    setCreateProductOpen(true);
+  }
 
   // Load session context
   const loadContext = useCallback(async () => {
@@ -259,13 +282,23 @@ function InventoryContent() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create product.");
+      if (!res.ok) {
+        let errMsg = data.message || "Failed to create product.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setCreateProductOpen(false);
       setFormName("");
       setFormSku("");
       setFormCost("");
       setFormPrice("");
       loadProducts();
+      showToast(`Product "${formName}" created in catalog successfully!`, "success");
     } catch (err) {
       setProdError((err as Error).message);
     } finally {
@@ -277,6 +310,7 @@ function InventoryContent() {
     e.preventDefault();
     if (!newCatName.trim()) return;
     setCatBusy(true);
+    setCatError("");
     try {
       const res = await fetch(`${api}/inventory/categories`, {
         method: "POST",
@@ -284,13 +318,14 @@ function InventoryContent() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ name: newCatName.trim() }),
       });
-      if (res.ok) {
-        setNewCatName("");
-        setCreateCategoryOpen(false);
-        loadCategories();
-      }
-    } catch {
-      // ignore
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.message || "Failed to create category.");
+      setNewCatName("");
+      setCreateCategoryOpen(false);
+      loadCategories();
+      showToast(`Category "${newCatName.trim()}" created!`, "success");
+    } catch (err) {
+      setCatError((err as Error).message);
     } finally {
       setCatBusy(false);
     }
@@ -300,6 +335,7 @@ function InventoryContent() {
     e.preventDefault();
     if (!selectedProduct) return;
     setAdjustBusy(true);
+    setAdjustError("");
     try {
       const qtyNum = parseInt(adjustQty, 10);
       const res = await fetch(`${api}/inventory/products/${selectedProduct.id}/movements`, {
@@ -313,14 +349,24 @@ function InventoryContent() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to adjust stock.");
+      if (!res.ok) {
+        let errMsg = data.message || "Failed to adjust stock.";
+        if (data.fields && typeof data.fields === "object") {
+          const fieldMsgs = Object.entries(data.fields)
+            .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
+            .join("; ");
+          if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
+        }
+        throw new Error(errMsg);
+      }
       setStockAdjustOpen(false);
       setAdjustQty("10");
       setAdjustReason("");
       loadProducts();
       loadMovements();
+      showToast(`Stock movement recorded for ${selectedProduct.name}!`, "success");
     } catch (err) {
-      alert((err as Error).message);
+      setAdjustError((err as Error).message);
     } finally {
       setAdjustBusy(false);
     }
@@ -361,11 +407,7 @@ function InventoryContent() {
           </button>
           <button
             className="btn btn-primary btn-sm"
-            onClick={() => {
-              const randomSku = `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
-              setFormSku(randomSku);
-              setCreateProductOpen(true);
-            }}
+            onClick={() => openCreateProductModal()}
           >
             <Icon name="plus" size={15} />
             <span>Add Product</span>
@@ -414,6 +456,22 @@ function InventoryContent() {
       {/* Products Catalog Tab */}
       {activeTab === "catalog" && (
         <>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#eff6ff", borderRadius: 10, border: "1px solid #bfdbfe", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>📦</span>
+              <div>
+                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Product Catalog & Stock Levels</strong>
+                <div style={{ fontSize: 12, color: "#2563eb" }}>
+                  Manage your inventory catalog items, course materials, batch kits, selling prices, and reorder levels.
+                </div>
+              </div>
+            </div>
+            <button className="btn btn-primary btn-sm" onClick={() => openCreateProductModal()} style={{ flexShrink: 0 }}>
+              <Icon name="plus" size={14} />
+              <span>+ Add Product</span>
+            </button>
+          </div>
+
           <div className="toolbar">
             <div className="search-box">
               <Icon name="search" size={15} />
@@ -457,11 +515,7 @@ function InventoryContent() {
               title="No products in catalog"
               description="Add your business items, coaching materials, or physical inventory to start tracking."
               actionLabel="Add Product"
-              onAction={() => {
-                const randomSku = `SKU-${Math.floor(1000 + Math.random() * 9000)}`;
-                setFormSku(randomSku);
-                setCreateProductOpen(true);
-              }}
+              onAction={() => openCreateProductModal()}
             />
           ) : (
             <div className="table-wrap">
@@ -538,6 +592,18 @@ function InventoryContent() {
       {/* Movements Ledger Tab */}
       {activeTab === "movements" && (
         <div className="table-wrap">
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc", borderRadius: 10, border: "1px solid #cbd5e1", marginBottom: 14 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ fontSize: 20 }}>📊</span>
+              <div>
+                <strong style={{ fontSize: 13, color: "#334155" }}>Stock Movement Ledger & Audit History</strong>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  Complete audit trail of all inventory stock inflows (purchases, customer returns) and outflows (sales, damage, losses).
+                </div>
+              </div>
+            </div>
+          </div>
+
           {movements.length === 0 ? (
             <EmptyState
               icon="activity"
@@ -601,19 +667,58 @@ function InventoryContent() {
         isOpen={createProductOpen}
         onClose={() => setCreateProductOpen(false)}
         title="Add Product to Catalog"
-        subtitle="Specify SKU, pricing, and initial inventory stock"
+        subtitle="Specify SKU, pricing, category, and initial inventory stock"
         maxWidth={500}
       >
         <form onSubmit={handleCreateProduct} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {prodError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {prodError}
             </div>
           )}
 
+          {/* 1-Click Product Templates */}
+          <div>
+            <label style={{ fontSize: 11, fontWeight: 750, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
+              ⚡ 1-Click Product Templates:
+            </label>
+            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+              {[
+                { name: "Study Material Course Book Vol 1", unit: "pcs", cost: "350", price: "600", stock: "50" },
+                { name: "Institute Uniform & Badge Kit", unit: "sets", cost: "700", price: "1200", stock: "30" },
+                { name: "Online Test Portal License", unit: "licenses", cost: "1000", price: "2000", stock: "100" },
+                { name: "Practice Test Question Bank", unit: "box", cost: "250", price: "450", stock: "40" },
+              ].map((tmpl) => (
+                <button
+                  key={tmpl.name}
+                  type="button"
+                  onClick={() => {
+                    setFormName(tmpl.name);
+                    setFormUnit(tmpl.unit);
+                    setFormCost(tmpl.cost);
+                    setFormPrice(tmpl.price);
+                    setFormOpeningStock(tmpl.stock);
+                  }}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 6,
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#1e3a8a",
+                    fontSize: 11,
+                    fontWeight: 650,
+                    cursor: "pointer",
+                  }}
+                >
+                  + {tmpl.name.split(" ")[0]} {tmpl.name.split(" ")[1]} (₹{tmpl.price})
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="form-grid">
             <div className="form-group full">
-              <label>Product Name *</label>
+              <label>Product / Item Name *</label>
               <input
                 type="text"
                 placeholder="e.g. Mathematics Course Book Vol 1"
@@ -624,11 +729,12 @@ function InventoryContent() {
               />
             </div>
             <div className="form-group">
-              <label>SKU Code *</label>
+              <label>SKU / Item Code *</label>
               <input
                 type="text"
                 value={formSku}
                 onChange={(e) => setFormSku(e.target.value)}
+                placeholder="e.g. SKU-001"
                 required
               />
             </div>
@@ -639,7 +745,7 @@ function InventoryContent() {
                 value={formCategoryId}
                 onChange={(e) => setFormCategoryId(e.target.value)}
               >
-                <option value="">Select category</option>
+                <option value="">-- General (No category) --</option>
                 {categories.map((c) => (
                   <option key={c.id} value={c.id}>
                     {c.name}
@@ -662,21 +768,23 @@ function InventoryContent() {
                 <option value="kg">Kilograms (kg)</option>
                 <option value="hours">Hours (hr)</option>
                 <option value="licenses">Licenses</option>
+                <option value="sets">Sets / Kits</option>
               </select>
             </div>
             <div className="form-group">
-              <label>Reorder Alert Level</label>
+              <label>Low Stock Alert Level</label>
               <input
                 type="number"
                 value={formReorder}
                 onChange={(e) => setFormReorder(e.target.value)}
+                placeholder="e.g. 10"
               />
             </div>
           </div>
 
           <div className="form-grid">
             <div className="form-group">
-              <label>Cost Price (₹)</label>
+              <label>Cost Price (₹/unit)</label>
               <input
                 type="number"
                 placeholder="e.g. 400"
@@ -685,7 +793,7 @@ function InventoryContent() {
               />
             </div>
             <div className="form-group">
-              <label>Selling Price (₹)</label>
+              <label>Selling Price (₹/unit)</label>
               <input
                 type="number"
                 placeholder="e.g. 750"
@@ -702,6 +810,7 @@ function InventoryContent() {
               min="0"
               value={formOpeningStock}
               onChange={(e) => setFormOpeningStock(e.target.value)}
+              placeholder="e.g. 50"
             />
           </div>
 
@@ -725,15 +834,21 @@ function InventoryContent() {
         isOpen={createCategoryOpen}
         onClose={() => setCreateCategoryOpen(false)}
         title="Create Product Category"
-        subtitle="Group catalog items"
+        subtitle="Group products into organized categories"
         maxWidth={400}
       >
         <form onSubmit={handleCreateCategory} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {catError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {catError}
+            </div>
+          )}
+
           <div className="form-group">
             <label>Category Name *</label>
             <input
               type="text"
-              placeholder="e.g. Books, Merchandise, Kits"
+              placeholder="e.g. Books, Study Materials, Merchandise"
               value={newCatName}
               onChange={(e) => setNewCatName(e.target.value)}
               required
@@ -761,10 +876,16 @@ function InventoryContent() {
         isOpen={stockAdjustOpen}
         onClose={() => setStockAdjustOpen(false)}
         title="Record Stock Movement"
-        subtitle={selectedProduct ? `${selectedProduct.name} (Current: ${selectedProduct.currentStock} ${selectedProduct.unit})` : "Adjust Stock"}
-        maxWidth={440}
+        subtitle={selectedProduct ? `${selectedProduct.name} (Current Stock: ${selectedProduct.currentStock} ${selectedProduct.unit})` : "Adjust Stock"}
+        maxWidth={480}
       >
         <form onSubmit={handleRecordMovement} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          {adjustError && (
+            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+              {adjustError}
+            </div>
+          )}
+
           <div className="form-group">
             <label>Movement Type *</label>
             <select
@@ -772,12 +893,12 @@ function InventoryContent() {
               value={adjustType}
               onChange={(e) => setAdjustType(e.target.value as any)}
             >
-              <option value="PURCHASE">Purchase / Inflow (+)</option>
-              <option value="SALE">Sale / Outflow (-)</option>
-              <option value="RETURN_IN">Customer Return In (+)</option>
-              <option value="RETURN_OUT">Supplier Return Out (-)</option>
-              <option value="ADJUSTMENT_IN">Inventory Audit Increase (+)</option>
-              <option value="ADJUSTMENT_OUT">Damage / Loss Decrease (-)</option>
+              <option value="PURCHASE">📥 Purchase (+ Stock In - Bought new inventory)</option>
+              <option value="SALE">📤 Sale (- Stock Out - Dispatched to customer)</option>
+              <option value="RETURN_IN">🔄 Customer Return (+ Stock In - Returned by student/customer)</option>
+              <option value="RETURN_OUT">↩️ Vendor Return (- Stock Out - Returned to supplier)</option>
+              <option value="ADJUSTMENT_IN">➕ Audit Surplus (+ Stock In - Inventory count correction)</option>
+              <option value="ADJUSTMENT_OUT">➖ Damage / Loss (- Stock Out - Damaged, lost, expired)</option>
             </select>
           </div>
 
@@ -796,7 +917,7 @@ function InventoryContent() {
             <label>Reason / Reference Note</label>
             <input
               type="text"
-              placeholder="e.g. PO-8921 or Batch delivery"
+              placeholder="e.g. PO-8921, Batch delivery, Annual audit"
               value={adjustReason}
               onChange={(e) => setAdjustReason(e.target.value)}
             />
@@ -816,6 +937,49 @@ function InventoryContent() {
           </div>
         </form>
       </Modal>
+
+      {/* Toast Notification Feedback Card */}
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            gap: 12,
+            padding: "12px 18px",
+            borderRadius: 12,
+            background: toast.type === "success" ? "#0f172a" : "#991b1b",
+            color: "#ffffff",
+            boxShadow: "0 10px 25px rgba(0, 0, 0, 0.25)",
+            fontSize: 13.5,
+            fontWeight: 600,
+            border: "1px solid rgba(255, 255, 255, 0.15)",
+          }}
+        >
+          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <span>{toast.message}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            style={{
+              background: "rgba(255, 255, 255, 0.2)",
+              border: "none",
+              color: "#fff",
+              borderRadius: 6,
+              padding: "3px 8px",
+              cursor: "pointer",
+              fontSize: 11,
+              fontWeight: 750,
+              marginLeft: 8,
+            }}
+          >
+            OK
+          </button>
+        </div>
+      )}
     </AppShell>
   );
 }

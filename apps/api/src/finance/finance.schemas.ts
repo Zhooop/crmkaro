@@ -4,8 +4,8 @@ const optionalText = (max: number) =>
 export const invoiceSchema = z
   .object({
     personId: z.string().uuid(),
-    issueDate: z.coerce.date(),
-    dueDate: z.coerce.date(),
+    issueDate: z.coerce.date().default(() => new Date()),
+    dueDate: z.coerce.date().optional().nullable(),
     currency: z
       .string()
       .trim()
@@ -15,16 +15,34 @@ export const invoiceSchema = z
     notes: optionalText(2000),
     items: z
       .array(
-        z.object({
-          description: z.string().trim().min(1).max(500),
-          quantity: z.number().positive().max(1_000_000),
-          unitPriceMinor: z.number().int().min(0).max(2_000_000_000),
-          discountMinor: z.number().int().min(0).max(2_000_000_000).default(0),
-          taxRateBps: z.number().int().min(0).max(10000).default(0),
-        }),
+        z
+          .object({
+            description: z.string().trim().min(1).max(500),
+            quantity: z.number().positive().max(1_000_000),
+            unitPriceMinor: z.number().int().min(0).max(2_000_000_000),
+            discountMinor: z.number().int().min(0).max(2_000_000_000).default(0),
+            taxRateBps: z.number().int().min(0).max(10000).optional().default(0),
+            taxRateBasisPoints: z.number().int().min(0).max(10000).optional(),
+          })
+          .transform((item) => ({
+            description: item.description,
+            quantity: item.quantity,
+            unitPriceMinor: item.unitPriceMinor,
+            discountMinor: item.discountMinor,
+            taxRateBps: item.taxRateBasisPoints !== undefined ? item.taxRateBasisPoints : item.taxRateBps,
+          })),
       )
       .min(1)
       .max(100),
+  })
+  .transform((value) => {
+    const issueDate = value.issueDate || new Date();
+    const dueDate = value.dueDate || new Date(issueDate.getTime() + 15 * 86400000);
+    return {
+      ...value,
+      issueDate,
+      dueDate,
+    };
   })
   .refine(
     (value) => value.dueDate >= value.issueDate,
@@ -43,19 +61,30 @@ export const refundSchema = z.object({
   amountMinor: z.number().int().positive().max(2_000_000_000),
   reason: z.string().trim().min(3).max(500),
 });
-export const expenseSchema = z.object({
-  category: z.string().trim().min(1).max(100),
-  vendor: optionalText(180),
-  description: z.string().trim().min(1).max(500),
-  amountMinor: z.number().int().positive().max(2_000_000_000),
-  currency: z
-    .string()
-    .trim()
-    .length(3)
-    .transform((v) => v.toUpperCase())
-    .default("INR"),
-  expenseDate: z.coerce.date(),
-  reference: optionalText(160),
-});
+export const expenseSchema = z
+  .object({
+    category: z.string().trim().min(1).max(100),
+    vendor: optionalText(180),
+    description: optionalText(500),
+    amountMinor: z.number().int().positive().max(2_000_000_000),
+    currency: z
+      .string()
+      .trim()
+      .length(3)
+      .transform((v) => v.toUpperCase())
+      .default("INR"),
+    expenseDate: z.coerce.date().optional(),
+    date: z.coerce.date().optional(),
+    reference: optionalText(160),
+  })
+  .transform((val) => ({
+    category: val.category,
+    vendor: val.vendor,
+    description: val.description?.trim() || val.category,
+    amountMinor: val.amountMinor,
+    currency: val.currency,
+    expenseDate: val.expenseDate || val.date || new Date(),
+    reference: val.reference,
+  }));
 export type InvoiceInput = z.infer<typeof invoiceSchema>;
 export type PaymentInput = z.infer<typeof paymentSchema>;

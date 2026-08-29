@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@crmkaro/ui": "workspace:*",
+    "country-state-city": "^3.2.1",
     "next": "latest",
     "react": "latest",
     "react-dom": "latest"

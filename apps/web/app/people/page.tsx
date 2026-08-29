@@ -14,15 +14,21 @@ import {
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+import { State, City } from "country-state-city";
+
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
-  { label: "People", icon: "people", href: "/people" },
+  { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance", icon: "finance", href: "/finance" },
-  { label: "Payroll", icon: "payroll", href: "/payroll" },
-  { label: "Inventory", icon: "inventory", href: "/inventory" },
+  { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
+  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
   { label: "Settings", icon: "settings", href: "/settings" },
 ];
+
+const ALL_INDIAN_STATES = State.getStatesOfCountry("IN").sort((a, b) =>
+  a.name.localeCompare(b.name),
+);
 
 type PersonType = "CUSTOMER" | "STUDENT" | "MEMBER" | "EMPLOYEE";
 
@@ -89,6 +95,17 @@ function PeopleContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
+  const [personInvoices, setPersonInvoices] = useState<
+    Array<{
+      id: string;
+      invoiceNumber: string;
+      totalMinor: number;
+      balanceDueMinor: number;
+      status: string;
+      issueDate: string;
+    }>
+  >([]);
+  const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
@@ -118,6 +135,32 @@ function PeopleContent() {
   const [importCsvText, setImportCsvText] = useState("");
   const [importBusy, setImportBusy] = useState(false);
   const [importResult, setImportResult] = useState<{ imported: number; errors?: string[] } | null>(null);
+
+  // Computed state and city lists for address selection
+  const selectedStateObj = ALL_INDIAN_STATES.find(
+    (s) =>
+      s.name.toLowerCase() === formState.trim().toLowerCase() ||
+      s.isoCode.toLowerCase() === formState.trim().toLowerCase(),
+  );
+
+  const availableCities = selectedStateObj
+    ? City.getCitiesOfState("IN", selectedStateObj.isoCode).sort((a, b) =>
+        a.name.localeCompare(b.name),
+      )
+    : [];
+
+  const isCustomState = Boolean(
+    formState && !selectedStateObj && formState !== "Other",
+  );
+
+  const isCustomCity = Boolean(
+    formCity &&
+      selectedStateObj &&
+      !availableCities.some(
+        (c) => c.name.toLowerCase() === formCity.trim().toLowerCase(),
+      ) &&
+      formCity !== "Other",
+  );
 
   // Load user session & current active org info
   const loadContext = useCallback(async () => {
@@ -215,6 +258,30 @@ function PeopleContent() {
     }
   }, [searchParams, api]);
 
+  // Load fee invoices & payment history for detailPerson
+  useEffect(() => {
+    if (!detailPerson) {
+      setPersonInvoices([]);
+      return;
+    }
+    setInvoicesLoading(true);
+    fetch(`${api}/finance/invoices?personId=${detailPerson.id}&limit=20`, { credentials: "include" })
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data && data.items) {
+          setPersonInvoices(data.items);
+        } else {
+          setPersonInvoices([]);
+        }
+      })
+      .catch(() => {
+        setPersonInvoices([]);
+      })
+      .finally(() => {
+        setInvoicesLoading(false);
+      });
+  }, [detailPerson, api]);
+
   // Check duplicates on email/phone change during create
   useEffect(() => {
     if (!createOpen || (!formEmail && !formPhone)) {
@@ -261,6 +328,8 @@ function PeopleContent() {
     setFormBusy(true);
     setFormError("");
     try {
+      const finalState = formState === "Other" ? "" : formState.trim();
+      const finalCity = formCity === "Other" ? "" : formCity.trim();
       const res = await fetch(`${api}/people`, {
         method: "POST",
         credentials: "include",
@@ -271,8 +340,8 @@ function PeopleContent() {
           primaryPhone: formPhone || undefined,
           alternatePhone: formAltPhone || undefined,
           notes: formNotes || undefined,
-          address: formCity || formState || formStreet
-            ? { street: formStreet, city: formCity, state: formState, postalCode: formPostalCode }
+          address: finalCity || finalState || formStreet
+            ? { street: formStreet, city: finalCity, state: finalState, postalCode: formPostalCode }
             : undefined,
           types: formTypes,
           tagIds: formSelectedTags,
@@ -296,6 +365,8 @@ function PeopleContent() {
     setFormBusy(true);
     setFormError("");
     try {
+      const finalState = formState === "Other" ? "" : formState.trim();
+      const finalCity = formCity === "Other" ? "" : formCity.trim();
       const res = await fetch(`${api}/people/${detailPerson.id}`, {
         method: "PATCH",
         credentials: "include",
@@ -306,8 +377,8 @@ function PeopleContent() {
           primaryPhone: formPhone || undefined,
           alternatePhone: formAltPhone || undefined,
           notes: formNotes || undefined,
-          address: formCity || formState || formStreet
-            ? { street: formStreet, city: formCity, state: formState, postalCode: formPostalCode }
+          address: finalCity || finalState || formStreet
+            ? { street: formStreet, city: finalCity, state: finalState, postalCode: formPostalCode }
             : undefined,
           types: formTypes,
           tagIds: formSelectedTags,
@@ -394,18 +465,18 @@ function PeopleContent() {
     setFormStreet(person.address?.street || "");
     setFormCity(person.address?.city || "");
     setFormState(person.address?.state || "");
-    setFormPostalCode(person.address?.postalCode || "");
-    setFormTypes(person.types.map((t) => t.type));
+    const firstType = person.types[0]?.type;
+    setFormTypes(firstType ? [firstType] : ["CUSTOMER"]);
     setFormSelectedTags(person.tags.map((t) => t.tagId));
     setEditOpen(true);
   }
 
   const tabItems = [
-    { id: "ALL", label: "All People" },
-    { id: "CUSTOMER", label: "Customers" },
-    { id: "STUDENT", label: "Students" },
+    { id: "ALL", label: "All Directory" },
+    { id: "STUDENT", label: "Students / Learners" },
+    { id: "CUSTOMER", label: "Customers / Clients" },
+    { id: "EMPLOYEE", label: "Employees / Staff" },
     { id: "MEMBER", label: "Members" },
-    { id: "EMPLOYEE", label: "Employees" },
     { id: "ARCHIVED", label: "Archived" },
   ];
 
@@ -426,7 +497,7 @@ function PeopleContent() {
           </p>
           <h1>People & Directory</h1>
           <p className="subheading">
-            Centralized directory for customers, students, members, and employees.
+            Centralized directory for students, customers / clients, staff / employees, and members.
           </p>
         </div>
         <div className="toolbar-actions">
@@ -721,6 +792,155 @@ function PeopleContent() {
               </div>
             )}
 
+            {/* Student Fees & Month-Wise Billing Card */}
+            <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  🎓 Fees & Monthly Billing
+                </label>
+                <a
+                  href={`/finance?action=new-invoice&personId=${detailPerson.id}`}
+                  style={{
+                    fontSize: 11,
+                    fontWeight: 700,
+                    color: "var(--brand)",
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <Icon name="plus" size={12} />
+                  <span>+ Create Custom Bill</span>
+                </a>
+              </div>
+
+              {/* Month-Wise 1-Click Fee Selector */}
+              <div style={{ background: "#f0fdf4", padding: "10px 12px", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 12 }}>
+                <div style={{ fontSize: 11, fontWeight: 750, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span>⚡ 1-Click Month Fee Bill ({new Date().getFullYear()}–{new Date().getFullYear() + 1})</span>
+                  <span style={{ fontSize: 10, fontWeight: 600, color: "#15803d" }}>₹3,500/mo</span>
+                </div>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {[
+                    "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
+                  ].map((m) => {
+                    const fullMonth = {
+                      Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
+                      Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+                      Jan: "January", Feb: "February", Mar: "March"
+                    }[m] || m;
+                    const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
+                    const feeDesc = `🎓 Monthly Academic / Tuition Fees — ${fullMonth} ${year}`;
+                    return (
+                      <a
+                        key={m}
+                        href={`/finance?action=new-invoice&personId=${detailPerson.id}&description=${encodeURIComponent(feeDesc)}&price=3500`}
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          border: "1px solid #86efac",
+                          background: "#ffffff",
+                          color: "#166534",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                        }}
+                        title={`Generate fee bill for ${fullMonth} ${year}`}
+                      >
+                        + {m}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Invoices List / Payment Status */}
+              {invoicesLoading ? (
+                <div style={{ fontSize: 12, color: "var(--muted)", padding: "8px 0" }}>Loading fee history…</div>
+              ) : personInvoices.length > 0 ? (
+                <div>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 12 }}>
+                    <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
+                      <small style={{ color: "var(--muted)", fontSize: 10 }}>Total Billed</small>
+                      <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>
+                        ₹{(personInvoices.reduce((acc, inv) => acc + inv.totalMinor, 0) / 100).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                    <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
+                      <small style={{ color: "var(--muted)", fontSize: 10 }}>Pending Dues</small>
+                      <div style={{ fontWeight: 800, color: personInvoices.some(i => i.balanceDueMinor > 0) ? "#b91c1c" : "#15803d", fontSize: 14 }}>
+                        ₹{(personInvoices.reduce((acc, inv) => acc + inv.balanceDueMinor, 0) / 100).toLocaleString("en-IN")}
+                      </div>
+                    </div>
+                  </div>
+
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                    {personInvoices.map((inv) => (
+                      <li
+                        key={inv.id}
+                        style={{
+                          padding: "8px 10px",
+                          background: "#ffffff",
+                          border: "1px solid var(--line)",
+                          borderRadius: 8,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                          fontSize: 12,
+                        }}
+                      >
+                        <div>
+                          <strong>{inv.invoiceNumber}</strong>
+                          <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                            {new Date(inv.issueDate).toLocaleDateString()} · ₹{(inv.totalMinor / 100).toLocaleString("en-IN")}
+                          </div>
+                        </div>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                          <span
+                            style={{
+                              padding: "2px 6px",
+                              borderRadius: 4,
+                              fontSize: 10,
+                              fontWeight: 700,
+                              background:
+                                inv.status === "PAID"
+                                  ? "#dcfce7"
+                                  : inv.status === "PARTIALLY_PAID"
+                                    ? "#fef3c7"
+                                    : "#dbeafe",
+                              color:
+                                inv.status === "PAID"
+                                  ? "#15803d"
+                                  : inv.status === "PARTIALLY_PAID"
+                                    ? "#b45309"
+                                    : "#1d4ed8",
+                            }}
+                          >
+                            {inv.status}
+                          </span>
+                          <a
+                            href={`/finance?invoiceId=${inv.id}`}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "2px 8px", fontSize: 11, height: 26 }}
+                          >
+                            {inv.balanceDueMinor > 0 ? "Collect Due" : "View"}
+                          </a>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : (
+                <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 0" }}>
+                  No fee bills issued yet for this student.
+                </div>
+              )}
+            </div>
+
             {/* Quick module links */}
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
               <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>
@@ -853,10 +1073,15 @@ function PeopleContent() {
           </div>
 
           <div className="form-group">
-            <label>Person Types</label>
+            <label style={{ fontWeight: 700 }}>Person Type *</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              {(["CUSTOMER", "STUDENT", "MEMBER", "EMPLOYEE"] as PersonType[]).map((type) => {
-                const checked = formTypes.includes(type);
+              {[
+                { type: "STUDENT" as PersonType, label: "🎓 Student / Learner" },
+                { type: "CUSTOMER" as PersonType, label: "💼 Customer / Client" },
+                { type: "EMPLOYEE" as PersonType, label: "👔 Staff / Employee" },
+                { type: "MEMBER" as PersonType, label: "🤝 Member / Partner" },
+              ].map(({ type, label }) => {
+                const checked = formTypes[0] === type || formTypes.includes(type);
                 return (
                   <label
                     key={type}
@@ -864,27 +1089,27 @@ function PeopleContent() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "6px 12px",
-                      borderRadius: 8,
-                      border: "1px solid",
-                      borderColor: checked ? "var(--brand)" : "var(--line)",
-                      background: checked ? "#eff6ff" : "#fff",
-                      fontSize: 12,
-                      fontWeight: 600,
+                      padding: "7px 14px",
+                      borderRadius: 9,
+                      border: "1.5px solid",
+                      borderColor: checked ? "var(--brand)" : "#cbd5e1",
+                      background: checked ? "#eff6ff" : "#ffffff",
+                      color: checked ? "#1d4ed8" : "#334155",
+                      fontSize: 12.5,
+                      fontWeight: 700,
                       cursor: "pointer",
+                      transition: "all 0.15s ease",
+                      boxShadow: checked ? "0 0 0 2px rgba(37, 99, 235, 0.15)" : "none",
                     }}
                   >
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="addPersonType"
                       checked={checked}
-                      onChange={() => {
-                        setFormTypes((curr) =>
-                          checked ? curr.filter((t) => t !== type) : [...curr, type],
-                        );
-                      }}
+                      onChange={() => setFormTypes([type])}
                       style={{ display: "none" }}
                     />
-                    <span>{type}</span>
+                    <span>{label}</span>
                   </label>
                 );
               })}
@@ -927,22 +1152,97 @@ function PeopleContent() {
 
           <div className="form-grid">
             <div className="form-group">
-              <label>City</label>
-              <input
-                type="text"
-                placeholder="e.g. Mumbai"
-                value={formCity}
-                onChange={(e) => setFormCity(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
               <label>State</label>
-              <input
-                type="text"
-                placeholder="e.g. Maharashtra"
-                value={formState}
-                onChange={(e) => setFormState(e.target.value)}
-              />
+              <select
+                className="filter-select"
+                value={
+                  selectedStateObj
+                    ? selectedStateObj.name
+                    : formState === "Other" || isCustomState
+                      ? "Other"
+                      : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "Other") {
+                    setFormState("Other");
+                  } else {
+                    setFormState(val);
+                  }
+                  setFormCity("");
+                }}
+              >
+                <option value="">-- Select State / UT --</option>
+                {ALL_INDIAN_STATES.map((s) => (
+                  <option key={s.isoCode} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+                <option value="Other">Other / Outside India</option>
+              </select>
+              {(formState === "Other" || isCustomState) && (
+                <input
+                  type="text"
+                  style={{ marginTop: 6 }}
+                  placeholder="Enter state name..."
+                  value={formState === "Other" ? "" : formState}
+                  onChange={(e) => setFormState(e.target.value || "Other")}
+                  autoFocus
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>City</label>
+              {selectedStateObj ? (
+                <>
+                  <select
+                    className="filter-select"
+                    value={
+                      availableCities.some(
+                        (c) => c.name.toLowerCase() === formCity.trim().toLowerCase(),
+                      )
+                        ? formCity
+                        : formCity === "Other" || isCustomCity
+                          ? "Other"
+                          : ""
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "Other") {
+                        setFormCity("Other");
+                      } else {
+                        setFormCity(val);
+                      }
+                    }}
+                  >
+                    <option value="">-- Select City ({availableCities.length}) --</option>
+                    {availableCities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value="Other">Other (Enter manually)</option>
+                  </select>
+                  {(formCity === "Other" || isCustomCity) && (
+                    <input
+                      type="text"
+                      style={{ marginTop: 6 }}
+                      placeholder="Enter city / town name..."
+                      value={formCity === "Other" ? "" : formCity}
+                      onChange={(e) => setFormCity(e.target.value || "Other")}
+                      autoFocus
+                    />
+                  )}
+                </>
+              ) : (
+                <input
+                  type="text"
+                  placeholder={formState ? "Enter city..." : "Select state first"}
+                  value={formCity === "Other" ? "" : formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                />
+              )}
             </div>
           </div>
 
@@ -1023,10 +1323,10 @@ function PeopleContent() {
           </div>
 
           <div className="form-group">
-            <label>Person Types</label>
+            <label>Person Type</label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
               {(["CUSTOMER", "STUDENT", "MEMBER", "EMPLOYEE"] as PersonType[]).map((type) => {
-                const checked = formTypes.includes(type);
+                const checked = formTypes[0] === type || formTypes.includes(type);
                 return (
                   <label
                     key={type}
@@ -1034,24 +1334,23 @@ function PeopleContent() {
                       display: "inline-flex",
                       alignItems: "center",
                       gap: 6,
-                      padding: "6px 12px",
+                      padding: "6px 14px",
                       borderRadius: 8,
-                      border: "1px solid",
+                      border: "1.5px solid",
                       borderColor: checked ? "var(--brand)" : "var(--line)",
                       background: checked ? "#eff6ff" : "#fff",
+                      color: checked ? "var(--brand)" : "var(--ink)",
                       fontSize: 12,
-                      fontWeight: 600,
+                      fontWeight: 700,
                       cursor: "pointer",
+                      transition: "all 0.15s ease",
                     }}
                   >
                     <input
-                      type="checkbox"
+                      type="radio"
+                      name="editPersonType"
                       checked={checked}
-                      onChange={() => {
-                        setFormTypes((curr) =>
-                          checked ? curr.filter((t) => t !== type) : [...curr, type],
-                        );
-                      }}
+                      onChange={() => setFormTypes([type])}
                       style={{ display: "none" }}
                     />
                     <span>{type}</span>
@@ -1097,20 +1396,97 @@ function PeopleContent() {
 
           <div className="form-grid">
             <div className="form-group">
-              <label>City</label>
-              <input
-                type="text"
-                value={formCity}
-                onChange={(e) => setFormCity(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
               <label>State</label>
-              <input
-                type="text"
-                value={formState}
-                onChange={(e) => setFormState(e.target.value)}
-              />
+              <select
+                className="filter-select"
+                value={
+                  selectedStateObj
+                    ? selectedStateObj.name
+                    : formState === "Other" || isCustomState
+                      ? "Other"
+                      : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === "Other") {
+                    setFormState("Other");
+                  } else {
+                    setFormState(val);
+                  }
+                  setFormCity("");
+                }}
+              >
+                <option value="">-- Select State / UT --</option>
+                {ALL_INDIAN_STATES.map((s) => (
+                  <option key={s.isoCode} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+                <option value="Other">Other / Outside India</option>
+              </select>
+              {(formState === "Other" || isCustomState) && (
+                <input
+                  type="text"
+                  style={{ marginTop: 6 }}
+                  placeholder="Enter state name..."
+                  value={formState === "Other" ? "" : formState}
+                  onChange={(e) => setFormState(e.target.value || "Other")}
+                  autoFocus
+                />
+              )}
+            </div>
+
+            <div className="form-group">
+              <label>City</label>
+              {selectedStateObj ? (
+                <>
+                  <select
+                    className="filter-select"
+                    value={
+                      availableCities.some(
+                        (c) => c.name.toLowerCase() === formCity.trim().toLowerCase(),
+                      )
+                        ? formCity
+                        : formCity === "Other" || isCustomCity
+                          ? "Other"
+                          : ""
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (val === "Other") {
+                        setFormCity("Other");
+                      } else {
+                        setFormCity(val);
+                      }
+                    }}
+                  >
+                    <option value="">-- Select City ({availableCities.length}) --</option>
+                    {availableCities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value="Other">Other (Enter manually)</option>
+                  </select>
+                  {(formCity === "Other" || isCustomCity) && (
+                    <input
+                      type="text"
+                      style={{ marginTop: 6 }}
+                      placeholder="Enter city / town name..."
+                      value={formCity === "Other" ? "" : formCity}
+                      onChange={(e) => setFormCity(e.target.value || "Other")}
+                      autoFocus
+                    />
+                  )}
+                </>
+              ) : (
+                <input
+                  type="text"
+                  placeholder={formState ? "Enter city..." : "Select state first"}
+                  value={formCity === "Other" ? "" : formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                />
+              )}
             </div>
           </div>
 

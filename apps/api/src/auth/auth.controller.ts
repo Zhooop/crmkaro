@@ -13,6 +13,10 @@ const emailVerifySchema = z.object({
   challengeId: z.string().uuid(),
   code: z.string().regex(/^\d{6}$/),
 });
+const adminLoginSchema = z.object({
+  email: z.string().email().max(320),
+  password: z.string().min(1),
+});
 
 function clientMetadata(request: Request) {
   return {
@@ -38,6 +42,19 @@ export class AuthController {
     @Inject(AuthService) private readonly auth: AuthService,
     @Inject(SessionService) private readonly sessions: SessionService,
   ) {}
+
+  @Post("admin/login")
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
+  async adminLogin(
+    @Body() body: unknown,
+    @Req() request: Request,
+    @Res({ passthrough: true }) response: Response,
+  ) {
+    const input = parseBody(adminLoginSchema, body);
+    const result = await this.auth.adminLogin(input.email, input.password, clientMetadata(request));
+    setSessionCookie(response, result.session.token, process.env.NODE_ENV === "production");
+    return { success: true, user: result.user };
+  }
 
   @Post("email/request-otp")
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
