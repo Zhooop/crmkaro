@@ -1180,16 +1180,20 @@ export function EmptyState({
 export function AuthPanel({
   admin = false,
   apiUrl,
+  initialMode = "login",
   onAuthenticated,
 }: {
   admin?: boolean;
   apiUrl?: string;
+  initialMode?: "login" | "register";
   onAuthenticated?: () => void;
 }) {
+  const [authMode, setAuthMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [message, setMessage] = useState("");
+  const [modePrompt, setModePrompt] = useState<"none" | "register-needed" | "already-registered">("none");
   const [busy, setBusy] = useState(false);
 
   const resolvedApiUrl =
@@ -1213,6 +1217,7 @@ export function AuthPanel({
     event.preventDefault();
     setBusy(true);
     setMessage("");
+    setModePrompt("none");
     try {
       const response = await fetch(
         `${resolvedApiUrl}/auth/email/${challengeId ? "verify-otp" : "request-otp"}`,
@@ -1221,7 +1226,7 @@ export function AuthPanel({
           credentials: "include",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
-            challengeId ? { challengeId, code } : { email },
+            challengeId ? { challengeId, code } : { email: email.trim(), mode: authMode },
           ),
         },
       );
@@ -1229,10 +1234,22 @@ export function AuthPanel({
         challengeId?: string;
         message?: string;
       };
-      if (!response.ok) throw new Error(body.message ?? "Sign in failed.");
+      if (!response.ok) {
+        if (response.status === 404 || body.message?.toLowerCase().includes("no account found") || body.message?.toLowerCase().includes("register")) {
+          setModePrompt("register-needed");
+          setMessage(body.message || "No account found with this email. Please register first.");
+          return;
+        }
+        if (response.status === 409 || body.message?.toLowerCase().includes("already exists")) {
+          setModePrompt("already-registered");
+          setMessage(body.message || "An account already exists with this email. Please sign in instead.");
+          return;
+        }
+        throw new Error(body.message ?? "Authentication failed.");
+      }
       if (body.challengeId) {
         setChallengeId(body.challengeId);
-        setMessage("A six-digit code was sent to your email.");
+        setMessage("A six-digit verification code was sent to your email.");
       } else {
         onAuthenticated?.();
       }
@@ -1319,11 +1336,78 @@ export function AuthPanel({
       <section className="auth-form-wrap">
         <div className="auth-form-card">
           <form className="auth-form" onSubmit={submit}>
-            <h2>{admin ? "Platform Sign In" : "Welcome Back"}</h2>
+            {!admin && !challengeId && (
+              <div
+                style={{
+                  display: "flex",
+                  background: "#f1f5f9",
+                  padding: 3,
+                  borderRadius: 10,
+                  marginBottom: 16,
+                }}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setModePrompt("none");
+                    setMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: 7,
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: authMode === "login" ? "#ffffff" : "transparent",
+                    color: authMode === "login" ? "var(--brand)" : "#64748b",
+                    boxShadow: authMode === "login" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Sign In
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setModePrompt("none");
+                    setMessage("");
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: "8px 12px",
+                    borderRadius: 7,
+                    border: "none",
+                    fontSize: 13,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: authMode === "register" ? "#ffffff" : "transparent",
+                    color: authMode === "register" ? "var(--brand)" : "#64748b",
+                    boxShadow: authMode === "register" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  Create Account
+                </button>
+              </div>
+            )}
+
+            <h2>
+              {admin
+                ? "Platform Sign In"
+                : authMode === "login"
+                  ? "Welcome Back"
+                  : "Create Your Account"}
+            </h2>
             <p>
               {admin
                 ? "Sign in with your verified platform administrator credentials."
-                : "Sign in to access your business organisation."}
+                : authMode === "login"
+                  ? "Sign in to access your business organisation."
+                  : "Start managing leads, student fees, and staff payroll in 30 seconds."}
             </p>
 
             <a className="google-button" href={googleStartUrl}>
@@ -1345,11 +1429,11 @@ export function AuthPanel({
                   d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
                 />
               </svg>
-              <span>Continue with Google</span>
+              <span>{authMode === "login" ? "Continue with Google" : "Sign up with Google"}</span>
             </a>
 
             <div className="auth-divider">
-              <span>or sign in with email</span>
+              <span>{authMode === "login" ? "or sign in with email" : "or register with email"}</span>
             </div>
 
             <label htmlFor={challengeId ? "code" : "email"}>
@@ -1384,8 +1468,12 @@ export function AuthPanel({
               {busy
                 ? "Verifying…"
                 : challengeId
-                  ? "Verify Code & Sign In"
-                  : "Send Login Code"}
+                  ? authMode === "login"
+                    ? "Verify Code & Sign In"
+                    : "Verify Code & Create Account"
+                  : authMode === "login"
+                    ? "Send Login Code"
+                    : "Send Registration Code"}
             </button>
 
             {challengeId && (
@@ -1396,16 +1484,150 @@ export function AuthPanel({
                   setChallengeId("");
                   setCode("");
                   setMessage("");
+                  setModePrompt("none");
                 }}
               >
                 ← Use a different email
               </button>
             )}
 
-            {message && (
+            {modePrompt === "register-needed" && (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#fef2f2",
+                  border: "1px solid #fecaca",
+                  borderRadius: 10,
+                  marginTop: 12,
+                }}
+              >
+                <p style={{ color: "#991b1b", fontSize: 12.5, fontWeight: 600, margin: "0 0 8px 0" }}>
+                  ⚠️ No account found with <strong>{email}</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("register");
+                    setModePrompt("none");
+                    setMessage("");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    background: "var(--brand)",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  👉 Click here to Register / Create Account
+                </button>
+              </div>
+            )}
+
+            {modePrompt === "already-registered" && (
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#eff6ff",
+                  border: "1px solid #bfdbfe",
+                  borderRadius: 10,
+                  marginTop: 12,
+                }}
+              >
+                <p style={{ color: "#1e40af", fontSize: 12.5, fontWeight: 600, margin: "0 0 8px 0" }}>
+                  ℹ️ An account already exists with <strong>{email}</strong>.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode("login");
+                    setModePrompt("none");
+                    setMessage("");
+                  }}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    background: "#1e3a8a",
+                    color: "#ffffff",
+                    border: "none",
+                    borderRadius: 6,
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                  }}
+                >
+                  👉 Click here to Sign In / Log In
+                </button>
+              </div>
+            )}
+
+            {message && modePrompt === "none" && (
               <p className="auth-message" role="status">
                 {message}
               </p>
+            )}
+
+            {!admin && !challengeId && (
+              <div
+                style={{
+                  textAlign: "center",
+                  marginTop: 14,
+                  fontSize: 12.5,
+                  color: "#64748b",
+                }}
+              >
+                {authMode === "login" ? (
+                  <span>
+                    Don&apos;t have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("register");
+                        setModePrompt("none");
+                        setMessage("");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--brand)",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        padding: 0,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Create Account
+                    </button>
+                  </span>
+                ) : (
+                  <span>
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode("login");
+                        setModePrompt("none");
+                        setMessage("");
+                      }}
+                      style={{
+                        background: "none",
+                        border: "none",
+                        color: "var(--brand)",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        padding: 0,
+                        textDecoration: "underline",
+                      }}
+                    >
+                      Sign In
+                    </button>
+                  </span>
+                )}
+              </div>
             )}
 
             <p className="auth-note">

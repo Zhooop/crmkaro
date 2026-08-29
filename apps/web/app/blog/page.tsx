@@ -47,9 +47,12 @@ export default function BlogPage() {
         </article>
       </div>
 
-      <div style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid #e2e8f0", display: "flex", gap: 16 }}>
+      <div style={{ marginTop: 40, paddingTop: 20, borderTop: "1px solid #e2e8f0", display: "flex", gap: 12, flexWrap: "wrap" }}>
         <Link href="/login" style={{ background: "#2563eb", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
-          Get Started with CRMKaro
+          Sign In / Login
+        </Link>
+        <Link href="/register" style={{ background: "#059669", color: "#fff", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
+          Create Account / Register
         </Link>
         <Link href="/features" style={{ background: "#f1f5f9", color: "#334155", padding: "10px 20px", borderRadius: 8, textDecoration: "none", fontWeight: 600 }}>
           View Features

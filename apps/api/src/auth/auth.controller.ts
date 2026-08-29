@@ -8,7 +8,10 @@ import { SessionGuard } from "./session.guard.js";
 import { SESSION_COOKIE, SessionService } from "./session.service.js";
 import type { AuthenticatedRequest } from "./auth.types.js";
 
-const emailRequestSchema = z.object({ email: z.string().email().max(320) });
+const emailRequestSchema = z.object({
+  email: z.string().email().max(320),
+  mode: z.enum(["login", "register"]).optional(),
+});
 const emailVerifySchema = z.object({
   challengeId: z.string().uuid(),
   code: z.string().regex(/^\d{6}$/),
@@ -60,7 +63,7 @@ export class AuthController {
   @Throttle({ default: { limit: 5, ttl: 60_000 } })
   requestOtp(@Body() body: unknown, @Req() request: Request) {
     const input = parseBody(emailRequestSchema, body);
-    return this.auth.requestEmailOtp(input.email, request.ip);
+    return this.auth.requestEmailOtp(input.email, request.ip, input.mode);
   }
 
   @Post("email/verify-otp")

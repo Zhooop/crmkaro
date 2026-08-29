@@ -1,9 +1,11 @@
 import {
   BadRequestException,
+  ConflictException,
   Inject,
   Injectable,
   HttpException,
   HttpStatus,
+  NotFoundException,
   ServiceUnavailableException,
   UnauthorizedException,
 } from "@nestjs/common";
@@ -35,8 +37,27 @@ export class AuthService {
       .digest("hex");
   }
 
-  async requestEmailOtp(rawEmail: string, requestIp?: string) {
+  async requestEmailOtp(rawEmail: string, requestIp?: string, mode?: "login" | "register") {
     const email = rawEmail.trim().toLowerCase();
+
+    if (mode === "login") {
+      const existingUser = await this.database.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      if (!existingUser) {
+        throw new NotFoundException("No account found with this email. Please register / create an account first.");
+      }
+    } else if (mode === "register") {
+      const existingUser = await this.database.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      if (existingUser) {
+        throw new ConflictException("An account already exists with this email. Please sign in / log in instead.");
+      }
+    }
+
     const recentRequests = await this.database.emailOtpChallenge.count({
       where: { email, createdAt: { gte: new Date(Date.now() - OTP_WINDOW_MS) } },
     });
