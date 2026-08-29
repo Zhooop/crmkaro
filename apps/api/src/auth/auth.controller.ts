@@ -98,11 +98,38 @@ export class AuthController {
   @Post("logout")
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const cookies = (request as Request & { cookies?: Record<string, string> }).cookies;
-    await this.sessions.revoke(cookies?.[SESSION_COOKIE]);
+    const token = cookies?.[SESSION_COOKIE];
+    if (token) {
+      await this.sessions.revoke(token);
+    }
+    const isProd = process.env.NODE_ENV === "production";
+    // Clear cookie across all possible domain variants
+    if (isProd) {
+      response.clearCookie(SESSION_COOKIE, {
+        path: "/",
+        domain: ".crmkaro.com",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      });
+      response.clearCookie(SESSION_COOKIE, {
+        path: "/",
+        domain: "crmkaro.com",
+        httpOnly: true,
+        secure: true,
+        sameSite: "lax",
+      });
+    }
     response.clearCookie(SESSION_COOKIE, {
       path: "/",
-      domain: process.env.NODE_ENV === "production" ? ".crmkaro.com" : undefined,
+      httpOnly: true,
+      secure: isProd,
+      sameSite: "lax",
     });
+    response.setHeader(
+      "Set-Cookie",
+      `${SESSION_COOKIE}=; Path=/; ${isProd ? "Domain=.crmkaro.com; " : ""}Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Lax`,
+    );
     return { success: true };
   }
 }

@@ -462,6 +462,7 @@ export default function PayrollPage() {
       nav={nav}
       userName={userName}
       userRole={userRole}
+      apiUrl={api}
     >
       <div className="page-heading">
         <div>

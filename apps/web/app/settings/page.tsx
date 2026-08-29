@@ -215,6 +215,7 @@ export default function SettingsPage() {
       nav={nav}
       userName={userName}
       userRole={userRole}
+      apiUrl={api}
     >
       <div className="page-heading">
         <div>

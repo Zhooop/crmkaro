@@ -428,6 +428,7 @@ export default function HomePage() {
       userEmail={data.user.email}
       userRole={data.role?.name ?? "Member"}
       notifications={data.notifications}
+      apiUrl={api}
       onSwitchOrganisation={handleSwitchOrg}
     >
       <div className="page-heading">

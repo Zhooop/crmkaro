@@ -44,10 +44,28 @@ export class SessionService {
       throw new UnauthorizedException("Session is invalid or expired.");
     }
 
+    let activeOrgId = session.activeOrganisationId;
+    if (!activeOrgId) {
+      const firstMembership = await this.database.organisationMembership.findFirst({
+        where: { userId: session.userId, status: "ACTIVE" },
+        orderBy: { createdAt: "asc" },
+        select: { organisationId: true },
+      });
+      if (firstMembership) {
+        activeOrgId = firstMembership.organisationId;
+        await this.database.authSession
+          .update({
+            where: { id: session.id },
+            data: { activeOrganisationId: activeOrgId },
+          })
+          .catch(() => {});
+      }
+    }
+
     return {
       sessionId: session.id,
       userId: session.userId,
-      activeOrganisationId: session.activeOrganisationId,
+      activeOrganisationId: activeOrgId,
       email: session.user.email,
       name: session.user.name,
     };

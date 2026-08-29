@@ -417,6 +417,15 @@ export function AppShell({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
 
+  const resolvedApiUrl =
+    apiUrl && apiUrl !== "http://localhost:4000/api/v1"
+      ? apiUrl
+      : typeof window !== "undefined" &&
+          (window.location.hostname === "crmkaro.com" ||
+            window.location.hostname.endsWith(".crmkaro.com"))
+        ? "https://api.crmkaro.com/api/v1"
+        : "http://localhost:4000/api/v1";
+
   // Debounced search query
   useEffect(() => {
     if (!searchOpen || !searchQuery.trim()) {
@@ -427,7 +436,7 @@ export function AppShell({
       setSearchLoading(true);
       try {
         const res = await fetch(
-          `${apiUrl}/search?q=${encodeURIComponent(searchQuery)}`,
+          `${resolvedApiUrl}/search?q=${encodeURIComponent(searchQuery)}`,
           { credentials: "include" },
         );
         if (res.ok) {
@@ -442,7 +451,7 @@ export function AppShell({
     }, 250);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchOpen, apiUrl]);
+  }, [searchQuery, searchOpen, resolvedApiUrl]);
 
   async function handleLogoutClick() {
     if (onLogout) {
@@ -450,13 +459,20 @@ export function AppShell({
       return;
     }
     try {
-      await fetch(`${apiUrl}/auth/logout`, {
+      await fetch(`${resolvedApiUrl}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
-      window.location.href = "/login";
-    } catch {
-      window.location.href = "/login";
+    } catch (e) {
+      console.error("Logout error:", e);
+    } finally {
+      if (typeof window !== "undefined") {
+        try {
+          sessionStorage.clear();
+          localStorage.clear();
+        } catch {}
+        window.location.href = "/login";
+      }
     }
   }
 
