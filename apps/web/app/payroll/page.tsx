@@ -14,6 +14,7 @@ import {
 } from "@crmkaro/ui";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
@@ -98,11 +99,7 @@ const MONTH_NAMES = [
 
 export default function PayrollPage() {
   const router = useRouter();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [activeTab, setActiveTab] = useState<"employees" | "runs">("employees");
@@ -174,12 +171,12 @@ export default function PayrollPage() {
   // Load session context
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -204,7 +201,7 @@ export default function PayrollPage() {
   // Load people for employee selection
   const loadPeople = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/people?limit=100`, { credentials: "include" });
+      const res = await authFetch(`${api}/people?limit=100`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setPeople(data.items || []);
@@ -219,7 +216,7 @@ export default function PayrollPage() {
     setLoading(true);
     setError("");
     try {
-      const res = await fetch(`${api}/payroll/employees`, { credentials: "include" });
+      const res = await authFetch(`${api}/payroll/employees`, { credentials: "include" });
       if (res.status === 401) {
         router.replace("/login");
         return;
@@ -237,7 +234,7 @@ export default function PayrollPage() {
   // Load Payroll Runs
   const loadRuns = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/payroll/runs`, { credentials: "include" });
+      const res = await authFetch(`${api}/payroll/runs`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setRuns(data || []);
@@ -314,7 +311,7 @@ export default function PayrollPage() {
         const lastName = nameParts.slice(1).join(" ") || undefined;
 
         // 1. Create Person in Directory as EMPLOYEE
-        const personRes = await fetch(`${api}/people`, {
+        const personRes = await authFetch(`${api}/people`, {
           method: "POST",
           credentials: "include",
           headers: { "content-type": "application/json" },
@@ -342,7 +339,7 @@ export default function PayrollPage() {
       }
 
       // 2. Create Employee in Payroll
-      const empRes = await fetch(`${api}/payroll/employees`, {
+      const empRes = await authFetch(`${api}/payroll/employees`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -372,7 +369,7 @@ export default function PayrollPage() {
       const aPay = parseFloat(formStaffAllowances) || 0;
       const dPay = parseFloat(formStaffDeductions) || 0;
 
-      await fetch(`${api}/payroll/employees/${empData.id}/salary-structures`, {
+      await authFetch(`${api}/payroll/employees/${empData.id}/salary-structures`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -408,7 +405,7 @@ export default function PayrollPage() {
       const aPay = parseFloat(allowances) || 0;
       const dPay = parseFloat(deductions) || 0;
 
-      const res = await fetch(`${api}/payroll/employees/${selectedEmployee.id}/salary-structures`, {
+      const res = await authFetch(`${api}/payroll/employees/${selectedEmployee.id}/salary-structures`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -438,7 +435,7 @@ export default function PayrollPage() {
     setExitBusy(true);
     setExitError("");
     try {
-      const res = await fetch(`${api}/payroll/employees/${selectedEmployee.id}/exit`, {
+      const res = await authFetch(`${api}/payroll/employees/${selectedEmployee.id}/exit`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },

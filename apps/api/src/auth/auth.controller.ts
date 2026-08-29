@@ -32,7 +32,7 @@ function setSessionCookie(response: Response, token: string, production: boolean
   response.cookie(SESSION_COOKIE, token, {
     httpOnly: true,
     secure: production,
-    sameSite: "lax",
+    sameSite: production ? "none" : "lax",
     domain: production ? ".crmkaro.com" : undefined,
     maxAge: 30 * 24 * 60 * 60 * 1000,
     path: "/",
@@ -56,7 +56,7 @@ export class AuthController {
     const input = parseBody(adminLoginSchema, body);
     const result = await this.auth.adminLogin(input.email, input.password, clientMetadata(request));
     setSessionCookie(response, result.session.token, process.env.NODE_ENV === "production");
-    return { success: true, user: result.user };
+    return { success: true, user: result.user, token: result.session.token };
   }
 
   @Post("email/request-otp")
@@ -72,7 +72,7 @@ export class AuthController {
     const input = parseBody(emailVerifySchema, body);
     const result = await this.auth.verifyEmailOtp(input.challengeId, input.code, clientMetadata(request));
     setSessionCookie(response, result.token, process.env.NODE_ENV === "production");
-    return { userId: result.session.userId };
+    return { userId: result.session.userId, token: result.token };
   }
 
   @Get("google/start")
@@ -101,37 +101,38 @@ export class AuthController {
   @Post("logout")
   async logout(@Req() request: Request, @Res({ passthrough: true }) response: Response) {
     const cookies = (request as Request & { cookies?: Record<string, string> }).cookies;
-    const token = cookies?.[SESSION_COOKIE];
+    const authHeader = request.headers?.authorization;
+    const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
+    const token = cookies?.[SESSION_COOKIE] || bearerToken;
     if (token) {
       await this.sessions.revoke(token);
     }
     const isProd = process.env.NODE_ENV === "production";
-    // Clear cookie across all possible domain variants
     if (isProd) {
       response.clearCookie(SESSION_COOKIE, {
         path: "/",
         domain: ".crmkaro.com",
         httpOnly: true,
         secure: true,
-        sameSite: "lax",
+        sameSite: "none",
       });
       response.clearCookie(SESSION_COOKIE, {
         path: "/",
         domain: "crmkaro.com",
         httpOnly: true,
         secure: true,
-        sameSite: "lax",
+        sameSite: "none",
       });
     }
     response.clearCookie(SESSION_COOKIE, {
       path: "/",
       httpOnly: true,
       secure: isProd,
-      sameSite: "lax",
+      sameSite: isProd ? "none" : "lax",
     });
     response.setHeader(
       "Set-Cookie",
-      `${SESSION_COOKIE}=; Path=/; ${isProd ? "Domain=.crmkaro.com; " : ""}Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; ${isProd ? "Secure; " : ""}SameSite=Lax`,
+      `${SESSION_COOKIE}=; Path=/; ${isProd ? "Domain=.crmkaro.com; " : ""}Expires=Thu, 01 Jan 1970 00:00:00 GMT; HttpOnly; ${isProd ? "Secure; SameSite=None" : "SameSite=Lax"}`,
     );
     return { success: true };
   }

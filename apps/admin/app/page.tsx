@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Platform Overview", icon: "home", href: "#overview" },
@@ -135,11 +136,7 @@ const BUSINESS_TYPE_OPTIONS = [
 
 export default function AdminHomePage() {
   const router = useRouter();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Navigation tab state
   const [activeTab, setActiveTab] = useState<"overview" | "organisations" | "services" | "audit" | "health">("overview");
@@ -193,7 +190,7 @@ export default function AdminHomePage() {
     setError("");
     try {
       // 1. Overview data
-      const res = await fetch(`${api}/platform/overview`, { credentials: "include" });
+      const res = await authFetch(`${api}/platform/overview`, { credentials: "include" });
       if (res.status === 401 || res.status === 403) {
         router.replace("/login");
         return;
@@ -203,21 +200,21 @@ export default function AdminHomePage() {
       setData(overviewData);
 
       // 2. All organisations
-      const orgsRes = await fetch(`${api}/platform/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/platform/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgsData = await orgsRes.json();
         setOrganisations(orgsData.organisations || []);
       }
 
       // 3. Full Audit logs
-      const auditRes = await fetch(`${api}/platform/audit?limit=100`, { credentials: "include" });
+      const auditRes = await authFetch(`${api}/platform/audit?limit=100`, { credentials: "include" });
       if (auditRes.ok) {
         const auditData = await auditRes.json();
         setAuditLogs(auditData.logs || []);
       }
 
       // 4. System Health
-      const healthRes = await fetch(`${api}/platform/health`, { credentials: "include" });
+      const healthRes = await authFetch(`${api}/platform/health`, { credentials: "include" });
       if (healthRes.ok) {
         const healthData = await healthRes.json();
         setHealth(healthData);
@@ -231,7 +228,7 @@ export default function AdminHomePage() {
 
   async function handleAdminLogout() {
     try {
-      await fetch(`${api}/auth/logout`, {
+      await authFetch(`${api}/auth/logout`, {
         method: "POST",
         credentials: "include",
       });
@@ -256,7 +253,7 @@ export default function AdminHomePage() {
     const nextStatus = org.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
     setSavingOrg(true);
     try {
-      const res = await fetch(`${api}/platform/organisations/${org.id}/status`, {
+      const res = await authFetch(`${api}/platform/organisations/${org.id}/status`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -281,7 +278,7 @@ export default function AdminHomePage() {
   async function handleSaveServices(org: OrganisationDetail) {
     setSavingOrg(true);
     try {
-      const res = await fetch(`${api}/platform/organisations/${org.id}/services`, {
+      const res = await authFetch(`${api}/platform/organisations/${org.id}/services`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -325,7 +322,7 @@ export default function AdminHomePage() {
 
     setSavingOrg(true);
     try {
-      const res = await fetch(`${api}/platform/organisations`, {
+      const res = await authFetch(`${api}/platform/organisations`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },

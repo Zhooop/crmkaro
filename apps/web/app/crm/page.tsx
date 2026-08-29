@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
@@ -96,11 +97,7 @@ function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
 function CrmContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
@@ -193,12 +190,12 @@ function CrmContent() {
   // Load session context
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -223,7 +220,7 @@ function CrmContent() {
   // Load Pipelines
   const loadPipelines = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/crm/pipelines`, { credentials: "include" });
+      const res = await authFetch(`${api}/crm/pipelines`, { credentials: "include" });
       if (res.ok) {
         const data: Pipeline[] = await res.json();
         setPipelines(data);
@@ -245,7 +242,7 @@ function CrmContent() {
   // Load Metrics
   const loadMetrics = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/crm/metrics`, { credentials: "include" });
+      const res = await authFetch(`${api}/crm/metrics`, { credentials: "include" });
       if (res.ok) {
         setMetrics(await res.json());
       }
@@ -265,7 +262,7 @@ function CrmContent() {
       if (statusFilter !== "ALL") params.set("status", statusFilter);
       if (search) params.set("search", search);
 
-      const res = await fetch(`${api}/crm/leads?${params.toString()}`, { credentials: "include" });
+      const res = await authFetch(`${api}/crm/leads?${params.toString()}`, { credentials: "include" });
       if (res.status === 401) {
         router.replace("/login");
         return;
@@ -302,7 +299,7 @@ function CrmContent() {
       setCreateOpen(true);
     }
     if (leadId) {
-      fetch(`${api}/crm/leads/${leadId}`, { credentials: "include" })
+      authFetch(`${api}/crm/leads/${leadId}`, { credentials: "include" })
         .then((res) => (res.ok ? res.json() : null))
         .then((l) => {
           if (l) setDetailLead(l);
@@ -330,7 +327,7 @@ function CrmContent() {
     setFormError("");
     try {
       const valNum = parseFloat(formValue);
-      const res = await fetch(`${api}/crm/leads`, {
+      const res = await authFetch(`${api}/crm/leads`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -359,7 +356,7 @@ function CrmContent() {
 
   async function handleStageChange(leadId: string, newStageId: string) {
     try {
-      const res = await fetch(`${api}/crm/leads/${leadId}`, {
+      const res = await authFetch(`${api}/crm/leads/${leadId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -378,7 +375,7 @@ function CrmContent() {
 
   async function handleStatusChange(leadId: string, newStatus: "OPEN" | "CONVERTED" | "LOST", reason?: string) {
     try {
-      const res = await fetch(`${api}/crm/leads/${leadId}`, {
+      const res = await authFetch(`${api}/crm/leads/${leadId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -400,7 +397,7 @@ function CrmContent() {
     if (!detailLead || !newNote.trim()) return;
     setNoteBusy(true);
     try {
-      const res = await fetch(`${api}/crm/leads/${detailLead.id}/notes`, {
+      const res = await authFetch(`${api}/crm/leads/${detailLead.id}/notes`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -409,7 +406,7 @@ function CrmContent() {
       if (res.ok) {
         setNewNote("");
         // refresh lead
-        const leadRes = await fetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
+        const leadRes = await authFetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
         if (leadRes.ok) setDetailLead(await leadRes.json());
       }
     } catch {
@@ -424,7 +421,7 @@ function CrmContent() {
     if (!detailLead || !followUpDue) return;
     setFollowUpBusy(true);
     try {
-      const res = await fetch(`${api}/crm/leads/${detailLead.id}/follow-ups`, {
+      const res = await authFetch(`${api}/crm/leads/${detailLead.id}/follow-ups`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -436,7 +433,7 @@ function CrmContent() {
       if (res.ok) {
         setFollowUpDue("");
         setFollowUpOutcome("");
-        const leadRes = await fetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
+        const leadRes = await authFetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
         if (leadRes.ok) setDetailLead(await leadRes.json());
         loadMetrics();
       }
@@ -449,14 +446,14 @@ function CrmContent() {
 
   async function handleCompleteFollowUp(followUpId: string) {
     try {
-      const res = await fetch(`${api}/crm/follow-ups/${followUpId}`, {
+      const res = await authFetch(`${api}/crm/follow-ups/${followUpId}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ status: "COMPLETED" }),
       });
       if (res.ok && detailLead) {
-        const leadRes = await fetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
+        const leadRes = await authFetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
         if (leadRes.ok) setDetailLead(await leadRes.json());
         loadMetrics();
       }
@@ -468,7 +465,7 @@ function CrmContent() {
   async function handleConvertLead() {
     if (!detailLead) return;
     try {
-      const res = await fetch(`${api}/crm/leads/${detailLead.id}/convert`, {
+      const res = await authFetch(`${api}/crm/leads/${detailLead.id}/convert`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -476,7 +473,7 @@ function CrmContent() {
       });
       if (res.ok) {
         setConvertModalOpen(false);
-        const leadRes = await fetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
+        const leadRes = await authFetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
         if (leadRes.ok) setDetailLead(await leadRes.json());
         loadLeads();
         loadMetrics();
@@ -1238,7 +1235,7 @@ function CrmContent() {
             if (!importCsvText.trim()) return;
             setImportBusy(true);
             try {
-              const res = await fetch(`${api}/crm/leads/import`, {
+              const res = await authFetch(`${api}/crm/leads/import`, {
                 method: "POST",
                 credentials: "include",
                 headers: { "content-type": "application/json" },

@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 import { State, City } from "country-state-city";
 
@@ -59,20 +60,17 @@ type Person = {
   activities?: Array<{
     id: string;
     action: string;
-    summary: string;
-    createdAt: string;
+    summary?: string;
+    actorName?: string;
     actor?: { name: string | null; email: string };
+    createdAt: string;
   }>;
 };
 
 function PeopleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [people, setPeople] = useState<Person[]>([]);
@@ -165,12 +163,12 @@ function PeopleContent() {
   // Load user session & current active org info
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -206,7 +204,7 @@ function PeopleContent() {
       }
       if (selectedTag) params.set("tagId", selectedTag);
 
-      const res = await fetch(`${api}/people?${params.toString()}`, { credentials: "include" });
+      const res = await authFetch(`${api}/people?${params.toString()}`, { credentials: "include" });
       if (res.status === 401) {
         router.replace("/login");
         return;
@@ -224,7 +222,7 @@ function PeopleContent() {
   // Load tags
   const loadTags = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/people/tags`, { credentials: "include" });
+      const res = await authFetch(`${api}/people/tags`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setTags(data || []);
@@ -249,7 +247,7 @@ function PeopleContent() {
     const personId = searchParams.get("id");
     if (action === "new") setCreateOpen(true);
     if (personId) {
-      fetch(`${api}/people/${personId}`, { credentials: "include" })
+      authFetch(`${api}/people/${personId}`, { credentials: "include" })
         .then((res) => (res.ok ? res.json() : null))
         .then((p) => {
           if (p) setDetailPerson(p);
@@ -265,7 +263,7 @@ function PeopleContent() {
       return;
     }
     setInvoicesLoading(true);
-    fetch(`${api}/finance/invoices?personId=${detailPerson.id}&limit=20`, { credentials: "include" })
+    authFetch(`${api}/finance/invoices?personId=${detailPerson.id}&limit=20`, { credentials: "include" })
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
         if (data && data.items) {
@@ -290,7 +288,7 @@ function PeopleContent() {
     }
     const timer = setTimeout(async () => {
       try {
-        const res = await fetch(`${api}/people/duplicates`, {
+        const res = await authFetch(`${api}/people/duplicates`, {
           method: "POST",
           credentials: "include",
           headers: { "content-type": "application/json" },
@@ -330,7 +328,7 @@ function PeopleContent() {
     try {
       const finalState = formState === "Other" ? "" : formState.trim();
       const finalCity = formCity === "Other" ? "" : formCity.trim();
-      const res = await fetch(`${api}/people`, {
+      const res = await authFetch(`${api}/people`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -367,7 +365,7 @@ function PeopleContent() {
     try {
       const finalState = formState === "Other" ? "" : formState.trim();
       const finalCity = formCity === "Other" ? "" : formCity.trim();
-      const res = await fetch(`${api}/people/${detailPerson.id}`, {
+      const res = await authFetch(`${api}/people/${detailPerson.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -399,7 +397,7 @@ function PeopleContent() {
   async function handleArchive(personId: string) {
     if (!confirm("Are you sure you want to archive this person?")) return;
     try {
-      const res = await fetch(`${api}/people/${personId}/archive`, {
+      const res = await authFetch(`${api}/people/${personId}/archive`, {
         method: "POST",
         credentials: "include",
       });
@@ -417,7 +415,7 @@ function PeopleContent() {
     if (!newTagName.trim()) return;
     setTagBusy(true);
     try {
-      const res = await fetch(`${api}/people/tags`, {
+      const res = await authFetch(`${api}/people/tags`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -439,7 +437,7 @@ function PeopleContent() {
     if (!importCsvText.trim()) return;
     setImportBusy(true);
     try {
-      const res = await fetch(`${api}/people/import`, {
+      const res = await authFetch(`${api}/people/import`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -991,9 +989,9 @@ function PeopleContent() {
                         fontSize: 12,
                       }}
                     >
-                      <strong>{act.summary}</strong>
+                      <strong>{act.summary || act.action}</strong>
                       <div style={{ color: "var(--muted)", fontSize: 11, marginTop: 2 }}>
-                        {new Date(act.createdAt).toLocaleString()} · {act.actor?.name || "System"}
+                        {new Date(act.createdAt).toLocaleString()} · {act.actor?.name || act.actorName || "System"}
                       </div>
                     </li>
                   ))}

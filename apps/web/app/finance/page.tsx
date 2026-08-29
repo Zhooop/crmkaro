@@ -14,6 +14,7 @@ import {
 } from "@crmkaro/ui";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
@@ -120,11 +121,7 @@ function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
 function FinanceContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [activeTab, setActiveTab] = useState<"invoices" | "payments" | "expenses">("invoices");
@@ -226,12 +223,12 @@ function FinanceContent() {
   // Load session context
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -256,7 +253,7 @@ function FinanceContent() {
   // Load people for dropdown
   const loadPeople = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/people?limit=100`, { credentials: "include" });
+      const res = await authFetch(`${api}/people?limit=100`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setPeople(data.items || []);
@@ -269,7 +266,7 @@ function FinanceContent() {
   // Load Expenses
   const loadExpenses = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/finance/expenses`, { credentials: "include" });
+      const res = await authFetch(`${api}/finance/expenses`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setExpenses(data || []);
@@ -286,7 +283,7 @@ function FinanceContent() {
     try {
       const params = new URLSearchParams();
       if (invoiceStatusFilter !== "ALL") params.set("status", invoiceStatusFilter);
-      const res = await fetch(`${api}/finance/invoices?${params.toString()}`, { credentials: "include" });
+      const res = await authFetch(`${api}/finance/invoices?${params.toString()}`, { credentials: "include" });
       if (res.status === 401) {
         router.replace("/login");
         return;
@@ -332,7 +329,7 @@ function FinanceContent() {
       setCreateExpenseOpen(true);
     }
     if (invoiceId) {
-      fetch(`${api}/finance/invoices/${invoiceId}`, { credentials: "include" })
+      authFetch(`${api}/finance/invoices/${invoiceId}`, { credentials: "include" })
         .then((res) => (res.ok ? res.json() : null))
         .then((inv) => {
           if (inv) setDetailInvoice(inv);
@@ -416,7 +413,7 @@ function FinanceContent() {
         ? new Date(formDueDate).toISOString()
         : new Date(now.getTime() + 15 * 86400000).toISOString();
 
-      const res = await fetch(`${api}/finance/invoices`, {
+      const res = await authFetch(`${api}/finance/invoices`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -453,7 +450,7 @@ function FinanceContent() {
 
   async function handleIssueInvoice(invoiceId: string) {
     try {
-      const res = await fetch(`${api}/finance/invoices/${invoiceId}/issue`, {
+      const res = await authFetch(`${api}/finance/invoices/${invoiceId}/issue`, {
         method: "POST",
         credentials: "include",
       });
@@ -470,7 +467,7 @@ function FinanceContent() {
   async function handleVoidInvoice(invoiceId: string) {
     if (!confirm("Are you sure you want to void this invoice?")) return;
     try {
-      const res = await fetch(`${api}/finance/invoices/${invoiceId}/void`, {
+      const res = await authFetch(`${api}/finance/invoices/${invoiceId}/void`, {
         method: "POST",
         credentials: "include",
       });
@@ -495,7 +492,7 @@ function FinanceContent() {
     setPaymentBusy(true);
     setPaymentError("");
     try {
-      const res = await fetch(`${api}/finance/invoices/${detailInvoice.id}/payments`, {
+      const res = await authFetch(`${api}/finance/invoices/${detailInvoice.id}/payments`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -521,7 +518,7 @@ function FinanceContent() {
       setPaymentAmount("");
       setPaymentRef("");
       setPaymentNotes("");
-      const invRes = await fetch(`${api}/finance/invoices/${detailInvoice.id}`, { credentials: "include" });
+      const invRes = await authFetch(`${api}/finance/invoices/${detailInvoice.id}`, { credentials: "include" });
       if (invRes.ok) setDetailInvoice(await invRes.json());
       loadInvoices();
       showToast(`Payment of ₹${amt.toLocaleString("en-IN")} recorded successfully!`, "success");
@@ -543,7 +540,7 @@ function FinanceContent() {
     setRefundBusy(true);
     setRefundError("");
     try {
-      const res = await fetch(`${api}/finance/payments/${selectedPaymentForRefund.id}/refund`, {
+      const res = await authFetch(`${api}/finance/payments/${selectedPaymentForRefund.id}/refund`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -589,7 +586,7 @@ function FinanceContent() {
       const now = expDate ? new Date(expDate) : new Date();
       const expenseDate = isNaN(now.getTime()) ? new Date().toISOString() : now.toISOString();
 
-      const res = await fetch(`${api}/finance/expenses`, {
+      const res = await authFetch(`${api}/finance/expenses`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },

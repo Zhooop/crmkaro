@@ -1251,6 +1251,11 @@ export function AuthPanel({
         setChallengeId(body.challengeId);
         setMessage("A six-digit verification code was sent to your email.");
       } else {
+        if ((body as { token?: string }).token && typeof window !== "undefined") {
+          try {
+            localStorage.setItem("crmkaro_token", (body as { token?: string }).token!);
+          } catch {}
+        }
         onAuthenticated?.();
       }
     } catch (error) {

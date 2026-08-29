@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
@@ -59,11 +60,7 @@ type AuditItem = {
 
 export default function SettingsPage() {
   const router = useRouter();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [activeTab, setActiveTab] = useState<"profile" | "team" | "services" | "audit">("profile");
@@ -92,12 +89,12 @@ export default function SettingsPage() {
   // Load session context
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -123,7 +120,7 @@ export default function SettingsPage() {
   // Load team & roles
   const loadTeam = useCallback(async () => {
     try {
-      const rolesRes = await fetch(`${api}/access/roles`, { credentials: "include" });
+      const rolesRes = await authFetch(`${api}/access/roles`, { credentials: "include" });
       if (rolesRes.ok) {
         const data = await rolesRes.json();
         setRoles(data || []);
@@ -136,7 +133,7 @@ export default function SettingsPage() {
   // Load Services
   const loadServices = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/access/services`, { credentials: "include" });
+      const res = await authFetch(`${api}/access/services`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setServices(data || []);
@@ -149,7 +146,7 @@ export default function SettingsPage() {
   // Load Audit
   const loadAudit = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/access/audit?limit=50`, { credentials: "include" });
+      const res = await authFetch(`${api}/access/audit?limit=50`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setAuditLogs(data.items || []);
@@ -170,7 +167,7 @@ export default function SettingsPage() {
   async function handleToggleService(serviceCode: string, currentlyEnabled: boolean) {
     try {
       const action = currentlyEnabled ? "disable" : "enable";
-      const res = await fetch(`${api}/access/services/${serviceCode}/${action}`, {
+      const res = await authFetch(`${api}/access/services/${serviceCode}/${action}`, {
         method: "POST",
         credentials: "include",
       });

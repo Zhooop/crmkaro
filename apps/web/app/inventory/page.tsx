@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
@@ -69,11 +70,7 @@ function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
 function InventoryContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   // Data states
   const [activeTab, setActiveTab] = useState<"catalog" | "movements">("catalog");
@@ -149,12 +146,12 @@ function InventoryContent() {
   // Load session context
   const loadContext = useCallback(async () => {
     try {
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" });
+      const meRes = await authFetch(`${api}/auth/me`, { credentials: "include" });
       if (meRes.status === 401) {
         router.replace("/login");
         return;
       }
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeOrgEntry = orgList.find(
@@ -179,7 +176,7 @@ function InventoryContent() {
   // Load Categories
   const loadCategories = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/inventory/categories`, { credentials: "include" });
+      const res = await authFetch(`${api}/inventory/categories`, { credentials: "include" });
       if (res.ok) {
         setCategories(await res.json());
       }
@@ -197,7 +194,7 @@ function InventoryContent() {
       if (search) params.set("search", search);
       if (lowStockOnly) params.set("lowStock", "true");
 
-      const res = await fetch(`${api}/inventory/products?${params.toString()}`, { credentials: "include" });
+      const res = await authFetch(`${api}/inventory/products?${params.toString()}`, { credentials: "include" });
       if (res.status === 401) {
         router.replace("/login");
         return;
@@ -215,7 +212,7 @@ function InventoryContent() {
   // Load Movements
   const loadMovements = useCallback(async () => {
     try {
-      const res = await fetch(`${api}/inventory/movements`, { credentials: "include" });
+      const res = await authFetch(`${api}/inventory/movements`, { credentials: "include" });
       if (res.ok) {
         setMovements(await res.json());
       }
@@ -266,7 +263,7 @@ function InventoryContent() {
       const reorderNum = parseInt(formReorder, 10);
       const openStockNum = parseInt(formOpeningStock, 10);
 
-      const res = await fetch(`${api}/inventory/products`, {
+      const res = await authFetch(`${api}/inventory/products`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -312,7 +309,7 @@ function InventoryContent() {
     setCatBusy(true);
     setCatError("");
     try {
-      const res = await fetch(`${api}/inventory/categories`, {
+      const res = await authFetch(`${api}/inventory/categories`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -338,7 +335,7 @@ function InventoryContent() {
     setAdjustError("");
     try {
       const qtyNum = parseInt(adjustQty, 10);
-      const res = await fetch(`${api}/inventory/products/${selectedProduct.id}/movements`, {
+      const res = await authFetch(`${api}/inventory/products/${selectedProduct.id}/movements`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },

@@ -13,6 +13,7 @@ import {
 } from "@crmkaro/ui";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { authFetch, getApiUrl } from "@/lib/api";
 
 type Dashboard = {
   organisation: { name: string; currency: string; timezone: string };
@@ -142,24 +143,16 @@ export default function HomePage() {
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupError, setSetupError] = useState("");
 
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   const loadDashboard = useCallback(async () => {
-    const response = await fetch(`${api}/dashboard`, {
-      credentials: "include",
-    });
+    const response = await authFetch(`${api}/dashboard`);
     if (response.status === 401) {
       router.replace("/login");
       return;
     }
     if (response.status === 403) {
-      const organisationsResponse = await fetch(`${api}/organisations`, {
-        credentials: "include",
-      });
+      const organisationsResponse = await authFetch(`${api}/organisations`);
       if (organisationsResponse.status === 401) {
         router.replace("/login");
         return;
@@ -175,15 +168,13 @@ export default function HomePage() {
         setNeedsSetup(true);
         return;
       }
-      const activationResponse = await fetch(
+      const activationResponse = await authFetch(
         `${api}/organisations/${firstOrganisation.id}/activate`,
-        { method: "POST", credentials: "include" },
+        { method: "POST" },
       );
       if (!activationResponse.ok)
         throw new Error("Your workspace could not be activated.");
-      const activatedDashboardResponse = await fetch(`${api}/dashboard`, {
-        credentials: "include",
-      });
+      const activatedDashboardResponse = await authFetch(`${api}/dashboard`);
       if (!activatedDashboardResponse.ok)
         throw new Error("Your dashboard could not be loaded.");
       setData((await activatedDashboardResponse.json()) as Dashboard);
@@ -194,7 +185,7 @@ export default function HomePage() {
 
     // Also fetch organisations list for the switcher
     try {
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" });
+      const orgsRes = await authFetch(`${api}/organisations`);
       if (orgsRes.ok) {
         const orgList = await orgsRes.json();
         setOrganisations(
@@ -214,9 +205,8 @@ export default function HomePage() {
 
   async function handleSwitchOrg(orgId: string) {
     try {
-      const res = await fetch(`${api}/organisations/${orgId}/activate`, {
+      const res = await authFetch(`${api}/organisations/${orgId}/activate`, {
         method: "POST",
-        credentials: "include",
       });
       if (res.ok) {
         window.location.reload();
@@ -241,9 +231,8 @@ export default function HomePage() {
     setSetupBusy(true);
     setSetupError("");
     try {
-      const response = await fetch(`${api}/organisations`, {
+      const response = await authFetch(`${api}/organisations`, {
         method: "POST",
-        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           name: organisationName.trim(),

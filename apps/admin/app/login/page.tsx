@@ -44,6 +44,12 @@ export default function AdminLoginPage() {
         throw new Error(data.message || "Invalid administrator credentials. Access denied.");
       }
 
+      if (data.token && typeof window !== "undefined") {
+        try {
+          localStorage.setItem("crmkaro_admin_token", data.token);
+        } catch {}
+      }
+
       router.replace("/");
     } catch (err) {
       setError((err as Error).message);
