@@ -45,7 +45,11 @@ export const invoiceSchema = z
     };
   })
   .refine(
-    (value) => value.dueDate >= value.issueDate,
+    (value) => {
+      const issueDay = new Date(value.issueDate).setHours(0, 0, 0, 0);
+      const dueDay = new Date(value.dueDate).setHours(0, 0, 0, 0);
+      return dueDay >= issueDay;
+    },
     "Due date cannot be before issue date.",
   );
 export const paymentSchema = z.object({

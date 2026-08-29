@@ -134,12 +134,20 @@ export default function PayrollPage() {
   const [detailRun, setDetailRun] = useState<PayrollRun | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
 
-  // Form states - Add Employee
+  // Form states - Add Employee (Unified Single-Step)
+  const [empMode, setEmpMode] = useState<"new" | "existing">("new");
+  const [formStaffName, setFormStaffName] = useState("");
+  const [formStaffEmail, setFormStaffEmail] = useState("");
+  const [formStaffPhone, setFormStaffPhone] = useState("");
   const [formPersonId, setFormPersonId] = useState("");
   const [formCode, setFormCode] = useState("");
-  const [formDept, setFormDept] = useState("Operations");
-  const [formDesig, setFormDesig] = useState("Associate");
+  const [formDept, setFormDept] = useState("Teaching / Faculty");
+  const [formDesig, setFormDesig] = useState("Teacher / Faculty");
   const [formJoiningDate, setFormJoiningDate] = useState(new Date().toISOString().slice(0, 10));
+  const [formStaffBasicPay, setFormStaffBasicPay] = useState("25000");
+  const [formStaffHra, setFormStaffHra] = useState("0");
+  const [formStaffAllowances, setFormStaffAllowances] = useState("0");
+  const [formStaffDeductions, setFormStaffDeductions] = useState("0");
   const [empBusy, setEmpBusy] = useState(false);
   const [empError, setEmpError] = useState("");
 
@@ -263,60 +271,125 @@ export default function PayrollPage() {
 
   const enrolledPersonIds = new Set(employees.map((e) => e.personId));
   const availablePeople = people.filter((p) => !enrolledPersonIds.has(p.id));
+  // Filter directory dropdown STRICTLY for Staff & Employees
   const employeeContacts = availablePeople.filter((p) =>
     p.types?.some((t) => t.type === "EMPLOYEE" || t.type === "STAFF")
-  );
-  const otherContacts = availablePeople.filter(
-    (p) => !p.types?.some((t) => t.type === "EMPLOYEE" || t.type === "STAFF")
   );
 
   function openAddEmployeeModal() {
     const nextNum = employees.length + 1;
     const seqCode = `EMP-${String(nextNum).padStart(2, "0")}`;
     setFormCode(seqCode);
+    setEmpMode("new");
+    setFormStaffName("");
+    setFormStaffEmail("");
+    setFormStaffPhone("");
     setFormPersonId("");
-    setFormDept("Operations");
-    setFormDesig("Associate");
+    setFormDept("Teaching / Faculty");
+    setFormDesig("Teacher / Faculty");
     setFormJoiningDate(new Date().toISOString().slice(0, 10));
+    setFormStaffBasicPay("25000");
+    setFormStaffHra("0");
+    setFormStaffAllowances("0");
+    setFormStaffDeductions("0");
     setEmpError("");
     setAddEmployeeOpen(true);
   }
 
   async function handleAddEmployee(e: FormEvent) {
     e.preventDefault();
-    if (!formPersonId) {
-      setEmpError("Please select a person from directory.");
-      return;
-    }
     setEmpBusy(true);
     setEmpError("");
     try {
-      const res = await fetch(`${api}/payroll/employees`, {
+      let resolvedPersonId = formPersonId;
+
+      if (empMode === "new") {
+        if (!formStaffName.trim()) {
+          setEmpError("Please enter the staff member's full name.");
+          setEmpBusy(false);
+          return;
+        }
+        const nameParts = formStaffName.trim().split(" ");
+        const firstName = nameParts[0] || formStaffName.trim();
+        const lastName = nameParts.slice(1).join(" ") || undefined;
+
+        // 1. Create Person in Directory as EMPLOYEE
+        const personRes = await fetch(`${api}/people`, {
+          method: "POST",
+          credentials: "include",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            firstName,
+            lastName,
+            displayName: formStaffName.trim(),
+            email: formStaffEmail.trim() || undefined,
+            primaryPhone: formStaffPhone.trim() || undefined,
+            types: ["EMPLOYEE"],
+            notes: `Enrolled via Staff & Payroll on ${new Date().toLocaleDateString()}`,
+          }),
+        });
+        const personData = await personRes.json();
+        if (!personRes.ok) {
+          throw new Error(personData.message || "Failed to create staff profile in directory.");
+        }
+        resolvedPersonId = personData.id;
+      } else {
+        if (!resolvedPersonId) {
+          setEmpError("Please select a staff member from directory.");
+          setEmpBusy(false);
+          return;
+        }
+      }
+
+      // 2. Create Employee in Payroll
+      const empRes = await fetch(`${api}/payroll/employees`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          personId: formPersonId,
+          personId: resolvedPersonId,
           employeeCode: formCode,
           department: formDept || undefined,
           designation: formDesig || undefined,
           joiningDate: new Date(formJoiningDate).toISOString(),
         }),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        let errMsg = data.message || "Failed to create employee.";
-        if (data.fields && typeof data.fields === "object") {
-          const fieldMsgs = Object.entries(data.fields)
+      const empData = await empRes.json();
+      if (!empRes.ok) {
+        let errMsg = empData.message || "Failed to enroll employee.";
+        if (empData.fields && typeof empData.fields === "object") {
+          const fieldMsgs = Object.entries(empData.fields)
             .map(([field, errs]) => `${field}: ${Array.isArray(errs) ? errs.join(", ") : errs}`)
             .join("; ");
           if (fieldMsgs) errMsg = `${errMsg} (${fieldMsgs})`;
         }
         throw new Error(errMsg);
       }
+
+      // 3. Save Salary Structure in the SAME single step
+      const bPay = parseFloat(formStaffBasicPay) || 0;
+      const hPay = parseFloat(formStaffHra) || 0;
+      const aPay = parseFloat(formStaffAllowances) || 0;
+      const dPay = parseFloat(formStaffDeductions) || 0;
+
+      await fetch(`${api}/payroll/employees/${empData.id}/salary-structures`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          basicSalaryMinor: Math.round(bPay * 100),
+          hraMinor: Math.round(hPay * 100),
+          allowancesMinor: Math.round(aPay * 100),
+          deductionsMinor: Math.round(dPay * 100),
+          effectiveFrom: new Date(formJoiningDate).toISOString(),
+        }),
+      });
+
       setAddEmployeeOpen(false);
       loadEmployees();
-      showToast(`Employee ${formCode} enrolled into payroll successfully!`, "success");
+      loadPeople();
+      const netPayout = bPay + hPay + aPay - dPay;
+      showToast(`Staff member ${formStaffName || formCode} enrolled with ₹${netPayout.toLocaleString("en-IN")}/mo salary package!`, "success");
     } catch (err) {
       setEmpError((err as Error).message);
     } finally {
@@ -555,6 +628,7 @@ export default function PayrollPage() {
                   <th>Department</th>
                   <th>Designation</th>
                   <th>Monthly Compensation</th>
+                  <th>Salary Cycle & Due</th>
                   <th>Status</th>
                   <th style={{ textAlign: "right" }}>Actions</th>
                 </tr>
@@ -598,6 +672,17 @@ export default function PayrollPage() {
                         ) : (
                           <span style={{ color: "var(--muted)" }}>No salary set</span>
                         )}
+                      </td>
+                      <td>
+                        <div>
+                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1e3a8a", display: "flex", alignItems: "center", gap: 4 }}>
+                            <Icon name="calendar" size={12} />
+                            Due 1st of month
+                          </span>
+                          <span style={{ fontSize: 10.5, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "1px 5px", borderRadius: 4, display: "inline-block", marginTop: 2 }}>
+                            Rolling: {MONTH_NAMES[new Date().getMonth()]} {new Date().getFullYear()}
+                          </span>
+                        </div>
                       </td>
                       <td>
                         <Badge tone={emp.status === "ACTIVE" ? "green" : "red"}>
@@ -842,13 +927,13 @@ export default function PayrollPage() {
         )}
       </Drawer>
 
-      {/* Add Employee Modal */}
+      {/* Unified Add Staff Member & Configure Salary Modal */}
       <Modal
         isOpen={addEmployeeOpen}
         onClose={() => setAddEmployeeOpen(false)}
-        title="Add Staff Member"
-        subtitle="Enrol team member into active employee payroll"
-        maxWidth={480}
+        title="Add Staff Member & Configure Salary"
+        subtitle="Enrol staff member into payroll & configure monthly compensation in 1 step"
+        maxWidth={540}
       >
         <form onSubmit={handleAddEmployee} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {empError && (
@@ -857,52 +942,109 @@ export default function PayrollPage() {
             </div>
           )}
 
-          <div className="form-group">
-            <label>Person from Directory *</label>
-            <select
-              className="filter-select"
-              value={formPersonId}
-              onChange={(e) => setFormPersonId(e.target.value)}
-              required
+          {/* Mode Switch: Quick Add New vs Select Existing */}
+          <div style={{ display: "flex", background: "#f1f5f9", padding: 3, borderRadius: 8, gap: 4 }}>
+            <button
+              type="button"
+              onClick={() => setEmpMode("new")}
+              style={{
+                flex: 1,
+                padding: "7px 12px",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                background: empMode === "new" ? "#ffffff" : "transparent",
+                color: empMode === "new" ? "var(--brand)" : "#64748b",
+                boxShadow: empMode === "new" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
             >
-              <option value="">-- Select person from directory --</option>
-              {employeeContacts.length > 0 && (
-                <optgroup label="💼 Staff & Employees in Directory (Recommended)">
-                  {employeeContacts.map((p) => {
-                    const typeLabels = p.types?.map((t) => t.type).join(", ");
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {p.displayName} {typeLabels ? `[${typeLabels}]` : ""} {p.email ? `(${p.email})` : ""}
-                      </option>
-                    );
-                  })}
-                </optgroup>
-              )}
-              {otherContacts.length > 0 && (
-                <optgroup label="👥 Other Directory Contacts (Students, Customers, Leads)">
-                  {otherContacts.map((p) => {
-                    const typeLabels = p.types?.map((t) => t.type).join(", ");
-                    return (
-                      <option key={p.id} value={p.id}>
-                        {p.displayName} {typeLabels ? `[${typeLabels}]` : ""} {p.email ? `(${p.email})` : ""}
-                      </option>
-                    );
-                  })}
-                </optgroup>
-              )}
-              {availablePeople.length === 0 && (
-                <option disabled value="">
-                  No eligible contacts available (all directory contacts already enrolled)
-                </option>
-              )}
-            </select>
-            <p style={{ fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
-              💡 <em>To add a new employee profile, you can also create them in <a href="/people" style={{ color: "#2563eb", textDecoration: "underline" }}>People Directory</a> with Person Type: <strong>Employee</strong>.</em>
-            </p>
+              + Quick Add New Staff Member
+            </button>
+            <button
+              type="button"
+              onClick={() => setEmpMode("existing")}
+              style={{
+                flex: 1,
+                padding: "7px 12px",
+                borderRadius: 6,
+                border: "none",
+                fontSize: 12,
+                fontWeight: 700,
+                cursor: "pointer",
+                background: empMode === "existing" ? "#ffffff" : "transparent",
+                color: empMode === "existing" ? "var(--brand)" : "#64748b",
+                boxShadow: empMode === "existing" ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+              }}
+            >
+              Select Existing Staff from Directory
+            </button>
           </div>
 
+          {/* Step 1: Staff Details */}
+          {empMode === "new" ? (
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Staff Full Name *</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Sharma, Anita Verma"
+                  value={formStaffName}
+                  onChange={(e) => setFormStaffName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-grid">
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Mobile / Phone Number</label>
+                  <input
+                    type="tel"
+                    placeholder="e.g. 9876543210"
+                    value={formStaffPhone}
+                    onChange={(e) => setFormStaffPhone(e.target.value)}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label>Email Address</label>
+                  <input
+                    type="email"
+                    placeholder="e.g. ramesh@crmkaro.com"
+                    value={formStaffEmail}
+                    onChange={(e) => setFormStaffEmail(e.target.value)}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Select Staff Member from Directory *</label>
+              <select
+                className="filter-select"
+                value={formPersonId}
+                onChange={(e) => setFormPersonId(e.target.value)}
+                required
+              >
+                <option value="">-- Select staff member --</option>
+                {employeeContacts.map((p) => {
+                  const typeLabels = p.types?.map((t) => t.type).join(", ");
+                  return (
+                    <option key={p.id} value={p.id}>
+                      {p.displayName} {typeLabels ? `[${typeLabels}]` : ""} {p.email ? `(${p.email})` : ""}
+                    </option>
+                  );
+                })}
+                {employeeContacts.length === 0 && (
+                  <option disabled value="">
+                    No unenrolled staff profiles in directory. Choose "Quick Add New Staff" above.
+                  </option>
+                )}
+              </select>
+            </div>
+          )}
+
           <div className="form-grid">
-            <div className="form-group">
+            <div className="form-group" style={{ margin: 0 }}>
               <label>Employee Code *</label>
               <input
                 type="text"
@@ -912,7 +1054,7 @@ export default function PayrollPage() {
                 required
               />
             </div>
-            <div className="form-group">
+            <div className="form-group" style={{ margin: 0 }}>
               <label>Joining Date *</label>
               <input
                 type="date"
@@ -924,23 +1066,125 @@ export default function PayrollPage() {
           </div>
 
           <div className="form-grid">
-            <div className="form-group">
+            <div className="form-group" style={{ margin: 0 }}>
               <label>Department</label>
               <input
                 type="text"
-                placeholder="e.g. Operations, Sales, Teaching"
+                placeholder="e.g. Teaching / Faculty, Operations"
                 value={formDept}
                 onChange={(e) => setFormDept(e.target.value)}
               />
             </div>
-            <div className="form-group">
-              <label>Designation</label>
+            <div className="form-group" style={{ margin: 0 }}>
+              <label>Designation / Role</label>
               <input
                 type="text"
-                placeholder="e.g. Senior Executive, Teacher"
+                placeholder="e.g. Teacher / Faculty, Counselor"
                 value={formDesig}
                 onChange={(e) => setFormDesig(e.target.value)}
               />
+            </div>
+          </div>
+
+          {/* Step 2: Monthly Salary Structure (Configured right here) */}
+          <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <span style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)" }}>
+                💰 Monthly Salary Package & Compensation
+              </span>
+              <span style={{ fontSize: 11, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "2px 6px", borderRadius: 4, fontWeight: 650 }}>
+                📅 Payout Due: 1st of month
+              </span>
+            </div>
+
+            {/* 1-Click Salary Package Presets */}
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              {[
+                { label: "Junior / Intern (₹15k)", basic: "15000", hra: "0", allw: "0", ded: "0" },
+                { label: "Associate (₹25k)", basic: "20000", hra: "3000", allw: "2000", ded: "0" },
+                { label: "Faculty / Senior (₹45k)", basic: "35000", hra: "6000", allw: "4000", ded: "0" },
+                { label: "Lead / Manager (₹65k)", basic: "50000", hra: "10000", allw: "5000", ded: "0" },
+              ].map((pkg) => (
+                <button
+                  key={pkg.label}
+                  type="button"
+                  onClick={() => {
+                    setFormStaffBasicPay(pkg.basic);
+                    setFormStaffHra(pkg.hra);
+                    setFormStaffAllowances(pkg.allw);
+                    setFormStaffDeductions(pkg.ded);
+                  }}
+                  style={{
+                    padding: "3px 8px",
+                    borderRadius: 5,
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                    color: "#1e3a8a",
+                    fontSize: 10.5,
+                    fontWeight: 650,
+                    cursor: "pointer",
+                  }}
+                >
+                  ⚡ {pkg.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Basic Pay (₹/mo) *</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="25000"
+                  value={formStaffBasicPay}
+                  onChange={(e) => setFormStaffBasicPay(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>HRA (₹/mo)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formStaffHra}
+                  onChange={(e) => setFormStaffHra(e.target.value)}
+                />
+              </div>
+            </div>
+
+            <div className="form-grid">
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Allowances (₹/mo)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formStaffAllowances}
+                  onChange={(e) => setFormStaffAllowances(e.target.value)}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label>Deductions / TDS (₹/mo)</label>
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="0"
+                  value={formStaffDeductions}
+                  onChange={(e) => setFormStaffDeductions(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Live Net Pay Preview */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "8px 10px", background: "#f0fdf4", borderRadius: 6, border: "1px solid #bbf7d0" }}>
+              <span style={{ fontSize: 11.5, color: "#166534", fontWeight: 650 }}>
+                Net Monthly Take-Home:
+              </span>
+              <strong style={{ fontSize: 13, color: "#15803d" }}>
+                ₹{((parseFloat(formStaffBasicPay) || 0) + (parseFloat(formStaffHra) || 0) + (parseFloat(formStaffAllowances) || 0) - (parseFloat(formStaffDeductions) || 0)).toLocaleString("en-IN")} / month
+              </strong>
             </div>
           </div>
 
@@ -953,7 +1197,7 @@ export default function PayrollPage() {
               Cancel
             </button>
             <button type="submit" className="btn btn-primary" disabled={empBusy}>
-              {empBusy ? "Saving…" : "Save Employee"}
+              {empBusy ? "Enrolling & Saving Salary…" : "Save Staff & Configure Salary"}
             </button>
           </div>
         </form>

@@ -179,17 +179,22 @@ export class DashboardService {
           })
         : [];
 
-      return {
-        organisation: await tx.organisation.findUnique({
-          where: { id: organisationId },
-          select: { id: true, name: true, currency: true, timezone: true },
-        }),
-        role: role ? { code: role.code, name: role.name } : null,
-        services: [...services],
-        cards,
-        notifications,
-        activity,
-      };
-    });
+      const sessionCount = await tx.authSession.count({
+        where: { userId },
+      });
+
+        return {
+          organisation: await tx.organisation.findUnique({
+            where: { id: organisationId },
+            select: { id: true, name: true, currency: true, timezone: true },
+          }),
+          role: role ? { code: role.code, name: role.name } : null,
+          services: [...services],
+          cards,
+          notifications,
+          activity,
+          isNewUser: sessionCount <= 1,
+        };
+      });
+    }
   }
-}

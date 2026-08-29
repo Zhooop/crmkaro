@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 
 type Dashboard = {
   organisation: { name: string; currency: string; timezone: string };
-  user: { name: string | null; email: string };
+  user: { name: string | null; email: string; isNewUser?: boolean };
   role: { name: string; code: string } | null;
   services: string[];
   cards: Array<{
@@ -437,7 +437,7 @@ export default function HomePage() {
             <Icon name="activity" size={14} />
             Live business overview
           </p>
-          <h1>Welcome back, {displayName}</h1>
+          <h1>{data.user?.isNewUser ? `Welcome, ${displayName}` : `Welcome back, ${displayName}`}</h1>
           <p className="subheading">
             Only the modules and data available to your role are shown here.
           </p>

@@ -55,6 +55,8 @@ export type IconName =
   | "externalLink"
   | "kanban"
   | "list"
+  | "share"
+  | "whatsapp"
   | "moreVertical";
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
@@ -294,6 +296,20 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <line x1="3" x2="3.01" y1="6" y2="6" />
         <line x1="3" x2="3.01" y1="12" y2="12" />
         <line x1="3" x2="3.01" y1="18" y2="18" />
+      </>
+    ),
+    share: (
+      <>
+        <circle cx="18" cy="5" r="3" />
+        <circle cx="6" cy="12" r="3" />
+        <circle cx="18" cy="19" r="3" />
+        <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
+        <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
+      </>
+    ),
+    whatsapp: (
+      <>
+        <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
       </>
     ),
     moreVertical: (
@@ -1257,21 +1273,21 @@ export function AuthPanel({
           <p>
             {admin
               ? "Platform access is strictly isolated with PostgreSQL Row-Level Security, multi-tenant monitoring, and immutable audit trails."
-              : "CRM pipelines, people directory, GST invoices, automated payroll, and inventory stock—all unified without the clutter."}
+              : "Keep fees collection, send receipts to customers, collect leads, manage GST invoices, and track staff payroll—all unified in one clear workspace."}
           </p>
 
           <div className="auth-security-badges">
             <span className="security-chip">
-              <Icon name="shield" size={13} />
-              <span>{admin ? "RLS Tenant Isolation" : "PostgreSQL Isolated"}</span>
+              <Icon name={admin ? "shield" : "rupee"} size={13} />
+              <span>{admin ? "RLS Tenant Isolation" : "Keep fees collection"}</span>
             </span>
             <span className="security-chip">
               <Icon name="checkCircle" size={13} />
-              <span>{admin ? "Append-Only Audit" : "Role-Based Access"}</span>
+              <span>{admin ? "Append-Only Audit" : "Send receipts to customers"}</span>
             </span>
             <span className="security-chip">
-              <Icon name="activity" size={13} />
-              <span>{admin ? "Real-Time Observability" : "Automated Workflows"}</span>
+              <Icon name={admin ? "activity" : "crm"} size={13} />
+              <span>{admin ? "Real-Time Observability" : "Collect leads"}</span>
             </span>
           </div>
         </div>
@@ -1285,14 +1301,18 @@ export function AuthPanel({
             {admin ? "⚡ Live Platform Metrics" : "🚀 All Modules Active"}
           </span>
           <span className="auth-visual-pill pill-two">
-            {admin ? "🔒 256-Bit Encrypted Session" : "💼 GST & TDS Ready"}
+            {admin ? "🔒 256-Bit Encrypted Session" : "💼 GST & Receipts Ready"}
           </span>
         </div>
 
         <small className="auth-story-footer">
-          {admin
-            ? "CRMKaro Platform Engine · Zero-Trust Access Architecture"
-            : "Secure sessions · Tenant isolation · Audit logging"}
+          {admin ? (
+            "CRMKaro Platform Engine · Zero-Trust Access Architecture"
+          ) : (
+            <span>
+              Secure sessions · <a href="/about" style={{ color: "inherit", textDecoration: "underline" }}>About CRMKaro</a> · <a href="/features" style={{ color: "inherit", textDecoration: "underline" }}>Features</a> · <a href="/blog" style={{ color: "inherit", textDecoration: "underline" }}>Guides</a>
+            </span>
+          )}
         </small>
       </section>
 

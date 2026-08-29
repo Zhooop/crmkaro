@@ -190,12 +190,37 @@ function FinanceContent() {
   const [expBusy, setExpBusy] = useState(false);
   const [expError, setExpError] = useState("");
 
+  // Share Bill Modal state
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
+
   // Toast notification feedback state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
   function showToast(message: string, type: "success" | "error" = "success") {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4500);
+  }
+
+  function cleanUrlParams() {
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      if (
+        url.searchParams.has("action") ||
+        url.searchParams.has("invoiceId") ||
+        url.searchParams.has("personId") ||
+        url.searchParams.has("description") ||
+        url.searchParams.has("price")
+      ) {
+        url.searchParams.delete("action");
+        url.searchParams.delete("invoiceId");
+        url.searchParams.delete("personId");
+        url.searchParams.delete("description");
+        url.searchParams.delete("price");
+        const newSearch = url.searchParams.toString();
+        window.history.replaceState({}, "", url.pathname + (newSearch ? `?${newSearch}` : ""));
+      }
+    }
   }
 
   // Load session context
@@ -241,6 +266,19 @@ function FinanceContent() {
     }
   }, [api]);
 
+  // Load Expenses
+  const loadExpenses = useCallback(async () => {
+    try {
+      const res = await fetch(`${api}/finance/expenses`, { credentials: "include" });
+      if (res.ok) {
+        const data = await res.json();
+        setExpenses(data || []);
+      }
+    } catch {
+      // ignore
+    }
+  }, [api]);
+
   // Load Invoices
   const loadInvoices = useCallback(async () => {
     setLoading(true);
@@ -256,30 +294,20 @@ function FinanceContent() {
       if (!res.ok) throw new Error("Could not load invoices.");
       const data = await res.json();
       setInvoices(data.items || []);
+      // Also sync expenses in background for accurate metrics
+      loadExpenses();
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setLoading(false);
     }
-  }, [api, invoiceStatusFilter, router]);
-
-  // Load Expenses
-  const loadExpenses = useCallback(async () => {
-    try {
-      const res = await fetch(`${api}/finance/expenses`, { credentials: "include" });
-      if (res.ok) {
-        const data = await res.json();
-        setExpenses(data || []);
-      }
-    } catch {
-      // ignore
-    }
-  }, [api]);
+  }, [api, invoiceStatusFilter, router, loadExpenses]);
 
   useEffect(() => {
     loadContext();
     loadPeople();
-  }, [loadContext, loadPeople]);
+    loadExpenses();
+  }, [loadContext, loadPeople, loadExpenses]);
 
   useEffect(() => {
     if (activeTab === "invoices" || activeTab === "payments") {
@@ -412,7 +440,10 @@ function FinanceContent() {
         throw new Error(errMsg);
       }
       setCreateInvoiceOpen(false);
+      cleanUrlParams();
       loadInvoices();
+      loadExpenses();
+      showToast("Invoice / Fee Bill created successfully!", "success");
     } catch (err) {
       setInvoiceError((err as Error).message);
     } finally {
@@ -583,9 +614,11 @@ function FinanceContent() {
         throw new Error(errMsg);
       }
       setCreateExpenseOpen(false);
+      cleanUrlParams();
       setExpVendor("");
       setExpAmount("");
       setExpDesc("");
+      setActiveTab("expenses");
       loadExpenses();
       showToast(`Business expense of ₹${amt.toLocaleString("en-IN")} recorded successfully!`, "success");
     } catch (err) {
@@ -604,31 +637,31 @@ function FinanceContent() {
     setIsCustomerDropdownOpen(false);
     setFormDueDate("");
     setFormNotes("");
-    setFormItems([{ description: presetDesc || "", quantity: 1, unitPrice: presetPrice || "", taxRate: 18 }]);
+    setFormItems([{ description: presetDesc || "", quantity: 1, unitPrice: presetPrice || "", taxRate: 0 }]);
     setInvoiceError("");
     setCreateInvoiceOpen(true);
   }
 
   function addItemRow() {
-    setFormItems([...formItems, { description: "", quantity: 1, unitPrice: "", taxRate: 18 }]);
+    setFormItems([...formItems, { description: "", quantity: 1, unitPrice: "", taxRate: 0 }]);
   }
 
   function applyPreset(presetText: string, defaultPrice: string = "") {
     if (formItems.length === 1 && !formItems[0]?.description.trim()) {
-      setFormItems([{ description: presetText, quantity: 1, unitPrice: defaultPrice || formItems[0]?.unitPrice || "", taxRate: 18 }]);
+      setFormItems([{ description: presetText, quantity: 1, unitPrice: defaultPrice || formItems[0]?.unitPrice || "", taxRate: 0 }]);
     } else {
-      setFormItems([...formItems, { description: presetText, quantity: 1, unitPrice: defaultPrice, taxRate: 18 }]);
+      setFormItems([...formItems, { description: presetText, quantity: 1, unitPrice: defaultPrice, taxRate: 0 }]);
     }
   }
 
   function applyMonthFee(monthName: string, year: number = new Date().getFullYear()) {
     const feeDesc = `🎓 Monthly Academic / Tuition Fees — ${monthName} ${year}`;
-    applyPreset(feeDesc, "3500");
+    applyPreset(feeDesc, "");
   }
 
   function applyQuarterFee(quarterName: string, year: number = new Date().getFullYear()) {
     const feeDesc = `🎓 Quarterly Academic Fees — ${quarterName} ${year}`;
-    applyPreset(feeDesc, "10000");
+    applyPreset(feeDesc, "");
   }
 
   function setQuickDueDate(daysFromNow: number) {
@@ -1149,6 +1182,18 @@ function FinanceContent() {
                 <Icon name="download" size={14} />
                 <span>Download PDF</span>
               </a>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => {
+                  setShareInvoice(detailInvoice);
+                  setShareModalOpen(true);
+                }}
+                style={{ color: "#0369a1", borderColor: "#bae6fd", background: "#f0f9ff" }}
+              >
+                <Icon name="whatsapp" size={14} />
+                <span>Share Bill / Receipt</span>
+              </button>
             </div>
 
             {/* Key Value Details */}
@@ -1469,20 +1514,20 @@ function FinanceContent() {
             <div className="invoice-presets-bar" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", padding: "8px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid var(--line)" }}>
               <span style={{ fontSize: 11, fontWeight: 750, color: "#64748b" }}>⚡ 1-Click Common Presets:</span>
               {[
-                { name: "🎓 Full Course Fees", price: "25000" },
-                { name: "📝 Admission / Reg. Fee", price: "1000" },
-                { name: "📚 Books & Materials Kit", price: "2500" },
-                { name: "📝 Examination Fee", price: "800" },
-                { name: "💼 Consulting Retainer", price: "15000" },
-                { name: "💻 Software / AMC", price: "10000" },
-                { name: "📦 Product Sale", price: "" },
-              ].map((preset) => (
+                "🎓 Full Course Fees",
+                "📝 Admission / Reg. Fee",
+                "📚 Books & Materials Kit",
+                "📝 Examination Fee",
+                "💼 Consulting Retainer",
+                "💻 Software / AMC",
+                "📦 Product Sale",
+              ].map((name) => (
                 <button
-                  key={preset.name}
+                  key={name}
                   type="button"
                   className="invoice-preset-btn"
-                  onClick={() => applyPreset(preset.name, preset.price)}
-                  title={`Add ${preset.name} with price`}
+                  onClick={() => applyPreset(name, "")}
+                  title={`Add ${name}`}
                   style={{
                     padding: "3px 8px",
                     borderRadius: 6,
@@ -1494,7 +1539,7 @@ function FinanceContent() {
                     cursor: "pointer",
                   }}
                 >
-                  + {preset.name} {preset.price ? `(₹${Number(preset.price).toLocaleString("en-IN")})` : ""}
+                  + {name}
                 </button>
               ))}
             </div>
@@ -1506,7 +1551,7 @@ function FinanceContent() {
                   📅 Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
                 </span>
                 <span style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
-                  Click month to add monthly fee row (₹3,500/mo)
+                  Click month to add fee item row
                 </span>
               </div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
@@ -1652,7 +1697,7 @@ function FinanceContent() {
                         }
                       }}
                     >
-                      <option value="0">0% (Nil)</option>
+                      <option value="0">0% (No GST)</option>
                       <option value="5">5% GST</option>
                       <option value="12">12% GST</option>
                       <option value="18">18% GST</option>
@@ -2056,6 +2101,119 @@ function FinanceContent() {
           >
             OK
           </button>
+        </div>
+      )}
+      {/* Share Bill / Receipt Modal */}
+      {shareModalOpen && shareInvoice && (
+        <div className="modal-scrim" onClick={() => setShareModalOpen(false)}>
+          <div
+            className="modal-card"
+            style={{ maxWidth: 520, borderRadius: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <div>
+                <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, margin: 0 }}>
+                  <Icon name="whatsapp" size={20} />
+                  <span>Share Fee Bill / Receipt</span>
+                </h2>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                  Share directly with {shareInvoice.person?.displayName || "Student / Customer"} on WhatsApp or copy receipt text
+                </p>
+              </div>
+              <button
+                type="button"
+                className="btn-icon"
+                onClick={() => setShareModalOpen(false)}
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+
+            <div style={{ padding: "16px 20px", display: "flex", flexDirection: "column", gap: 14 }}>
+              {/* Receipt Preview Box */}
+              <div
+                style={{
+                  background: "#f8fafc",
+                  padding: 14,
+                  borderRadius: 10,
+                  border: "1px solid var(--line)",
+                  fontSize: 12.5,
+                  lineHeight: 1.6,
+                  whiteSpace: "pre-wrap",
+                  fontFamily: "monospace",
+                  color: "#1e293b",
+                  maxHeight: 220,
+                  overflowY: "auto",
+                }}
+              >
+                {`🧾 FEE RECEIPT / BILL — ${orgName || "CRMKaro"}
+👤 Student / Customer: ${shareInvoice.person?.displayName || "—"}
+📄 Bill No: ${shareInvoice.invoiceNumber}
+📅 Date: ${shareInvoice.issueDate ? new Date(shareInvoice.issueDate).toLocaleDateString("en-IN") : "Today"}
+${shareInvoice.items?.map((it) => `• ${it.description} (Qty: ${it.quantity})`).join("\n") || ""}
+💰 Total Amount: ₹${(shareInvoice.totalMinor / 100).toLocaleString("en-IN")}
+✅ Paid: ₹${(shareInvoice.amountPaidMinor / 100).toLocaleString("en-IN")} | ⏳ Due: ₹${(shareInvoice.balanceDueMinor / 100).toLocaleString("en-IN")}
+📥 Download PDF: ${api}/finance/invoices/${shareInvoice.id}/pdf`}
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <a
+                  href={`https://wa.me/${shareInvoice.person?.primaryPhone?.replace(/[^0-9]/g, "") || ""}?text=${encodeURIComponent(
+                    `🧾 *FEE RECEIPT / BILL — ${orgName || "CRMKaro"}*\n\n` +
+                    `👤 *Student / Customer:* ${shareInvoice.person?.displayName || "—"}\n` +
+                    `📄 *Bill / Invoice No:* ${shareInvoice.invoiceNumber}\n` +
+                    `📅 *Date:* ${shareInvoice.issueDate ? new Date(shareInvoice.issueDate).toLocaleDateString("en-IN") : "Today"}\n\n` +
+                    (shareInvoice.items?.map((it) => `• ${it.description}`).join("\n") || "") + "\n\n" +
+                    `💰 *Total Amount:* ₹${(shareInvoice.totalMinor / 100).toLocaleString("en-IN")}\n` +
+                    `✅ *Amount Paid:* ₹${(shareInvoice.amountPaidMinor / 100).toLocaleString("en-IN")}\n` +
+                    `⏳ *Pending Due:* ₹${(shareInvoice.balanceDueMinor / 100).toLocaleString("en-IN")}\n\n` +
+                    `📥 *Download Official Receipt PDF:*\n${api}/finance/invoices/${shareInvoice.id}/pdf\n\n` +
+                    `Thank you! — *${orgName || "CRMKaro"}*`
+                  )}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn btn-primary"
+                  style={{ background: "#25D366", borderColor: "#128C7E", color: "#fff", display: "flex", justifyContent: "center", gap: 8 }}
+                >
+                  <Icon name="whatsapp" size={16} />
+                  <span>Send on WhatsApp</span>
+                </a>
+
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    style={{ flex: 1 }}
+                    onClick={() => {
+                      const text = `🧾 FEE RECEIPT / BILL — ${orgName || "CRMKaro"}\n` +
+                        `👤 Student / Customer: ${shareInvoice.person?.displayName || "—"}\n` +
+                        `📄 Bill No: ${shareInvoice.invoiceNumber}\n` +
+                        `💰 Total: ₹${(shareInvoice.totalMinor / 100).toLocaleString("en-IN")} | Paid: ₹${(shareInvoice.amountPaidMinor / 100).toLocaleString("en-IN")} | Due: ₹${(shareInvoice.balanceDueMinor / 100).toLocaleString("en-IN")}\n` +
+                        `📥 PDF: ${api}/finance/invoices/${shareInvoice.id}/pdf`;
+                      navigator.clipboard.writeText(text);
+                      showToast("Receipt text copied to clipboard!", "success");
+                    }}
+                  >
+                    <Icon name="copy" size={14} />
+                    <span>Copy Text</span>
+                  </button>
+
+                  <a
+                    href={`${api}/finance/invoices/${shareInvoice.id}/pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="btn btn-secondary"
+                    style={{ flex: 1, textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "center", gap: 6 }}
+                  >
+                    <Icon name="download" size={14} />
+                    <span>Download PDF</span>
+                  </a>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </AppShell>

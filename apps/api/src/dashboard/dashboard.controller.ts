@@ -25,6 +25,7 @@ export class DashboardController {
         id: request.auth.userId,
         email: request.auth.email,
         name: request.auth.name,
+        isNewUser: Boolean(dashboard.isNewUser),
       },
       generatedAt: new Date(),
     };
