@@ -11,6 +11,7 @@ import {
   type AttendanceStatus,
   type FeeFrequency,
 } from "@crmkaro/database";
+import { DATABASE } from "../database/database.module.js";
 import { normaliseEmail, normalisePhone } from "../people/people.utils.js";
 import { calculateInvoice } from "../finance/finance.utils.js";
 import type {
@@ -43,7 +44,7 @@ function formatMonthLabel(yyyyMm: string): string {
 
 @Injectable()
 export class StudentsService {
-  constructor(@Inject("DATABASE") private readonly database: DatabaseClient) {}
+  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
 
   private async sequence(
     tx: any,
