@@ -4,6 +4,9 @@ import {
   Injectable,
   NotFoundException,
 } from "@nestjs/common";
+import { ConfigService } from "@nestjs/config";
+import nodemailer from "nodemailer";
+import type { Environment } from "../config/environment.js";
 import {
   withTenant,
   type DatabaseClient,
@@ -42,9 +45,27 @@ function formatMonthLabel(yyyyMm: string): string {
   return `${MONTH_NAMES[monthIdx] || monthStr} ${yearStr}`;
 }
 
+export function formatWhatsAppPhone(rawPhone: string | null | undefined): string {
+  if (!rawPhone) return "";
+  let digits = rawPhone.replace(/[^0-9]/g, "");
+  if (!digits) return "";
+  // Strip leading 0 if 11 digits (e.g. 09876543210 -> 9876543210 or 0123456789 -> 123456789)
+  if (digits.startsWith("0") && digits.length === 11) {
+    digits = digits.slice(1);
+  }
+  // Standard 10 digit Indian number without country code
+  if (digits.length === 10) {
+    digits = `91${digits}`;
+  }
+  return digits;
+}
+
 @Injectable()
 export class StudentsService {
-  constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
+  constructor(
+    @Inject(DATABASE) private readonly database: DatabaseClient,
+    @Inject(ConfigService) private readonly config: ConfigService<Environment, true>,
+  ) {}
 
   private async sequence(
     tx: any,
@@ -178,21 +199,23 @@ export class StudentsService {
             ],
           },
           activities: {
-            create: {
-              organisationId,
-              actorUserId: userId,
-              action: "student.enrolled",
-              summary: `Enrolled in ${input.standard}${input.batch ? ` (${input.batch})` : ""}`,
-            },
+            create: [
+              {
+                organisationId,
+                actorUserId: userId,
+                action: "student.admitted",
+                summary: `Admitted as student in ${input.standard}${input.batch ? ` (${input.batch})` : ""}`,
+              },
+            ],
           },
         },
       });
 
-      // 2. Generate Roll Number if not provided
+      // 2. Generate Roll Number if not supplied
       let roll = input.rollNumber?.trim();
       if (!roll) {
-        const seq = await this.sequence(tx, organisationId, "student_roll");
-        roll = `STD-${String(seq).padStart(4, "0")}`;
+        const nextNum = await this.sequence(tx, organisationId, "student_roll");
+        roll = String(1000 + nextNum);
       }
 
       // 3. Create Student Profile
@@ -402,49 +425,75 @@ export class StudentsService {
       let totalCollectedMinor = 0;
       let totalPendingMinor = 0;
 
-      const studentFeeList = students.map((std) => {
-        const feePlanAmount = std.feeAmountMinor || 0;
-        totalExpectedMinor += feePlanAmount;
+      const studentFeeList = await Promise.all(
+        students.map(async (std) => {
+          const feePlanAmount = std.feeAmountMinor || 0;
+          totalExpectedMinor += feePlanAmount;
 
-        const inv = invoiceByPersonId.get(std.personId);
-        let status: "PAID" | "PARTIALLY_PAID" | "PENDING" = "PENDING";
-        let paidMinor = 0;
-        let balanceMinor = feePlanAmount;
+          const inv = invoiceByPersonId.get(std.personId);
+          let status: "PAID" | "PARTIALLY_PAID" | "PENDING" = "PENDING";
+          let paidMinor = 0;
+          let balanceMinor = feePlanAmount;
 
-        if (inv) {
-          paidMinor = inv.paidTotalMinor;
-          balanceMinor = inv.balanceDueMinor;
-          if (inv.status === "PAID" || balanceMinor <= 0) {
-            status = "PAID";
-          } else if (paidMinor > 0) {
-            status = "PARTIALLY_PAID";
+          if (inv) {
+            // Align grandTotal with expected fee plan
+            const expectedTotal = Math.max(feePlanAmount, inv.grandTotalMinor);
+            paidMinor = inv.paidTotalMinor;
+            balanceMinor = Math.max(0, expectedTotal - paidMinor);
+
+            if (inv.grandTotalMinor < expectedTotal || inv.balanceDueMinor !== balanceMinor) {
+              await tx.invoice.update({
+                where: { id: inv.id },
+                data: {
+                  grandTotalMinor: expectedTotal,
+                  subtotalMinor: expectedTotal,
+                  balanceDueMinor: balanceMinor,
+                  status: balanceMinor <= 0 ? "PAID" : "PARTIALLY_PAID",
+                },
+              });
+            }
+
+            if (balanceMinor <= 0 && paidMinor > 0) {
+              status = "PAID";
+            } else if (paidMinor > 0) {
+              status = "PARTIALLY_PAID";
+            } else {
+              status = "PENDING";
+            }
           }
-        }
 
-        totalCollectedMinor += paidMinor;
-        totalPendingMinor += Math.max(0, balanceMinor);
+          totalCollectedMinor += paidMinor;
+          totalPendingMinor += Math.max(0, balanceMinor);
 
-        return {
-          studentProfileId: std.id,
-          personId: std.personId,
-          displayName: std.person.displayName,
-          rollNumber: std.rollNumber,
-          standard: std.standard,
-          batch: std.batch,
-          guardianName: std.guardianName,
-          guardianPhone: std.guardianPhone || std.person.primaryPhone,
-          feeFrequency: std.feeFrequency,
-          feePlanAmountMinor: feePlanAmount,
-          cycleMonth: targetMonth,
-          cycleMonthLabel: monthLabel,
-          status,
-          paidMinor,
-          balanceMinor,
-          invoiceId: inv?.id || null,
-          invoiceNumber: inv?.invoiceNumber || null,
-          lastPaymentDate: inv?.payments[0]?.receivedAt || null,
-        };
-      });
+          const waPhone = formatWhatsAppPhone(std.guardianPhone || std.person.primaryPhone);
+
+          return {
+            studentProfileId: std.id,
+            personId: std.personId,
+            displayName: std.person.displayName,
+            rollNumber: std.rollNumber,
+            standard: std.standard,
+            batch: std.batch,
+            guardianName: std.guardianName,
+            guardianPhone: std.guardianPhone || std.person.primaryPhone,
+            feeFrequency: std.feeFrequency,
+            feePlanAmountMinor: feePlanAmount,
+            cycleMonth: targetMonth,
+            cycleMonthLabel: monthLabel,
+            status,
+            paidMinor,
+            balanceMinor,
+            invoiceId: inv?.id || null,
+            invoiceNumber: inv?.invoiceNumber || null,
+            lastPaymentDate: inv?.payments[0]?.receivedAt || null,
+            whatsappUrl: waPhone
+              ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(
+                  `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n💰 *Total Fee Plan:* ₹${(feePlanAmount / 100).toLocaleString("en-IN")}\n💵 *Paid Amount:* ₹${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `⚠️ *Remaining Balance Due:* ₹${(balanceMinor / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid` : `✅ *Fee Status:* Fully Paid (Cleared)`}`
+                )}`
+              : null,
+          };
+        }),
+      );
 
       return {
         cycleMonth: targetMonth,
@@ -486,14 +535,16 @@ export class StudentsService {
       });
 
       let invoice = existingInvoice;
-      const targetAmountMinor = input.amountMinor || student.feeAmountMinor;
+      const feePlanAmountMinor = student.feeAmountMinor || 0;
+      const amountPaidNowMinor = input.amountMinor || feePlanAmountMinor;
+      const expectedTotalMinor = Math.max(feePlanAmountMinor, existingInvoice?.grandTotalMinor || 0, amountPaidNowMinor);
 
       if (!invoice) {
-        // Create new invoice for the fee cycle
+        // Create new invoice with full monthly fee plan amount
         const invoiceCalc = calculateInvoice([
           {
             quantity: 1,
-            unitPriceMinor: targetAmountMinor,
+            unitPriceMinor: expectedTotalMinor,
             discountMinor: 0,
             taxRateBps: 0,
           },
@@ -527,15 +578,26 @@ export class StudentsService {
                   organisationId,
                   description,
                   quantity: 1,
-                  unitPriceMinor: targetAmountMinor,
+                  unitPriceMinor: expectedTotalMinor,
                   discountMinor: 0,
                   taxRateBps: 0,
                   taxMinor: 0,
-                  lineTotalMinor: targetAmountMinor,
+                  lineTotalMinor: expectedTotalMinor,
                   position: 1,
                 },
               ],
             },
+          },
+          include: { items: true, payments: true },
+        });
+      } else if (invoice.grandTotalMinor < expectedTotalMinor) {
+        // Update existing invoice to reflect full fee plan
+        invoice = await tx.invoice.update({
+          where: { id: invoice.id },
+          data: {
+            grandTotalMinor: expectedTotalMinor,
+            subtotalMinor: expectedTotalMinor,
+            balanceDueMinor: Math.max(0, expectedTotalMinor - invoice.paidTotalMinor),
           },
           include: { items: true, payments: true },
         });
@@ -552,7 +614,7 @@ export class StudentsService {
           personId: student.personId,
           recordedById: userId,
           receiptNumber,
-          amountMinor: targetAmountMinor,
+          amountMinor: amountPaidNowMinor,
           method: input.paymentMethod,
           reference: input.reference || null,
           receivedAt: input.receivedAt || new Date(),
@@ -562,7 +624,7 @@ export class StudentsService {
       });
 
       // 3. Update Invoice Paid & Balance Due
-      const newPaidTotal = (invoice.paidTotalMinor || 0) + targetAmountMinor;
+      const newPaidTotal = (invoice.paidTotalMinor || 0) + amountPaidNowMinor;
       const newBalanceDue = Math.max(0, invoice.grandTotalMinor - newPaidTotal);
       const newStatus = newBalanceDue <= 0 ? "PAID" : "PARTIALLY_PAID";
 
@@ -583,26 +645,177 @@ export class StudentsService {
           personId: student.personId,
           actorUserId: userId,
           action: "student.fee_paid",
-          summary: `Fee collected ₹${(targetAmountMinor / 100).toFixed(0)} for ${monthLabel} via ${input.paymentMethod} (Receipt: ${receiptNumber})`,
+          summary: `Fee collected ₹${(amountPaidNowMinor / 100).toFixed(0)} for ${monthLabel} via ${input.paymentMethod} (Receipt: ${receiptNumber}, Balance Due: ₹${(newBalanceDue / 100).toFixed(0)})`,
         },
       });
 
-      // 5. Generate WhatsApp text
+      // 5. Generate WhatsApp text with accurate balance and status
       const phone = student.guardianPhone || student.person.primaryPhone || "";
-      const orgName = student.organisation.name || "Institute";
-      const waText = `Dear Guardian/Student,\nFee payment received successfully for *${student.person.displayName}* (${student.standard}${student.batch ? ` - ${student.batch}` : ""}).\n\n📌 *Receipt No:* ${receiptNumber}\n📅 *Month:* ${monthLabel}\n💰 *Amount Paid:* ₹${(targetAmountMinor / 100).toLocaleString("en-IN")}\n💳 *Payment Mode:* ${input.paymentMethod}\n\nThank you,\n*${orgName}*`;
+      const waPhone = formatWhatsAppPhone(phone);
+      const orgName = student.organisation.name || "Academy";
+      const remainingText = newBalanceDue > 0
+        ? `⚠️ *Remaining Balance Due:* ₹${(newBalanceDue / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid`
+        : `✅ *Fee Status:* Paid in Full (Cleared)`;
+
+      const waText = `Dear Guardian / Student,\nFee payment received successfully for *${student.person.displayName}* (${student.standard}${student.batch ? ` - ${student.batch}` : ""}).\n\n📌 *Receipt No:* ${receiptNumber}\n📅 *Billing Cycle:* ${monthLabel}\n💰 *Amount Paid Now:* ₹${(amountPaidNowMinor / 100).toLocaleString("en-IN")}\n💳 *Payment Mode:* ${input.paymentMethod}\n💵 *Total Monthly Fee:* ₹${(invoice.grandTotalMinor / 100).toLocaleString("en-IN")}\n${remainingText}\n\nThank you,\n*${orgName}*`;
+
+      const whatsappUrl = waPhone
+        ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(waText)}`
+        : null;
+
+      // 6. Send Email Receipt if email is present
+      const email = student.person.email;
+      let emailSent = false;
+      if (email) {
+        try {
+          await this.sendReceiptEmail({
+            to: email,
+            studentName: student.person.displayName,
+            standard: student.standard || "General",
+            batch: student.batch,
+            receiptNumber,
+            monthLabel,
+            amountPaidMinor: amountPaidNowMinor,
+            balanceDueMinor: newBalanceDue,
+            totalFeeMinor: invoice.grandTotalMinor,
+            paymentMethod: input.paymentMethod,
+            orgName,
+          });
+          emailSent = true;
+        } catch (e) {
+          console.error("Failed to send receipt email:", e);
+        }
+      }
 
       return {
         invoice: updatedInvoice,
         payment,
         receiptNumber,
         monthLabel,
+        amountPaidMinor: amountPaidNowMinor,
+        balanceDueMinor: newBalanceDue,
+        totalFeeMinor: invoice.grandTotalMinor,
+        emailSent,
+        emailTarget: email || null,
         whatsappText: waText,
-        whatsappUrl: phone
-          ? `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(waText)}`
-          : null,
+        whatsappUrl,
       };
     });
+  }
+
+  private async sendReceiptEmail({
+    to,
+    studentName,
+    standard,
+    batch,
+    receiptNumber,
+    monthLabel,
+    amountPaidMinor,
+    balanceDueMinor,
+    totalFeeMinor,
+    paymentMethod,
+    orgName,
+  }: {
+    to: string;
+    studentName: string;
+    standard: string;
+    batch?: string | null;
+    receiptNumber: string;
+    monthLabel: string;
+    amountPaidMinor: number;
+    balanceDueMinor: number;
+    totalFeeMinor: number;
+    paymentMethod: string;
+    orgName: string;
+  }) {
+    const host = this.config.get("SMTP_HOST", { infer: true });
+    const port = this.config.get("SMTP_PORT", { infer: true });
+    const from = this.config.get("AUTH_EMAIL_FROM", { infer: true });
+    const user = this.config.get("SMTP_USER", { infer: true });
+    const password = this.config.get("SMTP_PASSWORD", { infer: true });
+
+    if (!host || !port || !from || !to) return;
+
+    try {
+      const transport = nodemailer.createTransport({
+        host,
+        port,
+        secure: this.config.get("SMTP_SECURE", { infer: true }) === "true",
+        ...(user && password ? { auth: { user, pass: password } } : {}),
+      });
+
+      const paidFormatted = `₹${(amountPaidMinor / 100).toLocaleString("en-IN")}`;
+      const balanceFormatted =
+        balanceDueMinor > 0
+          ? `₹${(balanceDueMinor / 100).toLocaleString("en-IN")}`
+          : "₹0 (Cleared)";
+      const totalFormatted = `₹${(totalFeeMinor / 100).toLocaleString("en-IN")}`;
+
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background: #ffffff;">
+          <div style="text-align: center; margin-bottom: 24px;">
+            <h2 style="color: #1e293b; margin: 0 0 6px;">${orgName}</h2>
+            <p style="color: #64748b; font-size: 14px; margin: 0;">Official Student Fee Payment Receipt</p>
+          </div>
+          
+          <div style="background: #f8fafc; padding: 18px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #e2e8f0;">
+            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Receipt Number:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${receiptNumber}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Student Name:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: bold; color: #0f172a;">${studentName}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Standard / Batch:</td>
+                <td style="padding: 6px 0; text-align: right; color: #0f172a;">${standard}${batch ? ` (${batch})` : ""}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Billing Cycle:</td>
+                <td style="padding: 6px 0; text-align: right; color: #0f172a;">${monthLabel}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Payment Mode:</td>
+                <td style="padding: 6px 0; text-align: right; color: #0f172a;">${paymentMethod}</td>
+              </tr>
+            </table>
+          </div>
+
+          <div style="border-top: 2px dashed #cbd5e1; padding-top: 16px; margin-bottom: 20px;">
+            <table style="width: 100%; font-size: 14px; border-collapse: collapse;">
+              <tr>
+                <td style="padding: 6px 0; color: #64748b;">Total Monthly Fee:</td>
+                <td style="padding: 6px 0; text-align: right; font-weight: 600; color: #0f172a;">${totalFormatted}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: #166534; font-size: 16px; font-weight: bold;">Amount Paid Now:</td>
+                <td style="padding: 6px 0; text-align: right; color: #166534; font-size: 16px; font-weight: bold;">${paidFormatted}</td>
+              </tr>
+              <tr>
+                <td style="padding: 6px 0; color: ${balanceDueMinor > 0 ? "#b45309" : "#64748b"}; font-weight: ${balanceDueMinor > 0 ? "bold" : "normal"};">Remaining Balance Due:</td>
+                <td style="padding: 6px 0; text-align: right; color: ${balanceDueMinor > 0 ? "#b45309" : "#64748b"}; font-weight: ${balanceDueMinor > 0 ? "bold" : "normal"};">${balanceFormatted}</td>
+              </tr>
+            </table>
+          </div>
+
+          <p style="font-size: 12px; color: #94a3b8; text-align: center; margin: 24px 0 0;">
+            This is a computer-generated fee receipt issued by ${orgName}.
+          </p>
+        </div>
+      `;
+
+      await transport.sendMail({
+        from,
+        to,
+        subject: `Fee Payment Receipt ${receiptNumber} - ${studentName} [${monthLabel}]`,
+        text: `Dear Parent/Student,\n\nFee payment of ${paidFormatted} has been recorded for ${studentName} (${monthLabel}).\nReceipt Number: ${receiptNumber}\nRemaining Balance Due: ${balanceFormatted}\n\nThank you,\n${orgName}`,
+        html,
+      });
+    } catch (err) {
+      console.error("Failed to send fee receipt email:", err);
+    }
   }
 
   async getAttendance(
@@ -652,8 +865,9 @@ export class StudentsService {
       let leaveCount = 0;
 
       const items = students.map((std) => {
-        const rec = recordMap.get(std.id);
-        const status: AttendanceStatus = rec?.status || "PRESENT"; // Default present for quick attendance
+        const existing = recordMap.get(std.id);
+        const status: AttendanceStatus = existing?.status ?? "PRESENT";
+        const remarks = existing?.remarks ?? "";
 
         if (status === "PRESENT") presentCount++;
         else if (status === "ABSENT") absentCount++;
@@ -668,21 +882,22 @@ export class StudentsService {
           batch: std.batch,
           primaryPhone: std.person.primaryPhone,
           status,
-          remarks: rec?.remarks || "",
-          recordedAt: rec?.createdAt || null,
+          remarks,
+          recordedAt: existing?.updatedAt ? existing.updatedAt.toISOString() : null,
         };
       });
 
+      const totalStudents = students.length;
+      const attendancePercentage =
+        totalStudents > 0 ? Math.round((presentCount / totalStudents) * 100) : 0;
+
       return {
         date: dateOnly.toISOString().slice(0, 10),
-        totalStudents: students.length,
+        totalStudents,
         presentCount,
         absentCount,
         leaveCount,
-        attendancePercentage:
-          students.length > 0
-            ? Math.round((presentCount / students.length) * 100)
-            : 0,
+        attendancePercentage,
         items,
       };
     });
@@ -697,55 +912,56 @@ export class StudentsService {
       const dateOnly = new Date(input.date);
       dateOnly.setHours(0, 0, 0, 0);
 
-      const updatedRecords = [];
-      for (const rec of input.records) {
+      const results = [];
+
+      for (const record of input.records) {
         const student = await tx.studentProfile.findFirst({
-          where: { id: rec.studentProfileId, organisationId },
+          where: { id: record.studentProfileId, organisationId },
         });
         if (!student) continue;
 
-        const record = await tx.attendanceRecord.upsert({
+        const row = await tx.attendanceRecord.upsert({
           where: {
             organisationId_studentProfileId_date: {
               organisationId,
-              studentProfileId: rec.studentProfileId,
+              studentProfileId: record.studentProfileId,
               date: dateOnly,
             },
           },
-          update: {
-            status: rec.status,
-            remarks: rec.remarks || null,
-            recordedById: userId,
-          },
           create: {
             organisationId,
-            studentProfileId: rec.studentProfileId,
+            studentProfileId: record.studentProfileId,
             personId: student.personId,
             date: dateOnly,
-            status: rec.status,
-            remarks: rec.remarks || null,
+            status: record.status as AttendanceStatus,
+            remarks: record.remarks?.trim() || null,
+            recordedById: userId,
+          },
+          update: {
+            status: record.status as AttendanceStatus,
+            remarks: record.remarks?.trim() || null,
             recordedById: userId,
           },
         });
-        updatedRecords.push(record);
+        results.push(row);
       }
 
       await tx.auditLog.create({
         data: {
           organisationId,
           actorUserId: userId,
-          action: "attendance.recorded",
-          entityType: "attendance_records",
+          action: "attendance.batch_recorded",
+          entityType: "attendance_record",
           metadata: {
-            date: dateOnly.toISOString().slice(0, 10),
-            count: updatedRecords.length,
+            date: input.date,
+            count: results.length,
           },
         },
       });
 
       return {
         date: dateOnly.toISOString().slice(0, 10),
-        updatedCount: updatedRecords.length,
+        savedCount: results.length,
       };
     });
   }
@@ -757,53 +973,70 @@ export class StudentsService {
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       const targetMonth = month || new Date().toISOString().slice(0, 7);
+      const monthLabel = formatMonthLabel(targetMonth);
+
       const [yearStr, monthStr] = targetMonth.split("-");
       const year = Number(yearStr);
-      const monthNum = Number(monthStr);
+      const monthIdx = Number(monthStr) - 1;
 
-      const startDate = new Date(Date.UTC(year, monthNum - 1, 1));
-      const endDate = new Date(Date.UTC(year, monthNum, 0));
+      const startDate = new Date(year, monthIdx, 1);
+      const endDate = new Date(year, monthIdx + 1, 0, 23, 59, 59, 999);
 
-      // Fetch active students
+      // Fetch all active students
       const students = await tx.studentProfile.findMany({
-        where: { organisationId, status: "ACTIVE" },
-        include: { person: { select: { displayName: true, primaryPhone: true } } },
+        where: {
+          organisationId,
+          status: "ACTIVE",
+        },
         orderBy: [{ standard: "asc" }, { rollNumber: "asc" }],
+        include: {
+          person: {
+            select: { displayName: true },
+          },
+        },
       });
 
-      // Fetch attendance in range
+      // Fetch all attendance records in this month range
       const records = await tx.attendanceRecord.findMany({
         where: {
           organisationId,
-          date: { gte: startDate, lte: endDate },
+          date: {
+            gte: startDate,
+            lte: endDate,
+          },
         },
       });
 
       // Group records by student
-      const studentMap = new Map<string, { present: number; absent: number; leave: number }>();
-      const distinctDates = new Set<string>();
+      const recordsByStudent = new Map<string, typeof records>();
+      const distinctWorkingDates = new Set<string>();
 
       for (const rec of records) {
-        distinctDates.add(rec.date.toISOString().slice(0, 10));
-        const curr = studentMap.get(rec.studentProfileId) || {
-          present: 0,
-          absent: 0,
-          leave: 0,
-        };
-        if (rec.status === "PRESENT") curr.present++;
-        else if (rec.status === "ABSENT") curr.absent++;
-        else if (rec.status === "LEAVE") curr.leave++;
-        studentMap.set(rec.studentProfileId, curr);
+        const dateKey = rec.date.toISOString().slice(0, 10);
+        distinctWorkingDates.add(dateKey);
+
+        const list = recordsByStudent.get(rec.studentProfileId) || [];
+        list.push(rec);
+        recordsByStudent.set(rec.studentProfileId, list);
       }
 
-      const totalWorkingDays = distinctDates.size || 1;
+      const totalWorkingDays = distinctWorkingDates.size;
 
-      const summary = students.map((std) => {
-        const counts = studentMap.get(std.id) || { present: 0, absent: 0, leave: 0 };
-        const percentage =
-          totalWorkingDays > 0
-            ? Math.round((counts.present / totalWorkingDays) * 100)
-            : 0;
+      const summaryList = students.map((std) => {
+        const studentRecords = recordsByStudent.get(std.id) || [];
+        let presentDays = 0;
+        let absentDays = 0;
+        let leaveDays = 0;
+
+        for (const r of studentRecords) {
+          if (r.status === "PRESENT") presentDays++;
+          else if (r.status === "ABSENT") absentDays++;
+          else if (r.status === "LEAVE") leaveDays++;
+        }
+
+        const studentTotal = presentDays + absentDays + leaveDays;
+        const denominator = studentTotal > 0 ? studentTotal : totalWorkingDays;
+        const percentage = denominator > 0 ? Math.round((presentDays / denominator) * 100) : 0;
 
         return {
           studentProfileId: std.id,
@@ -811,19 +1044,19 @@ export class StudentsService {
           rollNumber: std.rollNumber,
           standard: std.standard,
           batch: std.batch,
-          totalWorkingDays,
-          presentDays: counts.present,
-          absentDays: counts.absent,
-          leaveDays: counts.leave,
+          totalWorkingDays: denominator,
+          presentDays,
+          absentDays,
+          leaveDays,
           percentage,
         };
       });
 
       return {
         month: targetMonth,
-        monthLabel: formatMonthLabel(targetMonth),
+        monthLabel,
         totalWorkingDays,
-        students: summary,
+        students: summaryList,
       };
     });
   }

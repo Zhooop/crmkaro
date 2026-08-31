@@ -65,6 +65,7 @@ type RecurringFeeItem = {
   invoiceId: string | null;
   invoiceNumber: string | null;
   lastPaymentDate: string | null;
+  whatsappUrl?: string | null;
 };
 
 type AttendanceItem = {
@@ -186,7 +187,12 @@ function StudentsContent() {
     receiptNumber: string;
     monthLabel: string;
     whatsappUrl: string | null;
-    invoiceId: string;
+    invoiceId?: string;
+    amountPaidMinor?: number;
+    balanceDueMinor?: number;
+    totalFeeMinor?: number;
+    emailSent?: boolean;
+    emailTarget?: string | null;
   } | null>(null);
 
   // Admission Form State
@@ -533,6 +539,11 @@ function StudentsContent() {
         monthLabel: data.monthLabel,
         whatsappUrl: data.whatsappUrl,
         invoiceId: data.invoice?.id,
+        amountPaidMinor: data.amountPaidMinor,
+        balanceDueMinor: data.balanceDueMinor,
+        totalFeeMinor: data.totalFeeMinor,
+        emailSent: data.emailSent,
+        emailTarget: data.emailTarget,
       });
 
       loadRecurringFees();
@@ -1272,14 +1283,9 @@ function StudentsContent() {
                             <span style={{ fontSize: 12, color: "#047857", fontWeight: 750 }}>
                               ✓ Received
                             </span>
-                            {item.guardianPhone && (
+                            {item.whatsappUrl && (
                               <a
-                                href={`https://wa.me/${item.guardianPhone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(
-                                  `Dear Guardian, fee payment of ${formatMoney(
-                                    item.paidMinor,
-                                    currency,
-                                  )} for ${item.displayName} (${item.cycleMonthLabel}) has been received by ${orgName}. Thank you!`,
-                                )}`}
+                                href={item.whatsappUrl}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="secondary-button"
@@ -1292,7 +1298,48 @@ function StudentsContent() {
                                   gap: 4,
                                   color: "#16a34a",
                                 }}
-                                title="Send WhatsApp Confirmation"
+                                title="Send WhatsApp Receipt / Update"
+                              >
+                                <Icon name="whatsapp" size={14} />
+                              </a>
+                            )}
+                          </div>
+                        ) : item.status === "PARTIALLY_PAID" ? (
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+                            <button
+                              className="primary-button"
+                              style={{
+                                padding: "6px 12px",
+                                fontSize: 12,
+                                fontWeight: 700,
+                                borderRadius: 7,
+                                background: "#d97706",
+                                borderColor: "#d97706",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 5,
+                              }}
+                              onClick={() => openCollectFeeModal(item)}
+                            >
+                              <Icon name="rupee" size={13} />
+                              <span>Collect Due ({formatMoney(item.balanceMinor, currency)})</span>
+                            </button>
+                            {item.whatsappUrl && (
+                              <a
+                                href={item.whatsappUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 9px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  color: "#16a34a",
+                                }}
+                                title="Send WhatsApp Update"
                               >
                                 <Icon name="whatsapp" size={14} />
                               </a>
@@ -2250,7 +2297,7 @@ function StudentsContent() {
         maxWidth={540}
       >
         {receiptSuccessData ? (
-          <div style={{ textAlign: "center", padding: "14px 0" }}>
+          <div style={{ textAlign: "center", padding: "10px 0 16px" }}>
             <div
               style={{
                 width: 58,
@@ -2269,9 +2316,28 @@ function StudentsContent() {
             <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 750, color: "var(--ink)" }}>
               Fee Payment Recorded!
             </h3>
-            <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 20px" }}>
+            <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 16px" }}>
               Official receipt <strong>{receiptSuccessData.receiptNumber}</strong> generated for {receiptSuccessData.monthLabel}.
             </p>
+
+            <div style={{ background: "#f8fafc", borderRadius: 8, padding: 14, border: "1px solid #e2e8f0", marginBottom: 18, textAlign: "left", fontSize: 13 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "#64748b" }}>Amount Paid Now:</span>
+                <strong style={{ color: "#16a34a" }}>{formatMoney(receiptSuccessData.amountPaidMinor || 0, currency)}</strong>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <span style={{ color: "#64748b" }}>Remaining Balance Due:</span>
+                <strong style={{ color: (receiptSuccessData.balanceDueMinor || 0) > 0 ? "#b45309" : "#16a34a" }}>
+                  {(receiptSuccessData.balanceDueMinor || 0) > 0 ? formatMoney(receiptSuccessData.balanceDueMinor || 0, currency) : "₹0 (Fully Cleared)"}
+                </strong>
+              </div>
+              {receiptSuccessData.emailSent && receiptSuccessData.emailTarget && (
+                <div style={{ borderTop: "1px dashed #cbd5e1", paddingTop: 8, marginTop: 8, color: "#2563eb", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                  <Icon name="reports" size={14} />
+                  <span>Fee receipt automatically emailed to <strong>{receiptSuccessData.emailTarget}</strong></span>
+                </div>
+              )}
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {receiptSuccessData.whatsappUrl && (
@@ -2289,6 +2355,7 @@ function StudentsContent() {
                     fontWeight: 700,
                     fontSize: 13.5,
                     boxShadow: "0 4px 14px rgba(37, 211, 102, 0.35)",
+                    color: "#ffffff",
                   }}
                 >
                   <Icon name="whatsapp" size={18} />
@@ -2330,7 +2397,30 @@ function StudentsContent() {
                       {collectFeeStudent.standard} {collectFeeStudent.batch ? `· ${collectFeeStudent.batch}` : ""}
                     </div>
                   </div>
-                  <Badge tone="amber">{collectFeeStudent.cycleMonthLabel}</Badge>
+                  <Badge tone={collectFeeStudent.status === "PAID" ? "green" : collectFeeStudent.status === "PARTIALLY_PAID" ? "amber" : "neutral"}>
+                    {collectFeeStudent.cycleMonthLabel}
+                  </Badge>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1", fontSize: 12.5 }}>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Monthly Plan</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
+                      {formatMoney(collectFeeStudent.feePlanAmountMinor, currency)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Already Paid</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#16a34a" }}>
+                      {formatMoney(collectFeeStudent.paidMinor, currency)}
+                    </div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Balance Due</div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: collectFeeStudent.balanceMinor > 0 ? "#b45309" : "#16a34a" }}>
+                      {formatMoney(collectFeeStudent.balanceMinor, currency)}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -2352,6 +2442,9 @@ function StudentsContent() {
                     fontWeight: 700,
                   }}
                 />
+                <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, display: "block" }}>
+                  💡 If student is paying partially, enter the paid amount (e.g. ₹4,000). Remaining balance will stay pending.
+                </span>
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
@@ -2399,7 +2492,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>Notes / Remarks</label>
                 <input
                   type="text"
-                  placeholder="e.g. Paid in full for the month"
+                  placeholder="e.g. Partial fee payment received"
                   value={collectNotes}
                   onChange={(e) => setCollectNotes(e.target.value)}
                   style={{
@@ -2443,7 +2536,7 @@ function StudentsContent() {
                 >
                   {collectingFee
                     ? "Recording Payment…"
-                    : `Mark as Paid (${formatMoney(Number(collectAmount) * 100 || 0, currency)})`}
+                    : `Record Payment of ${formatMoney(Number(collectAmount) * 100 || 0, currency)}`}
                 </button>
               </div>
             </form>
