@@ -714,7 +714,7 @@ function StudentsContent() {
           }}
         >
           <Icon name="plus" size={16} />
-          <span>+ New Student Admission</span>
+          <span>New Student Admission</span>
         </button>
       </div>
 
@@ -948,7 +948,7 @@ function StudentsContent() {
                 }}
               >
                 <Icon name="plus" size={15} />
-                <span>+ Admit First Student</span>
+                <span>Admit First Student</span>
               </button>
             </div>
           ) : (
