@@ -20,24 +20,83 @@ export class AccessService {
     }));
   }
 
-  listServices(organisationId: string, userId: string) {
-    return withTenant(this.database, organisationId, userId, (tx) => tx.service.findMany({
-      where: { status: "ACTIVE" },
-      orderBy: { sortOrder: "asc" },
-      include: { organisations: { where: { organisationId } } },
-    }));
+  async listServices(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const standardServices = [
+        { code: "students", name: "Students & Attendance", sortOrder: 5 },
+        { code: "people", name: "People & Directory", sortOrder: 10 },
+        { code: "crm", name: "Leads & CRM", sortOrder: 20 },
+        { code: "finance", name: "Finance & Fees", sortOrder: 30 },
+        { code: "payroll", name: "Staff & Salary", sortOrder: 40 },
+        { code: "inventory", name: "Inventory & Stock", sortOrder: 50 },
+      ];
+
+      for (const srv of standardServices) {
+        await tx.service.upsert({
+          where: { code: srv.code },
+          update: { name: srv.name, sortOrder: srv.sortOrder },
+          create: srv,
+        });
+      }
+
+      const all = await tx.service.findMany({
+        where: { status: "ACTIVE" },
+        orderBy: { sortOrder: "asc" },
+        include: { organisations: { where: { organisationId } } },
+      });
+
+      return all.map((srv) => {
+        const orgSrv = srv.organisations[0];
+        const isEnabled = orgSrv ? orgSrv.status === "ACTIVE" : false;
+        return {
+          id: srv.id,
+          code: srv.code,
+          name: srv.name,
+          sortOrder: srv.sortOrder,
+          status: orgSrv?.status ?? "DISABLED",
+          enabled: isEnabled,
+        };
+      });
+    });
   }
 
-  setServiceStatus(organisationId: string, userId: string, serviceCode: string, enabled: boolean) {
+  async setServiceStatus(organisationId: string, userId: string, serviceCode: string, enabled: boolean) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
-      const service = await tx.service.findUnique({ where: { code: serviceCode } });
-      if (!service || service.status !== "ACTIVE") throw new NotFoundException("Service not found.");
+      let service = await tx.service.findUnique({ where: { code: serviceCode } });
+      if (!service) {
+        service = await tx.service.create({
+          data: {
+            code: serviceCode,
+            name: serviceCode,
+            sortOrder: 50,
+          },
+        });
+      }
       const entitlement = await tx.organisationService.upsert({
         where: { organisationId_serviceId: { organisationId, serviceId: service.id } },
-        create: { organisationId, serviceId: service.id, status: enabled ? "ACTIVE" : "DISABLED", activatedAt: enabled ? new Date() : null, disabledAt: enabled ? null : new Date() },
-        update: { status: enabled ? "ACTIVE" : "DISABLED", activatedAt: enabled ? new Date() : undefined, disabledAt: enabled ? null : new Date() },
+        create: {
+          organisationId,
+          serviceId: service.id,
+          status: enabled ? "ACTIVE" : "DISABLED",
+          activatedAt: enabled ? new Date() : null,
+          disabledAt: enabled ? null : new Date(),
+        },
+        update: {
+          status: enabled ? "ACTIVE" : "DISABLED",
+          activatedAt: enabled ? new Date() : undefined,
+          disabledAt: enabled ? null : new Date(),
+        },
       });
-      await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: enabled ? "service.enabled" : "service.disabled", entityType: "service", entityId: service.id, metadata: { serviceCode } } });
+      await tx.auditLog.create({
+        data: {
+          organisationId,
+          actorUserId: userId,
+          action: enabled ? "service.enabled" : "service.disabled",
+          entityType: "service",
+          entityId: service.id,
+          changes: { serviceCode, enabled },
+        },
+      });
       return entitlement;
     });
   }

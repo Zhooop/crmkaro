@@ -50,15 +50,17 @@ export class OrganisationsService {
       organisationId,
       userId,
       async (transaction) => {
+        for (const code of input.serviceCodes) {
+          await transaction.service.upsert({
+            where: { code },
+            update: {},
+            create: { code, name: code, sortOrder: 50 },
+          });
+        }
+
         const selectedServices = await transaction.service.findMany({
           where: { code: { in: input.serviceCodes }, status: "ACTIVE" },
         });
-
-        if (selectedServices.length !== new Set(input.serviceCodes).size) {
-          throw new ConflictException(
-            "One or more selected services are unavailable.",
-          );
-        }
 
         const created = await transaction.organisation.create({
           data: {
@@ -209,11 +211,22 @@ export class OrganisationsService {
           async (transaction) => {
             const organisation = await transaction.organisation.findUnique({
               where: { id: organisationId },
+              include: {
+                services: {
+                  where: { status: "ACTIVE" },
+                  include: { service: true },
+                },
+              },
             });
             const role = await transaction.role.findUnique({
               where: { id: roleId },
             });
-            return { organisation, role };
+            const activeServices = organisation?.services.map((s) => s.service.code) ?? [];
+            return {
+              organisation: organisation ? { ...organisation, activeServices } : null,
+              role,
+              activeServices,
+            };
           },
         ),
       ),

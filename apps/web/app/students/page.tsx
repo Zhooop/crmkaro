@@ -13,17 +13,11 @@ import {
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
-
-const nav: NavItem[] = [
-  { label: "Dashboard", icon: "home", href: "/" },
-  { label: "Students & Attendance", icon: "student", href: "/students" },
-  { label: "People & Directory", icon: "people", href: "/people" },
-  { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
-  { label: "Settings", icon: "settings", href: "/settings" },
-];
+import {
+  buildNavItems,
+  getActiveServicesFromStorage,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 type StudentProfile = {
   id: string;
@@ -121,6 +115,7 @@ function StudentsContent() {
   const [userRole, setUserRole] = useState("Administrator");
   const [currency, setCurrency] = useState("INR");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
 
   // Students Directory State
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -242,6 +237,11 @@ function StudentsContent() {
           setOrgName(activeOrgEntry.organisation.name);
           setUserRole(activeOrgEntry.role?.name || "Admin");
           setCurrency(activeOrgEntry.organisation.currency || "INR");
+          const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+          if (srvs && Array.isArray(srvs)) {
+            setActiveServiceCodes(srvs);
+            saveActiveServicesToStorage(srvs);
+          }
         }
         setOrganisations(
           orgList
@@ -621,6 +621,8 @@ function StudentsContent() {
     { id: "attendance", label: "Daily Attendance Grid", icon: "calendar" as const },
     { id: "summary", label: "Monthly Summary Report", icon: "reports" as const },
   ];
+
+  const nav: NavItem[] = buildNavItems(activeServiceCodes);
 
   return (
     <AppShell

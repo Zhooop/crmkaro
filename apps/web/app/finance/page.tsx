@@ -15,17 +15,11 @@ import {
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
-
-const nav: NavItem[] = [
-  { label: "Dashboard", icon: "home", href: "/" },
-  { label: "Students & Attendance", icon: "student", href: "/students" },
-  { label: "People & Directory", icon: "people", href: "/people" },
-  { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
-  { label: "Settings", icon: "settings", href: "/settings" },
-];
+import {
+  buildNavItems,
+  getActiveServicesFromStorage,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 const INVOICE_ITEM_PRESETS = [
   "Tuition / Course Fees",
@@ -333,6 +327,7 @@ function FinanceContent() {
   const [userName, setUserName] = useState("Workspace User");
   const [userRole, setUserRole] = useState("Accountant");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
 
   // Modals & Drawers
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
@@ -468,6 +463,11 @@ function FinanceContent() {
         if (activeOrgEntry?.organisation) {
           setOrgName(activeOrgEntry.organisation.name);
           setUserRole(activeOrgEntry.role?.name || "Accountant");
+          const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+          if (srvs && Array.isArray(srvs)) {
+            setActiveServiceCodes(srvs);
+            saveActiveServicesToStorage(srvs);
+          }
         }
         setOrganisations(
           orgList
@@ -1003,6 +1003,8 @@ function FinanceContent() {
     { id: "payments", label: "Fee Collections & Receipts", count: allPayments.length },
     { id: "expenses", label: "Kharcha / Expenses", count: expenses.length },
   ];
+
+  const nav: NavItem[] = buildNavItems(activeServiceCodes);
 
   return (
     <AppShell

@@ -14,17 +14,12 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
-
-const nav: NavItem[] = [
-  { label: "Dashboard", icon: "home", href: "/" },
-  { label: "Students & Attendance", icon: "student", href: "/students" },
-  { label: "People & Directory", icon: "people", href: "/people" },
-  { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
-  { label: "Settings", icon: "settings", href: "/settings" },
-];
+import {
+  ALL_AVAILABLE_SERVICES,
+  buildNavItems,
+  getActiveServicesFromStorage,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 type Role = {
   id: string;
@@ -78,8 +73,10 @@ export default function SettingsPage() {
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
   const [auditLogs, setAuditLogs] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
   // Context & AppShell info
   const [orgName, setOrgName] = useState("CRMKaro Workspace");
@@ -106,6 +103,11 @@ export default function SettingsPage() {
           setOrgName(activeOrgEntry.organisation.name);
           setOrgDetails(activeOrgEntry.organisation);
           setUserRole(activeOrgEntry.role?.name || "Admin");
+          if (activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices) {
+            const list = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+            setActiveServiceCodes(list);
+            saveActiveServicesToStorage(list);
+          }
         }
         setOrganisations(
           orgList
@@ -138,6 +140,9 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setServices(data || []);
+        const activeList = data.filter((s: ServiceItem) => s.enabled).map((s: ServiceItem) => s.code);
+        setActiveServiceCodes(activeList);
+        saveActiveServicesToStorage(activeList);
       }
     } catch {
       // ignore
@@ -166,6 +171,7 @@ export default function SettingsPage() {
   }, [loadContext, loadTeam, loadServices, loadAudit]);
 
   async function handleToggleService(serviceCode: string, currentlyEnabled: boolean) {
+    setTogglingCode(serviceCode);
     try {
       const action = currentlyEnabled ? "disable" : "enable";
       const res = await authFetch(`${api}/access/services/${serviceCode}/${action}`, {
@@ -173,10 +179,12 @@ export default function SettingsPage() {
         credentials: "include",
       });
       if (res.ok) {
-        loadServices();
+        await loadServices();
       }
     } catch {
       // ignore
+    } finally {
+      setTogglingCode(null);
     }
   }
 
@@ -199,18 +207,20 @@ export default function SettingsPage() {
 
   const initials = (orgDetails?.name || orgName)
     .split(" ")
-    .map((n) => n[0])
+    .map((w) => w[0])
     .join("")
     .slice(0, 2)
-    .toUpperCase() || "WK";
+    .toUpperCase();
+
+  const nav: NavItem[] = buildNavItems(activeServiceCodes);
 
   return (
     <AppShell
-      product="CRMKaro"
-      organisation={orgName}
-      organisations={organisations}
       currentPath="/settings"
       nav={nav}
+      organisation={orgName}
+      organisations={organisations}
+      product="CRMKaro"
       userName={userName}
       userRole={userRole}
       apiUrl={api}
@@ -218,85 +228,64 @@ export default function SettingsPage() {
     >
       <div className="page-heading">
         <div>
-          <p className="eyebrow">
-            <Icon name="settings" size={14} /> Administration
-          </p>
-          <h1>Workspace Settings & Access</h1>
-          <p className="subheading">
-            Configure organisation metadata, manage service entitlements, and audit security compliance events.
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, fontWeight: 700, color: "var(--brand)", textTransform: "uppercase", letterSpacing: "0.05em", marginBottom: 4 }}>
+            <Icon name="settings" size={15} /> System Configuration & Modules
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>
+            Workspace Settings
+          </h1>
+          <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "4px 0 0" }}>
+            Manage organization identity, enable/archive business services, team roles, and security audit logs.
           </p>
         </div>
       </div>
 
-      <Tabs
-        items={tabItems}
-        active={activeTab}
-        onChange={(id) => setActiveTab(id as "profile" | "team" | "services" | "audit")}
-      />
+      <div style={{ marginBottom: 24 }}>
+        <Tabs
+          active={activeTab}
+          items={tabItems}
+          onChange={(id) => setActiveTab(id as any)}
+        />
+      </div>
 
-      {/* Workspace Profile Tab */}
+      {/* Profile Tab */}
       {activeTab === "profile" && (
-        <div className="workspace-profile-wrap">
-          {/* Workspace Hero Header */}
-          <div className="workspace-hero-card">
-            <div className="workspace-hero-left">
-              <div className="workspace-avatar">{initials}</div>
-              <div className="workspace-title-wrap">
+        <div>
+          {/* Org Profile Header Card */}
+          <div className="profile-hero-card">
+            <div className="profile-avatar-lg">{initials}</div>
+            <div className="profile-hero-meta">
+              <div className="profile-hero-title-row">
                 <h2>{orgDetails?.name || orgName}</h2>
-                <div className="workspace-meta-tags">
-                  <span className="workspace-meta-tag">
-                    <Icon name="building" size={12} />
-                    <span>{orgDetails?.businessType || "Beauty Salon"}</span>
-                  </span>
-                  <Badge tone="green">● Operational</Badge>
-                  <span className="workspace-meta-tag">
-                    <Icon name="shield" size={12} />
-                    <span>PostgreSQL RLS Protected</span>
-                  </span>
-                </div>
+                <Badge tone="blue">Production Tenant</Badge>
               </div>
-            </div>
-
-            <div className="workspace-hero-actions">
-              <button
-                className={`copy-id-button ${copiedId ? "copied" : ""}`}
-                onClick={copyTenantId}
-                title="Copy full Tenant UUID"
-              >
-                <Icon name={copiedId ? "checkCircle" : "copy"} size={14} />
-                <span>{copiedId ? "UUID Copied!" : "Copy Tenant ID"}</span>
-              </button>
+              <p className="profile-hero-subtitle">
+                <span>Domain Slug:</span>
+                <code>{orgDetails?.slug || "crmkaro-primary"}</code>
+                <span>·</span>
+                <span>{orgDetails?.businessType || "Business"}</span>
+              </p>
             </div>
           </div>
 
-          {/* Quick Metrics Bar */}
-          <div className="stat-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+          {/* Quick Metrics */}
+          <div className="stats-grid" style={{ marginBottom: 24 }}>
             <StatCard
-              label="Active Services"
-              value={`${services.filter((s) => s.enabled).length || 5} / 5`}
-              change="Full Suite Active"
-              tone="blue"
+              label="Active Enabled Modules"
+              value={`${services.filter((s) => s.enabled).length} of ${ALL_AVAILABLE_SERVICES.length}`}
+              change="Configurable on Services tab"
               icon="services"
             />
             <StatCard
-              label="Data Isolation"
-              value="Level 4 RLS"
-              change="PostgreSQL Engine"
-              tone="green"
+              label="Assigned Roles"
+              value={roles.length.toString()}
+              change="Strict RBAC Matrix"
               icon="shield"
             />
             <StatCard
-              label="Primary Currency"
-              value={orgDetails?.currency || "INR (₹)"}
-              change="GST / TDS Configured"
-              tone="purple"
-              icon="finance"
-            />
-            <StatCard
-              label="Security Boundary"
-              value="Zero-Trust"
-              change="Immutable Audit Trail"
-              tone="blue"
+              label="Audited Events"
+              value={auditLogs.length.toString()}
+              change="PostgreSQL Append-Only"
               icon="activity"
             />
           </div>
@@ -318,7 +307,7 @@ export default function SettingsPage() {
                     <Icon name="tag" size={14} />
                     <span>Business Type</span>
                   </span>
-                  <span className="key-value-value">{orgDetails?.businessType || "Beauty Salon"}</span>
+                  <span className="key-value-value">{orgDetails?.businessType || "Business"}</span>
                 </div>
 
                 <div className="key-value-row">
@@ -357,7 +346,7 @@ export default function SettingsPage() {
                       {orgDetails?.id || "82cb99ee-077f-4a37-8c34-e9f22231a0bf"}
                     </code>
                     <button
-                      className="btn btn-sm btn-secondary"
+                      className="secondary-button"
                       onClick={copyTenantId}
                       style={{ padding: "4px 8px", fontSize: 11 }}
                     >
@@ -422,23 +411,21 @@ export default function SettingsPage() {
 
       {/* Services Entitlements Tab */}
       {activeTab === "services" && (
-        <div style={{ maxWidth: 800 }}>
-          <div style={{ marginBottom: 16 }}>
+        <div style={{ maxWidth: 840 }}>
+          <div style={{ marginBottom: 20, padding: "16px 20px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 750, color: "var(--ink)" }}>
+              🧩 Active Workspace Services & Navigation Visibility
+            </h3>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-              Enable or disable services for your workspace. Disabled services are hidden from navigation and protected from unauthorized API access.
+              Enable or archive business services. <strong>Archived / disabled services are immediately hidden from the sidebar menu</strong> across all pages and protected from unauthorized data entry.
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {[
-              { code: "people", name: "People Directory", desc: "Centralized database for customers, students, members, and employees." },
-              { code: "crm", name: "Leads & CRM", desc: "Sales pipelines, lead tracking, follow-ups, and customer conversion." },
-              { code: "finance", name: "Finance & Invoices", desc: "Billing, PDF invoices, payment collections, and expense logging." },
-              { code: "payroll", name: "Payroll & Salaries", desc: "Employee compensation, monthly payroll batches, and payslip generation." },
-              { code: "inventory", name: "Inventory & Stock", desc: "Product catalog, stock movement ledger, and low-stock alerts." },
-            ].map((srv) => {
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {ALL_AVAILABLE_SERVICES.map((srv) => {
               const currentSrv = services.find((s) => s.code === srv.code);
-              const isEnabled = currentSrv ? currentSrv.enabled : true;
+              const isEnabled = currentSrv ? currentSrv.enabled : activeServiceCodes.includes(srv.code);
+              const isBusy = togglingCode === srv.code;
 
               return (
                 <div
@@ -447,32 +434,39 @@ export default function SettingsPage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "16px 20px",
+                    padding: "18px 22px",
                     background: "#fff",
-                    border: "1px solid var(--line)",
+                    border: isEnabled ? "1px solid #cbd5e1" : "1px solid #e2e8f0",
                     borderRadius: 12,
-                    boxShadow: "var(--shadow)",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
+                    opacity: isEnabled ? 1 : 0.75,
+                    transition: "all 0.15s ease",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-                    <div className="stat-icon blue">
-                      <Icon
-                        name={
-                          srv.code === "people"
-                            ? "people"
-                            : srv.code === "crm"
-                              ? "crm"
-                              : srv.code === "finance"
-                                ? "finance"
-                                : srv.code === "payroll"
-                                  ? "payroll"
-                                  : "inventory"
-                        }
-                      />
+                  <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+                    <div
+                      style={{
+                        width: 44,
+                        height: 44,
+                        borderRadius: 10,
+                        background: isEnabled ? "#eff6ff" : "#f1f5f9",
+                        color: isEnabled ? "var(--brand)" : "#94a3b8",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Icon name={srv.icon} size={22} />
                     </div>
                     <div>
-                      <strong style={{ fontSize: 14 }}>{srv.name}</strong>
-                      <p style={{ fontSize: 12, color: "var(--muted)", margin: "2px 0 0" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <strong style={{ fontSize: 14.5, color: "var(--ink)" }}>{srv.name}</strong>
+                        <Badge tone={isEnabled ? "green" : "neutral"}>
+                          {isEnabled ? "ACTIVE (IN MENU)" : "ARCHIVED (HIDDEN)"}
+                        </Badge>
+                      </div>
+                      <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "4px 0 0" }}>
                         {srv.desc}
                       </p>
                     </div>
@@ -480,10 +474,29 @@ export default function SettingsPage() {
 
                   <div>
                     <button
-                      className={`btn btn-sm ${isEnabled ? "btn-secondary" : "btn-primary"}`}
+                      type="button"
+                      disabled={isBusy}
                       onClick={() => handleToggleService(srv.code, isEnabled)}
+                      style={{
+                        padding: "7px 16px",
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        border: isEnabled ? "1px solid #fecaca" : "1px solid var(--brand)",
+                        background: isEnabled ? "#fef2f2" : "var(--brand)",
+                        color: isEnabled ? "#b91c1c" : "#ffffff",
+                        transition: "all 0.15s ease",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 6,
+                      }}
                     >
-                      <span>{isEnabled ? "Disable" : "Enable"}</span>
+                      {isBusy
+                        ? "Updating…"
+                        : isEnabled
+                          ? "Archive & Hide from Menu"
+                          : "+ Enable & Show in Menu"}
                     </button>
                   </div>
                 </div>
@@ -496,7 +509,7 @@ export default function SettingsPage() {
       {/* Team & Roles Tab */}
       {activeTab === "team" && (
         <div style={{ maxWidth: 840 }}>
-          <div className="table-wrap">
+          <div className="table-responsive" style={{ overflowX: "auto" }}>
             <table className="data-table">
               <thead>
                 <tr>
@@ -518,16 +531,12 @@ export default function SettingsPage() {
                     </td>
                     <td style={{ color: "var(--muted)" }}>
                       {r.name === "Owner"
-                        ? "Full administrative access across all modules"
+                        ? "Full ownership and tenant billing management."
                         : r.name === "Admin"
-                          ? "Organisation administration and operations"
-                          : r.name === "Sales"
-                            ? "Access to CRM, Leads, Follow-ups and People"
-                            : r.name === "Accountant"
-                              ? "Access to Invoices, Payments, Expenses and Dues"
-                              : r.name === "HR"
-                                ? "Access to Staff records, Salaries and Payroll"
-                                : "General access to Inventory and Catalog"}
+                          ? "Full operational and read/write capabilities across all modules."
+                          : r.name === "Manager"
+                            ? "Can manage customer/student records and team operations."
+                            : "Standard operational permissions."}
                     </td>
                   </tr>
                 ))}
@@ -537,42 +546,42 @@ export default function SettingsPage() {
         </div>
       )}
 
-      {/* Security Audit Trail Tab */}
+      {/* Audit Log Tab */}
       {activeTab === "audit" && (
-        <div className="table-wrap">
+        <div style={{ maxWidth: 840 }}>
           {auditLogs.length === 0 ? (
-            <EmptyState
-              icon="shield"
-              title="No audit events recorded"
-              description="Critical business and security actions will be logged here with timestamps."
-            />
+            <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted)" }}>
+              No audited events logged yet.
+            </div>
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Action</th>
-                  <th>Entity Type</th>
-                  <th>Actor</th>
-                </tr>
-              </thead>
-              <tbody>
-                {auditLogs.map((log) => (
-                  <tr key={log.id}>
-                    <td>{new Date(log.createdAt).toLocaleString()}</td>
-                    <td>
-                      <code>{log.action}</code>
-                    </td>
-                    <td>
-                      <Badge tone="neutral">{log.entityType}</Badge>
-                    </td>
-                    <td>
-                      <strong>{log.actor?.name || log.actor?.email || "System"}</strong>
-                    </td>
+            <div className="table-responsive" style={{ overflowX: "auto" }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Action</th>
+                    <th>Entity Type</th>
+                    <th>Timestamp</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {auditLogs.map((log) => (
+                    <tr key={log.id}>
+                      <td>
+                        <strong>{log.action}</strong>
+                      </td>
+                      <td>
+                        <span className="code-chip">{log.entityType}</span>
+                      </td>
+                      <td>
+                        <time style={{ fontSize: 12, color: "var(--muted)" }}>
+                          {new Date(log.createdAt).toLocaleString("en-IN")}
+                        </time>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       )}

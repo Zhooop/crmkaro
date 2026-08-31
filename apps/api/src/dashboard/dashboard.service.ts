@@ -40,6 +40,19 @@ export class DashboardService {
       }> = [];
       const notifications: DashboardNotification[] = [];
 
+      if (services.has("students")) {
+        const count = await tx.studentProfile.count({
+          where: { organisationId, status: "ACTIVE" },
+        });
+        cards.push({
+          key: "students",
+          label: "Enrolled Students",
+          value: count,
+          detail: "Active student admissions and fee batches",
+          format: "number",
+        });
+      }
+
       if (services.has("people") && permissions.has("people.read")) {
         const count = await tx.person.count({
           where: { organisationId, status: "ACTIVE" },

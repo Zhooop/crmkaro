@@ -14,6 +14,12 @@ import {
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
+import {
+  ALL_AVAILABLE_SERVICES,
+  SERVICE_NAV_MAP,
+  buildNavItems,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 type Dashboard = {
   organisation: { name: string; currency: string; timezone: string };
@@ -44,50 +50,18 @@ type Dashboard = {
 };
 
 type OrganisationEntry = {
-  organisation: { id: string; name: string; businessType?: string } | null;
+  organisation: { id: string; name: string; businessType?: string; activeServices?: string[] } | null;
+  role?: { name: string; code?: string };
+  activeServices?: string[];
 };
 
-const availableServices = [
-  {
-    code: "people",
-    label: "People & Directory",
-    detail: "Students, customers, staff and members",
-  },
-  {
-    code: "crm",
-    label: "Leads & CRM",
-    detail: "Pipeline, inquiries, and admissions",
-  },
-  {
-    code: "finance",
-    label: "Finance & Fees",
-    detail: "Student fees, invoices, payments, and kharcha",
-  },
-  {
-    code: "payroll",
-    label: "Staff & Salary",
-    detail: "Staff salaries, monthly runs, and payslips",
-  },
-  {
-    code: "inventory",
-    label: "Inventory & Stock",
-    detail: "Products, study materials, and stock ledger",
-  },
-] as const;
-
 const icons: Record<string, IconName> = {
+  students: "student",
   people: "people",
   crm: "crm",
   finance: "finance",
   payroll: "payroll",
   inventory: "inventory",
-};
-const serviceNav: Record<string, NavItem> = {
-  people: { label: "People & Directory", icon: "people", href: "/people" },
-  crm: { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  finance: { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  payroll: { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  inventory: { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
 };
 
 function money(value: number, currency: string) {
@@ -137,9 +111,8 @@ export default function HomePage() {
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
   const [customBusinessType, setCustomBusinessType] = useState("");
-  const [selectedServices, setSelectedServices] = useState<string[]>(
-    availableServices.map(({ code }) => code),
-  );
+  // All services deselected by default as requested
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupError, setSetupError] = useState("");
 
@@ -168,34 +141,36 @@ export default function HomePage() {
         setNeedsSetup(true);
         return;
       }
-      const activationResponse = await authFetch(
+      const activateResponse = await authFetch(
         `${api}/organisations/${firstOrganisation.id}/activate`,
         { method: "POST" },
       );
-      if (!activationResponse.ok)
-        throw new Error("Your workspace could not be activated.");
-      const activatedDashboardResponse = await authFetch(`${api}/dashboard`);
-      if (!activatedDashboardResponse.ok)
-        throw new Error("Your dashboard could not be loaded.");
-      setData((await activatedDashboardResponse.json()) as Dashboard);
+      if (!activateResponse.ok)
+        throw new Error("Could not switch to your active workspace.");
+      const retry = await authFetch(`${api}/dashboard`);
+      if (!retry.ok) throw new Error("Could not load your workspace summary.");
+      const retryData = (await retry.json()) as Dashboard;
+      setData(retryData);
+      saveActiveServicesToStorage(retryData.services || []);
       return;
     }
-    if (!response.ok) throw new Error("Your dashboard could not be loaded.");
-    setData((await response.json()) as Dashboard);
 
-    // Also fetch organisations list for the switcher
-    try {
-      const orgsRes = await authFetch(`${api}/organisations`);
-      if (orgsRes.ok) {
-        const orgList = await orgsRes.json();
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
-      }
-    } catch {
-      // ignore
+    if (!response.ok)
+      throw new Error(
+        "Could not load your workspace overview. Please try again.",
+      );
+    const dashboardData = (await response.json()) as Dashboard;
+    setData(dashboardData);
+    saveActiveServicesToStorage(dashboardData.services || []);
+
+    const orgsRes = await authFetch(`${api}/organisations`);
+    if (orgsRes.ok) {
+      const orgList = await orgsRes.json();
+      setOrganisations(
+        orgList
+          .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
+          .filter(Boolean),
+      );
     }
   }, [api, router]);
 
@@ -263,8 +238,7 @@ export default function HomePage() {
             <p className="eyebrow">First workspace</p>
             <h1>Let’s set up your business.</h1>
             <p>
-              Create a private workspace. You can invite your team and adjust
-              modules later.
+              Create a private workspace. Select the services and modules you need now (you can add or archive anytime in Settings).
             </p>
           </div>
           <form className="onboarding-form" onSubmit={createWorkspace}>
@@ -278,22 +252,17 @@ export default function HomePage() {
               minLength={2}
               maxLength={180}
               placeholder="Example: Sunrise Academy"
-              autoFocus
               required
+              autoFocus
             />
 
-            <label htmlFor="business-type-select">
-              Business type <span style={{ color: "#ef4444" }}>*</span>
+            <label htmlFor="business-type">
+              Primary Business Category <span style={{ color: "#ef4444" }}>*</span>
             </label>
             <select
-              id="business-type-select"
+              id="business-type"
               value={selectedBusinessType}
-              onChange={(event) => {
-                setSelectedBusinessType(event.target.value);
-                if (event.target.value !== "Other") {
-                  setCustomBusinessType("");
-                }
-              }}
+              onChange={(event) => setSelectedBusinessType(event.target.value)}
               required
             >
               <option value="" disabled>
@@ -324,9 +293,9 @@ export default function HomePage() {
             )}
 
             <fieldset>
-              <legend>Start with these modules</legend>
+              <legend>Select Optional Business Modules</legend>
               <div className="onboarding-modules">
-                {availableServices.map((service) => {
+                {ALL_AVAILABLE_SERVICES.map((service) => {
                   const selected = selectedServices.includes(service.code);
                   return (
                     <label
@@ -358,21 +327,17 @@ export default function HomePage() {
               disabled={
                 setupBusy ||
                 organisationName.trim().length < 2 ||
-                !selectedBusinessType ||
-                (selectedBusinessType === "Other" && customBusinessType.trim().length < 2) ||
-                selectedServices.length === 0
+                !selectedBusinessType
               }
+              type="submit"
             >
-              {setupBusy ? "Creating workspace…" : "Create my workspace"}
+              {setupBusy ? "Creating workspace…" : "Complete workspace setup"}
             </button>
-            {setupError && (
-              <p className="onboarding-error" role="alert">
+            {setupError ? (
+              <p className="form-error" role="alert">
                 {setupError}
               </p>
-            )}
-            <small className="onboarding-security">
-              Your workspace data is isolated from every other organisation.
-            </small>
+            ) : null}
           </form>
         </section>
       </main>
@@ -380,13 +345,16 @@ export default function HomePage() {
 
   if (error)
     return (
-      <main className="dashboard-state">
-        <Icon name="activity" size={32} />
-        <h1>Dashboard unavailable</h1>
+      <main className="dashboard-state" aria-live="polite">
+        <h1>Unable to load dashboard</h1>
         <p>{error}</p>
         <button
           className="primary-button"
-          onClick={() => window.location.reload()}
+          onClick={() => {
+            setError("");
+            loadDashboard().catch((reason: Error) => setError(reason.message));
+          }}
+          type="button"
         >
           Try again
         </button>
@@ -395,28 +363,22 @@ export default function HomePage() {
 
   if (!data) return <DashboardLoading />;
 
-  const nav: NavItem[] = [
-    { label: "Dashboard", icon: "home", href: "/" },
-    { label: "Students & Attendance", icon: "student", href: "/students" },
-    ...data.services
-      .map((service) => serviceNav[service])
-      .filter((item): item is NavItem => Boolean(item)),
-    { label: "Settings", icon: "settings", href: "/settings" },
-  ];
-
   const displayName =
-    data.user.name ?? data.user.email.split("@")[0] ?? "there";
+    data.user?.name && data.user.name.trim().length > 0
+      ? data.user.name
+      : (data.user?.email.split("@")[0] ?? "Team Member");
+
+  const nav: NavItem[] = buildNavItems(data.services || []);
 
   return (
     <AppShell
-      product="CRMKaro"
-      organisation={data.organisation.name}
-      organisations={organisations}
       currentPath="/"
       nav={nav}
+      organisation={data.organisation.name}
+      organisations={organisations}
+      product="CRMKaro"
       userName={displayName}
-      userEmail={data.user.email}
-      userRole={data.role?.name ?? "Member"}
+      userRole={data.role?.name ?? "Administrator"}
       notifications={data.notifications}
       apiUrl={api}
       onSwitchOrganisation={handleSwitchOrg}
@@ -430,7 +392,7 @@ export default function HomePage() {
           </p>
           <h1>{data.user?.isNewUser ? `Welcome, ${displayName}` : `Welcome back, ${displayName}`}</h1>
           <p className="subheading">
-            Only the modules and data available to your role are shown here.
+            Only the active modules and data for your organization are shown here.
           </p>
         </div>
         <span className="date-chip">Updated just now</span>
@@ -439,7 +401,7 @@ export default function HomePage() {
       {/* Live Stat Cards */}
       <div className="stats-grid">
         {data.cards.map((card, index) => {
-          const targetHref = serviceNav[card.key]?.href;
+          const targetHref = SERVICE_NAV_MAP[card.key]?.href;
           return (
             <StatCard
               key={card.key}
@@ -530,18 +492,18 @@ export default function HomePage() {
 
         <SectionCard
           title="Quick actions"
-          subtitle="Available services in this workspace"
+          subtitle="Available active services in this workspace"
         >
           <div className="quick-grid">
             {data.services.slice(0, 6).map((service) => (
               <a
                 className="quick-tile"
-                href={serviceNav[service]?.href ?? "#"}
+                href={SERVICE_NAV_MAP[service]?.href ?? "#"}
                 key={service}
               >
                 <Icon name={icons[service] ?? "services"} />
                 <div>
-                  <strong>{serviceNav[service]?.label ?? service}</strong>
+                  <strong>{SERVICE_NAV_MAP[service]?.label ?? service}</strong>
                   <small>Open module</small>
                 </div>
               </a>
@@ -556,7 +518,7 @@ export default function HomePage() {
               <strong>{data.role?.name ?? "Member"}</strong>
             </span>
             <span>
-              <small>Enabled modules</small>
+              <small>Active modules</small>
               <strong>{data.services.length}</strong>
             </span>
             <span>

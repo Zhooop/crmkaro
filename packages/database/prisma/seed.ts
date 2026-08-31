@@ -19,6 +19,7 @@ if (!connectionString) {
 const database = new PrismaClient({ adapter: new PrismaPg({ connectionString }) });
 
 const services = [
+  { code: "students", name: "Students & Attendance", sortOrder: 5 },
   { code: "people", name: "People & HR", sortOrder: 10 },
   { code: "crm", name: "Sales CRM", sortOrder: 20 },
   { code: "finance", name: "Invoicing & Finance", sortOrder: 30 },

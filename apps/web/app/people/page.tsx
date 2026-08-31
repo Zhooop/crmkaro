@@ -14,19 +14,13 @@ import {
 import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
+import {
+  buildNavItems,
+  getActiveServicesFromStorage,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 import { State, City } from "country-state-city";
-
-const nav: NavItem[] = [
-  { label: "Dashboard", icon: "home", href: "/" },
-  { label: "Students & Attendance", icon: "student", href: "/students" },
-  { label: "People & Directory", icon: "people", href: "/people" },
-  { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
-  { label: "Settings", icon: "settings", href: "/settings" },
-];
 
 const ALL_INDIAN_STATES = State.getStatesOfCountry("IN").sort((a, b) =>
   a.name.localeCompare(b.name),
@@ -89,6 +83,7 @@ function PeopleContent() {
   const [userName, setUserName] = useState("Workspace User");
   const [userRole, setUserRole] = useState("Admin");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
@@ -179,6 +174,11 @@ function PeopleContent() {
         if (activeOrgEntry?.organisation) {
           setOrgName(activeOrgEntry.organisation.name);
           setUserRole(activeOrgEntry.role?.name || "Member");
+          const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+          if (srvs && Array.isArray(srvs)) {
+            setActiveServiceCodes(srvs);
+            saveActiveServicesToStorage(srvs);
+          }
         }
         setOrganisations(
           orgList
@@ -478,6 +478,8 @@ function PeopleContent() {
     { id: "MEMBER", label: "Members" },
     { id: "ARCHIVED", label: "Archived" },
   ];
+
+  const nav: NavItem[] = buildNavItems(activeServiceCodes);
 
   return (
     <AppShell

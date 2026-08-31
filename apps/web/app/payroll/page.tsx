@@ -15,17 +15,11 @@ import {
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
-
-const nav: NavItem[] = [
-  { label: "Dashboard", icon: "home", href: "/" },
-  { label: "Students & Attendance", icon: "student", href: "/students" },
-  { label: "People & Directory", icon: "people", href: "/people" },
-  { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  { label: "Finance & Fees", icon: "finance", href: "/finance" },
-  { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
-  { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
-  { label: "Settings", icon: "settings", href: "/settings" },
-];
+import {
+  buildNavItems,
+  getActiveServicesFromStorage,
+  saveActiveServicesToStorage,
+} from "@/lib/nav";
 
 type SalaryStructure = {
   id: string;
@@ -123,6 +117,7 @@ export default function PayrollPage() {
   const [userName, setUserName] = useState("Workspace User");
   const [userRole, setUserRole] = useState("HR");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
 
   // Modals & Drawers
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
@@ -187,6 +182,11 @@ export default function PayrollPage() {
         if (activeOrgEntry?.organisation) {
           setOrgName(activeOrgEntry.organisation.name);
           setUserRole(activeOrgEntry.role?.name || "HR");
+          const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+          if (srvs && Array.isArray(srvs)) {
+            setActiveServiceCodes(srvs);
+            saveActiveServicesToStorage(srvs);
+          }
         }
         setOrganisations(
           orgList
@@ -523,6 +523,8 @@ export default function PayrollPage() {
     { id: "employees", label: "Staff Salaries & Packages", count: employees.length },
     { id: "runs", label: "Monthly Salary Runs", count: runs.length },
   ];
+
+  const nav: NavItem[] = buildNavItems(activeServiceCodes);
 
   return (
     <AppShell
