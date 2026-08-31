@@ -4,7 +4,6 @@ import {
   AppShell,
   Badge,
   Drawer,
-  EmptyState,
   Icon,
   Modal,
   StatCard,
@@ -159,7 +158,9 @@ function StudentsContent() {
     attendancePercentage: number;
     items: AttendanceItem[];
   } | null>(null);
-  const [attendanceEdits, setAttendanceEdits] = useState<Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }>>({});
+  const [attendanceEdits, setAttendanceEdits] = useState<
+    Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }>
+  >({});
   const [loadingAttendance, setLoadingAttendance] = useState(false);
   const [savingAttendance, setSavingAttendance] = useState(false);
 
@@ -174,7 +175,6 @@ function StudentsContent() {
 
   // Modals & Drawers
   const [admissionModalOpen, setAdmissionModalOpen] = useState(false);
-  const [editModalOpen, setEditModalOpen] = useState(false);
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [studentDetailFull, setStudentDetailFull] = useState<any>(null);
@@ -395,7 +395,10 @@ function StudentsContent() {
         primaryPhone: formPhone.trim() || undefined,
         alternatePhone: formAltPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
-        address: formStreet || formCity || formState ? { street: formStreet, city: formCity, state: formState } : undefined,
+        address:
+          formStreet || formCity || formState
+            ? { street: formStreet, city: formCity, state: formState }
+            : undefined,
         rollNumber: formRollNumber.trim() || undefined,
         standard: formStandard.trim(),
         batch: formBatch.trim() || undefined,
@@ -484,7 +487,9 @@ function StudentsContent() {
   // 1-Click Fee Collection Modal Open
   function openCollectFeeModal(item: RecurringFeeItem) {
     setCollectFeeStudent(item);
-    setCollectAmount((item.balanceMinor > 0 ? item.balanceMinor / 100 : item.feePlanAmountMinor / 100).toString());
+    setCollectAmount(
+      (item.balanceMinor > 0 ? item.balanceMinor / 100 : item.feePlanAmountMinor / 100).toString(),
+    );
     setCollectMethod("UPI");
     setCollectReference("");
     setCollectNotes("");
@@ -555,7 +560,10 @@ function StudentsContent() {
     if (!attendanceData?.items) return;
     const edits: Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }> = {};
     for (const it of attendanceData.items) {
-      edits[it.studentProfileId] = { status: "PRESENT", remarks: attendanceEdits[it.studentProfileId]?.remarks || "" };
+      edits[it.studentProfileId] = {
+        status: "PRESENT",
+        remarks: attendanceEdits[it.studentProfileId]?.remarks || "",
+      };
     }
     setAttendanceEdits(edits);
     showToast("All students marked Present!", "success");
@@ -597,17 +605,21 @@ function StudentsContent() {
 
   // Distinct Standards and Batches from loaded students
   const distinctStandards = Array.from(new Set(students.map((s) => s.standard).filter(Boolean)));
-  const distinctBatches = Array.from(new Set(students.map((s) => s.batch).filter((b): b is string => Boolean(b))));
+  const distinctBatches = Array.from(
+    new Set(students.map((s) => s.batch).filter((b): b is string => Boolean(b))),
+  );
 
   const tabItems = [
-    { id: "directory", label: "Student Directory", count: students.length },
+    { id: "directory", label: "Student Directory", icon: "student" as const, count: students.length },
     {
       id: "recurring-fees",
       label: "Recurring Fees Cycle",
+      icon: "finance" as const,
       count: recurringFeesData?.pendingCount ?? 0,
+      highlight: (recurringFeesData?.pendingCount ?? 0) > 0,
     },
-    { id: "attendance", label: "Daily Attendance Grid" },
-    { id: "summary", label: "Monthly Summary Report" },
+    { id: "attendance", label: "Daily Attendance Grid", icon: "calendar" as const },
+    { id: "summary", label: "Monthly Summary Report", icon: "reports" as const },
   ];
 
   return (
@@ -630,32 +642,57 @@ function StudentsContent() {
             bottom: 24,
             right: 24,
             zIndex: 9999,
-            padding: "12px 20px",
-            borderRadius: 10,
+            padding: "14px 22px",
+            borderRadius: 12,
             background: toast.type === "success" ? "#064e3b" : "#7f1d1d",
             color: "#ffffff",
-            boxShadow: "0 10px 25px -5px rgba(0, 0, 0, 0.3)",
+            boxShadow: "0 20px 30px -10px rgba(0, 0, 0, 0.35)",
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            fontSize: 13,
-            fontWeight: 600,
+            gap: 12,
+            fontSize: 13.5,
+            fontWeight: 650,
+            animation: "slideUp 0.2s ease-out",
           }}
         >
-          <Icon name={toast.type === "success" ? "checkCircle" : "alertCircle"} size={18} />
+          <Icon name={toast.type === "success" ? "checkCircle" : "alertCircle"} size={20} />
           <span>{toast.message}</span>
         </div>
       )}
 
       {/* Page Heading */}
-      <div className="page-heading">
+      <div
+        className="page-heading"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "flex-start",
+          marginBottom: 24,
+          flexWrap: "wrap",
+          gap: 16,
+        }}
+      >
         <div>
-          <p className="eyebrow">
-            <Icon name="student" size={14} /> Student Lifecycle, Fees & Attendance
-          </p>
-          <h1>Students & Academy Management</h1>
-          <p className="subheading">
-            Manage one-time student admissions, automated recurring monthly fees, and fast daily attendance.
+          <div
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 11.5,
+              fontWeight: 700,
+              color: "var(--brand)",
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginBottom: 4,
+            }}
+          >
+            <Icon name="student" size={15} /> Student Lifecycle & Academy Portal
+          </div>
+          <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>
+            Students & Academy Management
+          </h1>
+          <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "4px 0 0", maxWidth: 650 }}>
+            Track one-time student admissions, automated recurring monthly fees rolling ledger, and 1-click attendance.
           </p>
         </div>
         <button
@@ -664,14 +701,25 @@ function StudentsContent() {
             resetAdmissionForm();
             setAdmissionModalOpen(true);
           }}
+          style={{
+            padding: "10px 18px",
+            fontSize: 13.5,
+            fontWeight: 700,
+            borderRadius: 10,
+            boxShadow: "0 4px 14px rgba(37, 99, 235, 0.3)",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            cursor: "pointer",
+          }}
         >
           <Icon name="plus" size={16} />
-          <span>+ New Admission</span>
+          <span>+ New Student Admission</span>
         </button>
       </div>
 
       {/* Quick Summary Metric Cards */}
-      <div className="stats-grid">
+      <div className="stats-grid" style={{ marginBottom: 24 }}>
         <StatCard
           label="Active Students"
           value={students.filter((s) => s.status === "ACTIVE").length.toString()}
@@ -702,9 +750,20 @@ function StudentsContent() {
         />
       </div>
 
-      {/* Main Tabs Header */}
-      <div className="filter-bar" style={{ marginTop: 24, marginBottom: 16 }}>
-        <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 4 }}>
+      {/* Modern Segmented Navigation Tabs */}
+      <div style={{ marginBottom: 20 }}>
+        <div
+          style={{
+            display: "inline-flex",
+            background: "#f1f5f9",
+            padding: "4px",
+            borderRadius: "12px",
+            border: "1px solid #e2e8f0",
+            gap: "4px",
+            flexWrap: "wrap",
+            boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
+          }}
+        >
           {tabItems.map((tab) => {
             const isActive = activeTab === tab.id;
             return (
@@ -713,30 +772,32 @@ function StudentsContent() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  padding: "8px 16px",
-                  borderRadius: 8,
+                  padding: "9px 18px",
+                  borderRadius: "8px",
                   fontSize: 13,
-                  fontWeight: isActive ? 700 : 500,
-                  border: isActive ? "1px solid var(--brand)" : "1px solid var(--line)",
-                  background: isActive ? "var(--brand)" : "#ffffff",
-                  color: isActive ? "#ffffff" : "var(--ink)",
+                  fontWeight: isActive ? 750 : 550,
+                  border: isActive ? "1px solid rgba(0,0,0,0.06)" : "1px solid transparent",
+                  background: isActive ? "#ffffff" : "transparent",
+                  color: isActive ? "var(--ink)" : "#64748b",
                   cursor: "pointer",
                   display: "flex",
                   alignItems: "center",
                   gap: 8,
+                  boxShadow: isActive ? "0 2px 5px rgba(0,0,0,0.07)" : "none",
                   transition: "all 0.15s ease",
                 }}
               >
+                <Icon name={tab.icon} size={15} />
                 <span>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
                     style={{
-                      fontSize: 10,
-                      padding: "2px 6px",
-                      borderRadius: 12,
-                      background: isActive ? "rgba(255,255,255,0.25)" : "var(--canvas-subtle)",
-                      color: isActive ? "#ffffff" : "var(--muted)",
-                      fontWeight: 700,
+                      fontSize: 11,
+                      padding: "2px 7px",
+                      borderRadius: 10,
+                      background: isActive ? (tab.highlight ? "#fef3c7" : "#f1f5f9") : "#e2e8f0",
+                      color: isActive ? (tab.highlight ? "#92400e" : "#0f172a") : "#64748b",
+                      fontWeight: 750,
                     }}
                   >
                     {tab.count}
@@ -752,30 +813,59 @@ function StudentsContent() {
       {/* TAB 1: STUDENT ADMISSIONS & DIRECTORY                           */}
       {/* ------------------------------------------------------------- */}
       {activeTab === "directory" && (
-        <section className="section-card">
-          <div className="section-header" style={{ flexWrap: "wrap", gap: 12 }}>
+        <section className="section-card" style={{ padding: "22px 26px" }}>
+          <div
+            className="section-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 18,
+              paddingBottom: 16,
+              borderBottom: "1px solid #f1f5f9",
+              flexWrap: "wrap",
+              gap: 14,
+            }}
+          >
             <div>
-              <h3>Student Directory</h3>
-              <p>All admitted students, course details, guardian contact, and status.</p>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>Student Directory</h3>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 0" }}>
+                Enrolled students, class batches, parent/guardian phone, and active status.
+              </p>
             </div>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <input
-                type="text"
-                placeholder="🔍 Search name, roll, phone, guardian..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  border: "1px solid var(--line)",
-                  fontSize: 12,
-                  width: 220,
-                }}
-              />
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+              <div style={{ position: "relative" }}>
+                <input
+                  type="text"
+                  placeholder="Search name, roll, phone..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  style={{
+                    padding: "8px 14px 8px 34px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                    width: 230,
+                    background: "#ffffff",
+                    outline: "none",
+                  }}
+                />
+                <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#94a3b8" }}>
+                  <Icon name="search" size={14} />
+                </div>
+              </div>
               <select
                 value={standardFilter}
                 onChange={(e) => setStandardFilter(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--line)", fontSize: 12 }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 12.5,
+                  background: "#ffffff",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
               >
                 <option value="ALL">All Standards</option>
                 {distinctStandards.map((std) => (
@@ -787,7 +877,15 @@ function StudentsContent() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--line)", fontSize: 12 }}
+                style={{
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 12.5,
+                  background: "#ffffff",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                }}
               >
                 <option value="ACTIVE">Active Students</option>
                 <option value="INACTIVE">Inactive / Alumni</option>
@@ -797,29 +895,72 @@ function StudentsContent() {
           </div>
 
           {loadingStudents ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+            <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
               Loading student directory…
             </div>
           ) : students.length === 0 ? (
-            <EmptyState
-              title="No students found"
-              description="Admit your first student to begin tracking monthly fee cycles and daily attendance."
-              actionLabel="+ New Admission"
-              onAction={() => {
-                resetAdmissionForm();
-                setAdmissionModalOpen(true);
+            <div
+              style={{
+                padding: "60px 20px",
+                textAlign: "center",
+                background: "#fafbfd",
+                borderRadius: 14,
+                border: "1px dashed #cbd5e1",
+                margin: "10px 0",
               }}
-            />
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#eff6ff",
+                  color: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <Icon name="student" size={28} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: "0 0 6px", color: "var(--ink)" }}>
+                No students enrolled yet
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", maxWidth: 440, margin: "0 auto 20px" }}>
+                Admit students with class/batch, guardian phone for WhatsApp receipts, and recurring fee plan.
+              </p>
+              <button
+                type="button"
+                className="primary-button"
+                onClick={() => {
+                  resetAdmissionForm();
+                  setAdmissionModalOpen(true);
+                }}
+                style={{
+                  padding: "9px 20px",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
+                <Icon name="plus" size={15} />
+                <span>+ Admit First Student</span>
+              </button>
+            </div>
           ) : (
             <div className="table-responsive" style={{ overflowX: "auto" }}>
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Student Name & Roll</th>
+                    <th>Student Details</th>
                     <th>Standard & Batch</th>
-                    <th>Guardian Contact</th>
+                    <th>Guardian / Parent</th>
                     <th>Fee Plan</th>
-                    <th>Admission Date</th>
+                    <th>Enrolled On</th>
                     <th>Status</th>
                     <th style={{ textAlign: "right" }}>Actions</th>
                   </tr>
@@ -828,49 +969,52 @@ function StudentsContent() {
                   {students.map((std) => (
                     <tr
                       key={std.id}
-                      style={{ cursor: "pointer", opacity: std.status === "INACTIVE" ? 0.65 : 1 }}
+                      style={{ cursor: "pointer", opacity: std.status === "INACTIVE" ? 0.6 : 1 }}
                       onClick={() => handleOpenDetail(std)}
                     >
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                           <div
                             style={{
-                              width: 34,
-                              height: 34,
-                              borderRadius: 8,
+                              width: 36,
+                              height: 36,
+                              borderRadius: 10,
                               background: std.status === "ACTIVE" ? "#0f766e" : "#64748b",
                               color: "#fff",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontWeight: 700,
-                              fontSize: 13,
+                              fontWeight: 750,
+                              fontSize: 13.5,
+                              flexShrink: 0,
                             }}
                           >
                             {std.person.displayName.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <strong style={{ fontSize: 13 }}>{std.person.displayName}</strong>
-                            <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                              {std.rollNumber ? `#${std.rollNumber}` : "No Roll #"} · {std.person.primaryPhone || "No Phone"}
+                            <strong style={{ fontSize: 13.5, color: "var(--ink)" }}>{std.person.displayName}</strong>
+                            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                              {std.rollNumber ? `ID #${std.rollNumber}` : "No Roll"} · {std.person.primaryPhone || "No Phone"}
                             </div>
                           </div>
                         </div>
                       </td>
                       <td>
-                        <strong>{std.standard}</strong>
-                        {std.batch && <div style={{ fontSize: 11, color: "var(--muted)" }}>{std.batch}</div>}
+                        <div style={{ fontWeight: 650, fontSize: 13 }}>{std.standard}</div>
+                        {std.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{std.batch}</div>}
                       </td>
                       <td>
-                        <div>{std.guardianName || "—"}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{std.guardianName || "—"}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
                           {std.guardianRelation ? `(${std.guardianRelation}) ` : ""}
                           {std.guardianPhone || "—"}
                         </div>
                       </td>
                       <td>
-                        <strong>{formatMoney(std.feeAmountMinor, currency)}</strong>
-                        <div style={{ fontSize: 10, color: "var(--muted)", textTransform: "lowercase" }}>
+                        <strong style={{ color: "var(--ink)", fontSize: 13 }}>
+                          {formatMoney(std.feeAmountMinor, currency)}
+                        </strong>
+                        <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "lowercase" }}>
                           /{std.feeFrequency}
                         </div>
                       </td>
@@ -892,7 +1036,12 @@ function StudentsContent() {
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
                           <button
                             className="secondary-button"
-                            style={{ padding: "4px 8px", fontSize: 11 }}
+                            style={{
+                              padding: "5px 10px",
+                              fontSize: 11.5,
+                              borderRadius: 6,
+                              fontWeight: 650,
+                            }}
                             onClick={() => handleOpenDetail(std)}
                           >
                             View
@@ -900,8 +1049,10 @@ function StudentsContent() {
                           <button
                             className="secondary-button"
                             style={{
-                              padding: "4px 8px",
-                              fontSize: 11,
+                              padding: "5px 10px",
+                              fontSize: 11.5,
+                              borderRadius: 6,
+                              fontWeight: 650,
                               color: std.status === "ACTIVE" ? "#b91c1c" : "#047857",
                             }}
                             onClick={() => handleToggleStatus(std.id, std.status)}
@@ -923,85 +1074,136 @@ function StudentsContent() {
       {/* TAB 2: AUTOMATED RECURRING FEES CYCLE (ROLLING DASHBOARD)       */}
       {/* ------------------------------------------------------------- */}
       {activeTab === "recurring-fees" && (
-        <section className="section-card">
-          <div className="section-header" style={{ flexWrap: "wrap", gap: 12 }}>
+        <section className="section-card" style={{ padding: "22px 26px" }}>
+          <div
+            className="section-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 18,
+              paddingBottom: 16,
+              borderBottom: "1px solid #f1f5f9",
+              flexWrap: "wrap",
+              gap: 14,
+            }}
+          >
             <div>
-              <h3>Automated Monthly Fee Cycle & Rolling Collection</h3>
-              <p>
-                No manual invoice creation needed every month. System rolls dues automatically. 1-click Collect marks fees paid and advances cycle!
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>
+                Automated Monthly Fee Cycle & Rolling Ledger
+              </h3>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 0" }}>
+                Auto-rolls monthly fee dues. 1-Click Collect creates official receipt and sends instant WhatsApp link!
               </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700, color: "var(--ink)" }}>Cycle Month:</label>
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>Billing Cycle:</label>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: 6,
+                  padding: "7px 12px",
+                  borderRadius: 8,
                   border: "1px solid var(--brand)",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: 13,
+                  background: "#ffffff",
+                  cursor: "pointer",
                 }}
               />
             </div>
           </div>
 
-          {/* Rolling Fee Progress Bar */}
+          {/* Rolling Fee Progress Ribbon */}
           {recurringFeesData && (
             <div
               style={{
-                padding: "16px 20px",
-                background: "var(--canvas-subtle)",
-                borderRadius: 10,
+                padding: "18px 22px",
+                background: "#f8fafc",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
                 marginBottom: 20,
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))",
-                gap: 16,
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: 18,
               }}
             >
               <div>
-                <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 700 }}>
-                  Expected Fee
+                <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
+                  Expected Fee ({recurringFeesData.cycleMonthLabel})
                 </span>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>
                   {formatMoney(recurringFeesData.totalExpectedMinor, currency)}
                 </div>
-                <small style={{ color: "var(--muted)" }}>{recurringFeesData.studentsCount} Active students enrolled</small>
+                <small style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                  {recurringFeesData.studentsCount} Active students enrolled
+                </small>
               </div>
 
               <div>
-                <span style={{ fontSize: 11, color: "#047857", textTransform: "uppercase", fontWeight: 700 }}>
+                <span style={{ fontSize: 11, color: "#047857", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
                   Collected Revenue
                 </span>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#047857", marginTop: 2 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#047857", marginTop: 2 }}>
                   {formatMoney(recurringFeesData.totalCollectedMinor, currency)}
                 </div>
-                <small style={{ color: "#047857" }}>{recurringFeesData.paidCount} students cleared</small>
+                <small style={{ color: "#047857", fontSize: 11.5 }}>
+                  {recurringFeesData.paidCount} students cleared
+                </small>
               </div>
 
               <div>
-                <span style={{ fontSize: 11, color: "#b45309", textTransform: "uppercase", fontWeight: 700 }}>
+                <span style={{ fontSize: 11, color: "#b45309", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
                   Pending Dues
                 </span>
-                <div style={{ fontSize: 20, fontWeight: 800, color: "#b45309", marginTop: 2 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: "#b45309", marginTop: 2 }}>
                   {formatMoney(recurringFeesData.totalPendingMinor, currency)}
                 </div>
-                <small style={{ color: "#b45309" }}>{recurringFeesData.pendingCount} students pending</small>
+                <small style={{ color: "#b45309", fontSize: 11.5 }}>
+                  {recurringFeesData.pendingCount} students pending
+                </small>
               </div>
             </div>
           )}
 
           {loadingFees ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
-              Loading fee cycle dues…
+            <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              Calculating fee cycle dues…
             </div>
           ) : !recurringFeesData?.items?.length ? (
-            <EmptyState
-              title="No active fee cycles"
-              description="No active students enrolled for this billing cycle."
-            />
+            <div
+              style={{
+                padding: "60px 20px",
+                textAlign: "center",
+                background: "#fafbfd",
+                borderRadius: 14,
+                border: "1px dashed #cbd5e1",
+                margin: "10px 0",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#eff6ff",
+                  color: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <Icon name="finance" size={28} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: "0 0 6px", color: "var(--ink)" }}>
+                No active fee cycles
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                No active students enrolled for {recurringFeesData?.cycleMonthLabel || "this month"}.
+              </p>
+            </div>
           ) : (
             <div className="table-responsive" style={{ overflowX: "auto" }}>
               <table className="data-table">
@@ -1009,7 +1211,7 @@ function StudentsContent() {
                   <tr>
                     <th>Student Details</th>
                     <th>Standard & Batch</th>
-                    <th>Guardian / Contact</th>
+                    <th>Guardian Contact</th>
                     <th>Monthly Plan</th>
                     <th>Fee Status</th>
                     <th>Paid Amount</th>
@@ -1021,21 +1223,23 @@ function StudentsContent() {
                   {recurringFeesData.items.map((item) => (
                     <tr key={item.studentProfileId}>
                       <td>
-                        <strong>{item.displayName}</strong>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                        <strong style={{ fontSize: 13.5 }}>{item.displayName}</strong>
+                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
                           {item.rollNumber ? `#${item.rollNumber}` : ""} · {item.cycleMonthLabel}
                         </div>
                       </td>
                       <td>
-                        <div>{item.standard}</div>
-                        {item.batch && <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.batch}</div>}
+                        <div style={{ fontWeight: 650, fontSize: 13 }}>{item.standard}</div>
+                        {item.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.batch}</div>}
                       </td>
                       <td>
-                        <div>{item.guardianName || "—"}</div>
-                        <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.guardianPhone || "—"}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>{item.guardianName || "—"}</div>
+                        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.guardianPhone || "—"}</div>
                       </td>
                       <td>
-                        <strong>{formatMoney(item.feePlanAmountMinor, currency)}</strong>
+                        <strong style={{ color: "var(--ink)", fontSize: 13 }}>
+                          {formatMoney(item.feePlanAmountMinor, currency)}
+                        </strong>
                       </td>
                       <td>
                         <Badge
@@ -1054,16 +1258,16 @@ function StudentsContent() {
                               : "PENDING DUE"}
                         </Badge>
                       </td>
-                      <td>{formatMoney(item.paidMinor, currency)}</td>
+                      <td style={{ fontSize: 13 }}>{formatMoney(item.paidMinor, currency)}</td>
                       <td>
-                        <strong style={{ color: item.balanceMinor > 0 ? "#b45309" : "#047857" }}>
+                        <strong style={{ fontSize: 13, color: item.balanceMinor > 0 ? "#b45309" : "#047857" }}>
                           {formatMoney(item.balanceMinor, currency)}
                         </strong>
                       </td>
                       <td style={{ textAlign: "right" }}>
                         {item.status === "PAID" ? (
-                          <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                            <span style={{ fontSize: 11, color: "#047857", fontWeight: 750 }}>
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+                            <span style={{ fontSize: 12, color: "#047857", fontWeight: 750 }}>
                               ✓ Received
                             </span>
                             {item.guardianPhone && (
@@ -1072,24 +1276,41 @@ function StudentsContent() {
                                   `Dear Guardian, fee payment of ${formatMoney(
                                     item.paidMinor,
                                     currency,
-                                  )} for ${item.displayName} (${item.cycleMonthLabel}) has been recorded with ${orgName}. Thank you!`,
+                                  )} for ${item.displayName} (${item.cycleMonthLabel}) has been received by ${orgName}. Thank you!`,
                                 )}`}
                                 target="_blank"
                                 rel="noreferrer"
                                 className="secondary-button"
-                                style={{ padding: "4px 8px", fontSize: 11 }}
+                                style={{
+                                  padding: "5px 9px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  color: "#16a34a",
+                                }}
+                                title="Send WhatsApp Confirmation"
                               >
-                                <Icon name="whatsapp" size={13} />
+                                <Icon name="whatsapp" size={14} />
                               </a>
                             )}
                           </div>
                         ) : (
                           <button
                             className="primary-button"
-                            style={{ padding: "6px 12px", fontSize: 12 }}
+                            style={{
+                              padding: "6px 14px",
+                              fontSize: 12.5,
+                              fontWeight: 700,
+                              borderRadius: 7,
+                              display: "inline-flex",
+                              alignItems: "center",
+                              gap: 6,
+                            }}
                             onClick={() => openCollectFeeModal(item)}
                           >
-                            <Icon name="rupee" size={13} />
+                            <Icon name="rupee" size={14} />
                             <span>Collect Fee</span>
                           </button>
                         )}
@@ -1107,11 +1328,25 @@ function StudentsContent() {
       {/* TAB 3: DAILY FAST ATTENDANCE GRID                              */}
       {/* ------------------------------------------------------------- */}
       {activeTab === "attendance" && (
-        <section className="section-card">
-          <div className="section-header" style={{ flexWrap: "wrap", gap: 12 }}>
+        <section className="section-card" style={{ padding: "22px 26px" }}>
+          <div
+            className="section-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 18,
+              paddingBottom: 16,
+              borderBottom: "1px solid #f1f5f9",
+              flexWrap: "wrap",
+              gap: 14,
+            }}
+          >
             <div>
-              <h3>Daily Attendance Fast Grid</h3>
-              <p>Single-click attendance marking for tuition, coaching, academies, and batches.</p>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>Daily Attendance Grid</h3>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 0" }}>
+                1-Click Present / Absent / Leave marking for tuition classes, batches, and academies.
+              </p>
             </div>
             <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
               <input
@@ -1119,17 +1354,26 @@ function StudentsContent() {
                 value={selectedDate}
                 onChange={(e) => setSelectedDate(e.target.value)}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: 6,
+                  padding: "7px 12px",
+                  borderRadius: 8,
                   border: "1px solid var(--brand)",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: 13,
+                  background: "#ffffff",
+                  cursor: "pointer",
                 }}
               />
               <select
                 value={standardFilter}
                 onChange={(e) => setStandardFilter(e.target.value)}
-                style={{ padding: "6px 10px", borderRadius: 6, border: "1px solid var(--line)", fontSize: 12 }}
+                style={{
+                  padding: "7px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 12.5,
+                  background: "#ffffff",
+                  fontWeight: 600,
+                }}
               >
                 <option value="ALL">All Standards</option>
                 {distinctStandards.map((std) => (
@@ -1142,7 +1386,15 @@ function StudentsContent() {
                 type="button"
                 className="secondary-button"
                 onClick={handleMarkAllPresent}
-                style={{ fontSize: 12, padding: "6px 12px" }}
+                style={{
+                  fontSize: 12.5,
+                  padding: "7px 14px",
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  color: "#047857",
+                  background: "#f0fdf4",
+                  borderColor: "#bbf7d0",
+                }}
               >
                 ✓ Mark All Present
               </button>
@@ -1151,9 +1403,17 @@ function StudentsContent() {
                 className="primary-button"
                 onClick={handleSaveAttendance}
                 disabled={savingAttendance}
-                style={{ fontSize: 12, padding: "6px 14px" }}
+                style={{
+                  fontSize: 12.5,
+                  padding: "7px 16px",
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
               >
-                <Icon name="check" size={14} />
+                <Icon name="check" size={15} />
                 <span>{savingAttendance ? "Saving…" : "Save Attendance"}</span>
               </button>
             </div>
@@ -1164,35 +1424,65 @@ function StudentsContent() {
             <div
               style={{
                 display: "flex",
-                gap: 16,
-                padding: "12px 16px",
-                background: "var(--canvas-subtle)",
-                borderRadius: 8,
-                marginBottom: 16,
-                fontSize: 12,
-                fontWeight: 600,
+                gap: 18,
+                padding: "12px 18px",
+                background: "#f8fafc",
+                borderRadius: 10,
+                border: "1px solid #e2e8f0",
+                marginBottom: 18,
+                fontSize: 12.5,
+                fontWeight: 650,
                 alignItems: "center",
+                flexWrap: "wrap",
               }}
             >
               <span style={{ color: "var(--ink)" }}>Total: {attendanceData.totalStudents} Students</span>
               <span style={{ color: "#047857" }}>• Present: {attendanceData.presentCount}</span>
               <span style={{ color: "#b91c1c" }}>• Absent: {attendanceData.absentCount}</span>
               <span style={{ color: "#b45309" }}>• Leave: {attendanceData.leaveCount}</span>
-              <span style={{ marginLeft: "auto", fontWeight: 800, color: "var(--brand)" }}>
+              <span style={{ marginLeft: "auto", fontWeight: 800, color: "var(--brand)", fontSize: 13 }}>
                 Attendance Rate: {attendanceData.attendancePercentage}%
               </span>
             </div>
           )}
 
           {loadingAttendance ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
+            <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
               Loading attendance sheet…
             </div>
           ) : !attendanceData?.items?.length ? (
-            <EmptyState
-              title="No active students found"
-              description="No active students available for attendance on this date."
-            />
+            <div
+              style={{
+                padding: "60px 20px",
+                textAlign: "center",
+                background: "#fafbfd",
+                borderRadius: 14,
+                border: "1px dashed #cbd5e1",
+                margin: "10px 0",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#eff6ff",
+                  color: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <Icon name="calendar" size={28} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: "0 0 6px", color: "var(--ink)" }}>
+                No students found for this date
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                Admit students to begin logging daily attendance.
+              </p>
+            </div>
           ) : (
             <div className="table-responsive" style={{ overflowX: "auto" }}>
               <table className="data-table">
@@ -1200,9 +1490,9 @@ function StudentsContent() {
                   <tr>
                     <th>Student Name</th>
                     <th>Standard & Batch</th>
-                    <th>Primary Phone</th>
-                    <th style={{ textAlign: "center" }}>Attendance Toggle</th>
-                    <th>Remarks</th>
+                    <th>Phone</th>
+                    <th style={{ textAlign: "center" }}>Mark Attendance</th>
+                    <th>Remarks / Notes</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -1213,34 +1503,40 @@ function StudentsContent() {
                     return (
                       <tr key={item.studentProfileId}>
                         <td>
-                          <strong>{item.displayName}</strong>
-                          {item.rollNumber && <div style={{ fontSize: 11, color: "var(--muted)" }}>#{item.rollNumber}</div>}
+                          <strong style={{ fontSize: 13.5 }}>{item.displayName}</strong>
+                          {item.rollNumber && (
+                            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                              #{item.rollNumber}
+                            </div>
+                          )}
                         </td>
                         <td>
-                          <div>{item.standard}</div>
-                          {item.batch && <div style={{ fontSize: 11, color: "var(--muted)" }}>{item.batch}</div>}
+                          <div style={{ fontWeight: 650, fontSize: 13 }}>{item.standard}</div>
+                          {item.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.batch}</div>}
                         </td>
-                        <td>{item.primaryPhone || "—"}</td>
+                        <td style={{ fontSize: 12.5, color: "var(--muted)" }}>{item.primaryPhone || "—"}</td>
                         <td style={{ textAlign: "center" }}>
                           <div
                             style={{
                               display: "inline-flex",
                               borderRadius: 8,
-                              border: "1px solid var(--line)",
+                              border: "1px solid #cbd5e1",
                               overflow: "hidden",
+                              boxShadow: "0 1px 2px rgba(0,0,0,0.05)",
                             }}
                           >
                             <button
                               type="button"
                               onClick={() => handleToggleAttendance(item.studentProfileId, "PRESENT")}
                               style={{
-                                padding: "6px 14px",
+                                padding: "6px 16px",
                                 fontSize: 12,
-                                fontWeight: currentStatus === "PRESENT" ? 750 : 500,
+                                fontWeight: currentStatus === "PRESENT" ? 750 : 550,
                                 background: currentStatus === "PRESENT" ? "#047857" : "#ffffff",
                                 color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
                                 border: "none",
                                 cursor: "pointer",
+                                transition: "all 0.15s ease",
                               }}
                             >
                               Present
@@ -1249,16 +1545,17 @@ function StudentsContent() {
                               type="button"
                               onClick={() => handleToggleAttendance(item.studentProfileId, "ABSENT")}
                               style={{
-                                padding: "6px 14px",
+                                padding: "6px 16px",
                                 fontSize: 12,
-                                fontWeight: currentStatus === "ABSENT" ? 750 : 500,
+                                fontWeight: currentStatus === "ABSENT" ? 750 : 550,
                                 background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
                                 color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
-                                borderLeft: "1px solid var(--line)",
-                                borderRight: "1px solid var(--line)",
+                                borderLeft: "1px solid #cbd5e1",
+                                borderRight: "1px solid #cbd5e1",
                                 borderTop: "none",
                                 borderBottom: "none",
                                 cursor: "pointer",
+                                transition: "all 0.15s ease",
                               }}
                             >
                               Absent
@@ -1267,13 +1564,14 @@ function StudentsContent() {
                               type="button"
                               onClick={() => handleToggleAttendance(item.studentProfileId, "LEAVE")}
                               style={{
-                                padding: "6px 14px",
+                                padding: "6px 16px",
                                 fontSize: 12,
-                                fontWeight: currentStatus === "LEAVE" ? 750 : 500,
+                                fontWeight: currentStatus === "LEAVE" ? 750 : 550,
                                 background: currentStatus === "LEAVE" ? "#b45309" : "#ffffff",
                                 color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
                                 border: "none",
                                 cursor: "pointer",
+                                transition: "all 0.15s ease",
                               }}
                             >
                               Leave
@@ -1283,7 +1581,7 @@ function StudentsContent() {
                         <td>
                           <input
                             type="text"
-                            placeholder="Optional note / reason…"
+                            placeholder="Optional remark…"
                             value={currentRemarks}
                             onChange={(e) =>
                               setAttendanceEdits((prev) => ({
@@ -1296,12 +1594,13 @@ function StudentsContent() {
                               }))
                             }
                             style={{
-                              padding: "4px 8px",
+                              padding: "6px 10px",
                               borderRadius: 6,
-                              border: "1px solid var(--line)",
+                              border: "1px solid #cbd5e1",
                               fontSize: 12,
                               width: "100%",
                               maxWidth: 240,
+                              background: "#ffffff",
                             }}
                           />
                         </td>
@@ -1319,38 +1618,83 @@ function StudentsContent() {
       {/* TAB 4: MONTHLY ATTENDANCE SUMMARY REPORT                       */}
       {/* ------------------------------------------------------------- */}
       {activeTab === "summary" && (
-        <section className="section-card">
-          <div className="section-header" style={{ flexWrap: "wrap", gap: 12 }}>
+        <section className="section-card" style={{ padding: "22px 26px" }}>
+          <div
+            className="section-header"
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              marginBottom: 18,
+              paddingBottom: 16,
+              borderBottom: "1px solid #f1f5f9",
+              flexWrap: "wrap",
+              gap: 14,
+            }}
+          >
             <div>
-              <h3>Monthly Attendance & Working Days Report</h3>
-              <p>Total working days, present counts, and percentage per student.</p>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>
+                Monthly Attendance & Working Days Summary
+              </h3>
+              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 0" }}>
+                Total working days, present counts, and percentage per student.
+              </p>
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <label style={{ fontSize: 12, fontWeight: 700 }}>Month:</label>
+              <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>Month:</label>
               <input
                 type="month"
                 value={selectedMonth}
                 onChange={(e) => setSelectedMonth(e.target.value)}
                 style={{
-                  padding: "6px 10px",
-                  borderRadius: 6,
+                  padding: "7px 12px",
+                  borderRadius: 8,
                   border: "1px solid var(--brand)",
-                  fontWeight: 600,
+                  fontWeight: 700,
                   fontSize: 13,
+                  background: "#ffffff",
                 }}
               />
             </div>
           </div>
 
           {loadingSummary ? (
-            <div style={{ padding: 40, textAlign: "center", color: "var(--muted)" }}>
-              Loading monthly summary…
+            <div style={{ padding: "60px 0", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              Generating monthly summary…
             </div>
           ) : !attendanceSummary?.students?.length ? (
-            <EmptyState
-              title="No attendance records"
-              description="No attendance logged for this selected month."
-            />
+            <div
+              style={{
+                padding: "60px 20px",
+                textAlign: "center",
+                background: "#fafbfd",
+                borderRadius: 14,
+                border: "1px dashed #cbd5e1",
+                margin: "10px 0",
+              }}
+            >
+              <div
+                style={{
+                  width: 56,
+                  height: 56,
+                  borderRadius: "50%",
+                  background: "#eff6ff",
+                  color: "var(--brand)",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 14px",
+                }}
+              >
+                <Icon name="reports" size={28} />
+              </div>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: "0 0 6px", color: "var(--ink)" }}>
+                No attendance records
+              </h3>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
+                No attendance logs found for {attendanceSummary?.monthLabel || "this month"}.
+              </p>
+            </div>
           ) : (
             <div className="table-responsive" style={{ overflowX: "auto" }}>
               <table className="data-table">
@@ -1362,30 +1706,34 @@ function StudentsContent() {
                     <th>Present Days</th>
                     <th>Absent Days</th>
                     <th>Leave Days</th>
-                    <th>Attendance %</th>
+                    <th>Attendance Rate</th>
                   </tr>
                 </thead>
                 <tbody>
                   {attendanceSummary.students.map((st) => (
                     <tr key={st.studentProfileId}>
                       <td>
-                        <strong>{st.displayName}</strong>
-                        {st.rollNumber && <div style={{ fontSize: 11, color: "var(--muted)" }}>#{st.rollNumber}</div>}
+                        <strong style={{ fontSize: 13.5 }}>{st.displayName}</strong>
+                        {st.rollNumber && (
+                          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                            #{st.rollNumber}
+                          </div>
+                        )}
                       </td>
                       <td>
-                        <div>{st.standard}</div>
-                        {st.batch && <div style={{ fontSize: 11, color: "var(--muted)" }}>{st.batch}</div>}
+                        <div style={{ fontWeight: 650, fontSize: 13 }}>{st.standard}</div>
+                        {st.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{st.batch}</div>}
                       </td>
-                      <td>{st.totalWorkingDays}</td>
-                      <td style={{ color: "#047857", fontWeight: 700 }}>{st.presentDays}</td>
-                      <td style={{ color: "#b91c1c" }}>{st.absentDays}</td>
-                      <td style={{ color: "#b45309" }}>{st.leaveDays}</td>
+                      <td style={{ fontSize: 13, fontWeight: 600 }}>{st.totalWorkingDays}</td>
+                      <td style={{ color: "#047857", fontWeight: 750, fontSize: 13 }}>{st.presentDays}</td>
+                      <td style={{ color: "#b91c1c", fontSize: 13 }}>{st.absentDays}</td>
+                      <td style={{ color: "#b45309", fontSize: 13 }}>{st.leaveDays}</td>
                       <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div
                             style={{
-                              width: 80,
-                              height: 6,
+                              width: 90,
+                              height: 7,
                               borderRadius: 4,
                               background: "#e2e8f0",
                               overflow: "hidden",
@@ -1395,11 +1743,12 @@ function StudentsContent() {
                               style={{
                                 width: `${Math.min(100, st.percentage)}%`,
                                 height: "100%",
-                                background: st.percentage >= 75 ? "#047857" : st.percentage >= 50 ? "#b45309" : "#b91c1c",
+                                background:
+                                  st.percentage >= 75 ? "#047857" : st.percentage >= 50 ? "#b45309" : "#b91c1c",
                               }}
                             />
                           </div>
-                          <strong style={{ fontSize: 12 }}>{st.percentage}%</strong>
+                          <strong style={{ fontSize: 12.5, color: "var(--ink)" }}>{st.percentage}%</strong>
                         </div>
                       </td>
                     </tr>
@@ -1418,141 +1767,270 @@ function StudentsContent() {
         isOpen={admissionModalOpen}
         onClose={() => setAdmissionModalOpen(false)}
         title="🎓 New Student Admission & Enrollment"
+        subtitle="Create permanent student record, course batch, guardian contact, and recurring fee plan."
+        maxWidth={780}
       >
         <form onSubmit={handleSaveAdmission}>
           {admissionError && (
             <div
               style={{
-                padding: "10px 14px",
+                padding: "12px 16px",
                 background: "#fef2f2",
                 border: "1px solid #fecaca",
                 borderRadius: 8,
                 color: "#991b1b",
-                fontSize: 12,
+                fontSize: 13,
                 marginBottom: 16,
                 fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
               }}
             >
-              {admissionError}
+              <Icon name="alertCircle" size={16} />
+              <span>{admissionError}</span>
             </div>
           )}
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Student Full Name *</label>
-              <input
-                type="text"
-                placeholder="e.g. Aryan Sharma"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                required
-              />
+          {/* Section 1: Basic & Contact Details */}
+          <div style={{ marginBottom: 18 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "var(--ink)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="people" size={14} /> Student Profile & Contact
             </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Student Mobile Number</label>
-              <input
-                type="tel"
-                placeholder="e.g. +91 9876543210"
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-              />
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Aryan Sharma"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 9876543210"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student ID / Roll Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. STD-101 (leave blank for auto)"
+                  value={formRollNumber}
+                  onChange={(e) => setFormRollNumber(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Email ID (Optional)
+                </label>
+                <input
+                  type="email"
+                  placeholder="student@example.com"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Student ID / Roll Number</label>
-              <input
-                type="text"
-                placeholder="e.g. STD-101 (leave empty for auto)"
-                value={formRollNumber}
-                onChange={(e) => setFormRollNumber(e.target.value)}
-              />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Email ID (Optional)</label>
-              <input
-                type="email"
-                placeholder="student@example.com"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-              />
-            </div>
-          </div>
-
-          {/* Academic & Batch Section */}
+          {/* Section 2: Academic & Batch Allocation */}
           <div
             style={{
-              padding: "12px 14px",
-              background: "var(--canvas-subtle)",
-              borderRadius: 8,
-              marginBottom: 14,
+              padding: "16px 18px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              marginBottom: 16,
             }}
           >
-            <strong style={{ fontSize: 12, color: "var(--ink)", display: "block", marginBottom: 8 }}>
-              Academic & Batch Allocation
-            </strong>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "#1e40af",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="student" size={14} /> Class / Course & Batch Allocation
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label>Class / Course / Standard *</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Class / Course / Standard *
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. 10th Standard, Dance Batch A, Martial Arts"
                   value={formStandard}
                   onChange={(e) => setFormStandard(e.target.value)}
                   required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label>Batch Timing / Shift</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Batch Timing / Shift
+                </label>
                 <input
                   type="text"
                   placeholder="e.g. Morning 8:00 AM, Evening Shift"
                   value={formBatch}
                   onChange={(e) => setFormBatch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Guardian Contact Section (For WhatsApp & PDF Receipts) */}
+          {/* Section 3: Guardian Details (For WhatsApp & PDF Receipts) */}
           <div
             style={{
-              padding: "12px 14px",
+              padding: "16px 18px",
               background: "#f0fdf4",
               border: "1px solid #bbf7d0",
-              borderRadius: 8,
-              marginBottom: 14,
+              borderRadius: 10,
+              marginBottom: 16,
             }}
           >
-            <strong style={{ fontSize: 12, color: "#166534", display: "block", marginBottom: 8 }}>
-              Guardian Contact (For Automated WhatsApp & PDF Receipts)
-            </strong>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "#166534",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="phone" size={14} /> Guardian Contact (For Automated WhatsApp & PDF Receipts)
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#166534" }}>Guardian Name</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Guardian Name</label>
                 <input
                   type="text"
                   placeholder="e.g. Rajesh Sharma"
                   value={formGuardianName}
                   onChange={(e) => setFormGuardianName(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#166534" }}>Guardian Mobile *</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Guardian Mobile *</label>
                 <input
                   type="tel"
                   placeholder="e.g. +91 9876543210"
                   value={formGuardianPhone}
                   onChange={(e) => setFormGuardianPhone(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#166534" }}>Relation</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Relation</label>
                 <select
                   value={formGuardianRelation}
                   onChange={(e) => setFormGuardianRelation(e.target.value)}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--line)" }}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                    fontWeight: 600,
+                  }}
                 >
                   <option value="Father">Father</option>
                   <option value="Mother">Mother</option>
@@ -1563,26 +2041,46 @@ function StudentsContent() {
             </div>
           </div>
 
-          {/* Recurring Fee Plan Section */}
+          {/* Section 4: Recurring Fee Plan */}
           <div
             style={{
-              padding: "12px 14px",
+              padding: "16px 18px",
               background: "#fefce8",
               border: "1px solid #fef08a",
-              borderRadius: 8,
-              marginBottom: 14,
+              borderRadius: 10,
+              marginBottom: 16,
             }}
           >
-            <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 8 }}>
-              Recurring Fee Plan (Auto-rolls Every Month)
-            </strong>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "#854d0e",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="rupee" size={14} /> Recurring Fee Plan (Auto-rolls Every Month)
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#854d0e" }}>Billing Frequency</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
                 <select
                   value={formFeeFrequency}
                   onChange={(e) => setFormFeeFrequency(e.target.value as any)}
-                  style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--line)" }}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fde047",
+                    fontSize: 13,
+                    background: "#ffffff",
+                    fontWeight: 600,
+                  }}
                 >
                   <option value="MONTHLY">Monthly</option>
                   <option value="QUARTERLY">Quarterly</option>
@@ -1590,62 +2088,133 @@ function StudentsContent() {
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#854d0e" }}>Fee Amount (₹) *</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Fee Amount (₹) *</label>
                 <input
                   type="number"
                   placeholder="e.g. 500"
                   value={formFeeAmount}
                   onChange={(e) => setFormFeeAmount(e.target.value)}
                   required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fde047",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ color: "#854d0e" }}>Admission / Start Date</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Admission Date</label>
                 <input
                   type="date"
                   value={formAdmissionDate}
                   onChange={(e) => setFormAdmissionDate(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fde047",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
                 />
               </div>
             </div>
           </div>
 
-          {/* Address & Notes */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 10, marginBottom: 12 }}>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>Street Address</label>
-              <input
-                type="text"
-                placeholder="e.g. 42 MG Road"
-                value={formStreet}
-                onChange={(e) => setFormStreet(e.target.value)}
-              />
+          {/* Section 5: Address */}
+          <div style={{ marginBottom: 18 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "var(--ink)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="building" size={14} /> Address (Optional)
             </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>City</label>
-              <input
-                type="text"
-                placeholder="e.g. Mumbai"
-                value={formCity}
-                onChange={(e) => setFormCity(e.target.value)}
-              />
-            </div>
-            <div className="form-group" style={{ margin: 0 }}>
-              <label>State</label>
-              <input
-                type="text"
-                placeholder="e.g. Maharashtra"
-                value={formState}
-                onChange={(e) => setFormState(e.target.value)}
-              />
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 42 MG Road"
+                  value={formStreet}
+                  onChange={(e) => setFormStreet(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>City</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mumbai"
+                  value={formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>State</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maharashtra"
+                  value={formState}
+                  onChange={(e) => setFormState(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
             </div>
           </div>
 
-          <div className="form-actions" style={{ marginTop: 20 }}>
+          {/* Action Buttons in Modal Footer */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 12,
+              paddingTop: 18,
+              borderTop: "1px solid #e2e8f0",
+              marginTop: 10,
+            }}
+          >
             <button
               type="button"
               className="secondary-button"
               onClick={() => setAdmissionModalOpen(false)}
+              style={{
+                padding: "9px 18px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 650,
+                cursor: "pointer",
+              }}
             >
               Cancel
             </button>
@@ -1653,6 +2222,14 @@ function StudentsContent() {
               type="submit"
               className="primary-button"
               disabled={admissionBusy}
+              style={{
+                padding: "9px 22px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+                cursor: "pointer",
+              }}
             >
               {admissionBusy ? "Admitting Student…" : "Save Admission & Permanent Profile"}
             </button>
@@ -1667,30 +2244,34 @@ function StudentsContent() {
         isOpen={collectFeeModalOpen}
         onClose={() => setCollectFeeModalOpen(false)}
         title="💳 1-Click Student Fee Collection"
+        subtitle="Record fee collection, generate official receipt, and advance rolling fee cycle."
+        maxWidth={540}
       >
         {receiptSuccessData ? (
-          <div style={{ textAlign: "center", padding: "10px 0" }}>
+          <div style={{ textAlign: "center", padding: "14px 0" }}>
             <div
               style={{
-                width: 50,
-                height: 50,
+                width: 58,
+                height: 58,
                 borderRadius: "50%",
                 background: "#dcfce7",
                 color: "#166534",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                margin: "0 auto 12px auto",
+                margin: "0 auto 14px auto",
               }}
             >
-              <Icon name="checkCircle" size={28} />
+              <Icon name="checkCircle" size={32} />
             </div>
-            <h3 style={{ margin: 0, fontSize: 17, color: "var(--ink)" }}>Fee Payment Recorded!</h3>
-            <p style={{ fontSize: 13, color: "var(--muted)", marginTop: 4 }}>
+            <h3 style={{ margin: "0 0 6px", fontSize: 18, fontWeight: 750, color: "var(--ink)" }}>
+              Fee Payment Recorded!
+            </h3>
+            <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "0 0 20px" }}>
               Official receipt <strong>{receiptSuccessData.receiptNumber}</strong> generated for {receiptSuccessData.monthLabel}.
             </p>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {receiptSuccessData.whatsappUrl && (
                 <a
                   href={receiptSuccessData.whatsappUrl}
@@ -1701,17 +2282,27 @@ function StudentsContent() {
                     justifyContent: "center",
                     background: "#25D366",
                     borderColor: "#25D366",
-                    padding: "10px 16px",
+                    padding: "11px 18px",
+                    borderRadius: 8,
+                    fontWeight: 700,
+                    fontSize: 13.5,
+                    boxShadow: "0 4px 14px rgba(37, 211, 102, 0.35)",
                   }}
                 >
-                  <Icon name="whatsapp" size={17} />
+                  <Icon name="whatsapp" size={18} />
                   <span>Send Fee Receipt on WhatsApp</span>
                 </a>
               )}
               <button
                 type="button"
                 className="secondary-button"
-                style={{ justifyContent: "center", padding: "10px 16px" }}
+                style={{
+                  justifyContent: "center",
+                  padding: "10px 18px",
+                  borderRadius: 8,
+                  fontSize: 13,
+                  fontWeight: 650,
+                }}
                 onClick={() => setCollectFeeModalOpen(false)}
               >
                 Close Window
@@ -1723,16 +2314,17 @@ function StudentsContent() {
             <form onSubmit={handleSaveCollectFee}>
               <div
                 style={{
-                  padding: "12px 14px",
-                  background: "var(--canvas-subtle)",
-                  borderRadius: 8,
+                  padding: "14px 16px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 10,
                   marginBottom: 16,
                 }}
               >
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div>
-                    <strong style={{ fontSize: 14 }}>{collectFeeStudent.displayName}</strong>
-                    <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    <strong style={{ fontSize: 14.5, color: "var(--ink)" }}>{collectFeeStudent.displayName}</strong>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                       {collectFeeStudent.standard} {collectFeeStudent.batch ? `· ${collectFeeStudent.batch}` : ""}
                     </div>
                   </div>
@@ -1740,23 +2332,40 @@ function StudentsContent() {
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Amount to Collect (₹) *</label>
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                  Amount to Collect (₹) *
+                </label>
                 <input
                   type="number"
                   value={collectAmount}
                   onChange={(e) => setCollectAmount(e.target.value)}
                   required
+                  style={{
+                    width: "100%",
+                    padding: "10px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
                 />
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>Payment Mode</label>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>Payment Mode</label>
                   <select
                     value={collectMethod}
                     onChange={(e) => setCollectMethod(e.target.value)}
-                    style={{ width: "100%", padding: "8px 10px", borderRadius: 6, border: "1px solid var(--line)" }}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 13,
+                      fontWeight: 600,
+                    }}
                   >
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="CASH">Cash</option>
@@ -1765,31 +2374,56 @@ function StudentsContent() {
                   </select>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label>Ref / Transaction ID (Optional)</label>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    Ref / Transaction ID
+                  </label>
                   <input
                     type="text"
                     placeholder="e.g. UPI Ref 389240"
                     value={collectReference}
                     onChange={(e) => setCollectReference(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 13,
+                    }}
                   />
                 </div>
               </div>
 
-              <div className="form-group">
-                <label>Notes / Remarks</label>
+              <div className="form-group" style={{ marginBottom: 18 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>Notes / Remarks</label>
                 <input
                   type="text"
                   placeholder="e.g. Paid in full for the month"
                   value={collectNotes}
                   onChange={(e) => setCollectNotes(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
                 />
               </div>
 
-              <div className="form-actions" style={{ marginTop: 20 }}>
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "flex-end",
+                  gap: 10,
+                  paddingTop: 14,
+                  borderTop: "1px solid #e2e8f0",
+                }}
+              >
                 <button
                   type="button"
                   className="secondary-button"
                   onClick={() => setCollectFeeModalOpen(false)}
+                  style={{ padding: "9px 16px", borderRadius: 8, fontSize: 13, fontWeight: 650 }}
                 >
                   Cancel
                 </button>
@@ -1797,8 +2431,17 @@ function StudentsContent() {
                   type="submit"
                   className="primary-button"
                   disabled={collectingFee}
+                  style={{
+                    padding: "9px 20px",
+                    borderRadius: 8,
+                    fontSize: 13,
+                    fontWeight: 700,
+                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+                  }}
                 >
-                  {collectingFee ? "Recording Payment…" : `Mark as Paid (${formatMoney(Number(collectAmount) * 100 || 0, currency)})`}
+                  {collectingFee
+                    ? "Recording Payment…"
+                    : `Mark as Paid (${formatMoney(Number(collectAmount) * 100 || 0, currency)})`}
                 </button>
               </div>
             </form>
@@ -1813,22 +2456,25 @@ function StudentsContent() {
         isOpen={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
         title={selectedStudent ? selectedStudent.person.displayName : "Student Profile"}
+        subtitle="Complete academic enrollment, guardian details, and payment history."
+        width={480}
       >
         {selectedStudent && (
           <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {/* Header info card */}
             <div
               style={{
-                padding: "16px",
-                background: "var(--canvas-subtle)",
-                borderRadius: 10,
+                padding: "16px 18px",
+                background: "#f8fafc",
+                borderRadius: 12,
+                border: "1px solid #e2e8f0",
                 display: "flex",
                 justifyContent: "space-between",
                 alignItems: "center",
               }}
             >
               <div>
-                <h3 style={{ margin: 0, fontSize: 16 }}>{selectedStudent.person.displayName}</h3>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 750 }}>{selectedStudent.person.displayName}</h3>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
                   {selectedStudent.rollNumber ? `Roll #${selectedStudent.rollNumber} · ` : ""}
                   {selectedStudent.standard} {selectedStudent.batch ? `(${selectedStudent.batch})` : ""}
@@ -1840,26 +2486,53 @@ function StudentsContent() {
             </div>
 
             {/* Guardian and Contact */}
-            <div style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 14 }}>
-              <strong style={{ fontSize: 12, textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 8 }}>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, background: "#ffffff" }}>
+              <strong
+                style={{
+                  fontSize: 11.5,
+                  textTransform: "uppercase",
+                  color: "var(--muted)",
+                  display: "block",
+                  marginBottom: 10,
+                  letterSpacing: "0.04em",
+                }}
+              >
                 Contact & Guardian
               </strong>
-              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
+              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>📱 <strong>Student Phone:</strong> {selectedStudent.person.primaryPhone || "—"}</div>
-                <div>👤 <strong>Guardian Name:</strong> {selectedStudent.guardianName || "—"} ({selectedStudent.guardianRelation || "Guardian"})</div>
+                <div>
+                  👤 <strong>Guardian Name:</strong> {selectedStudent.guardianName || "—"}{" "}
+                  ({selectedStudent.guardianRelation || "Guardian"})
+                </div>
                 <div>📞 <strong>Guardian Mobile:</strong> {selectedStudent.guardianPhone || "—"}</div>
                 <div>✉️ <strong>Email:</strong> {selectedStudent.person.email || "—"}</div>
               </div>
             </div>
 
             {/* Fee Plan Info */}
-            <div style={{ border: "1px solid var(--line)", borderRadius: 8, padding: 14 }}>
-              <strong style={{ fontSize: 12, textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 8 }}>
+            <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, background: "#ffffff" }}>
+              <strong
+                style={{
+                  fontSize: 11.5,
+                  textTransform: "uppercase",
+                  color: "var(--muted)",
+                  display: "block",
+                  marginBottom: 10,
+                  letterSpacing: "0.04em",
+                }}
+              >
                 Fee Plan Configuration
               </strong>
-              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 6 }}>
-                <div>💰 <strong>Fee Rate:</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} / {selectedStudent.feeFrequency.toLowerCase()}</div>
-                <div>📅 <strong>Enrolled On:</strong> {new Date(selectedStudent.admissionDate).toLocaleDateString("en-IN")}</div>
+              <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
+                <div>
+                  💰 <strong>Fee Rate:</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
+                  {selectedStudent.feeFrequency.toLowerCase()}
+                </div>
+                <div>
+                  📅 <strong>Enrolled On:</strong>{" "}
+                  {new Date(selectedStudent.admissionDate).toLocaleDateString("en-IN")}
+                </div>
               </div>
             </div>
 
@@ -1870,7 +2543,12 @@ function StudentsContent() {
                 style={{
                   flex: 1,
                   justifyContent: "center",
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  fontWeight: 700,
                   color: selectedStudent.status === "ACTIVE" ? "#b91c1c" : "#047857",
+                  background: selectedStudent.status === "ACTIVE" ? "#fef2f2" : "#f0fdf4",
+                  borderColor: selectedStudent.status === "ACTIVE" ? "#fecaca" : "#bbf7d0",
                 }}
                 onClick={() => handleToggleStatus(selectedStudent.id, selectedStudent.status)}
               >
@@ -1881,7 +2559,16 @@ function StudentsContent() {
             {/* Invoice & Payment History */}
             {studentDetailFull?.person?.invoices && (
               <div>
-                <strong style={{ fontSize: 12, textTransform: "uppercase", color: "var(--muted)", display: "block", marginBottom: 8 }}>
+                <strong
+                  style={{
+                    fontSize: 11.5,
+                    textTransform: "uppercase",
+                    color: "var(--muted)",
+                    display: "block",
+                    marginBottom: 10,
+                    letterSpacing: "0.04em",
+                  }}
+                >
                   Recent Invoices & Fee Receipts ({studentDetailFull.person.invoices.length})
                 </strong>
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -1889,24 +2576,25 @@ function StudentsContent() {
                     <div
                       key={inv.id}
                       style={{
-                        padding: "10px 12px",
-                        border: "1px solid var(--line)",
-                        borderRadius: 8,
+                        padding: "12px 14px",
+                        border: "1px solid #e2e8f0",
+                        borderRadius: 10,
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        fontSize: 12,
+                        fontSize: 12.5,
+                        background: "#ffffff",
                       }}
                     >
                       <div>
                         <strong>{inv.invoiceNumber}</strong>
-                        <div style={{ color: "var(--muted)", fontSize: 11 }}>
+                        <div style={{ color: "var(--muted)", fontSize: 11.5, marginTop: 2 }}>
                           {new Date(inv.issueDate).toLocaleDateString("en-IN")} · {inv.notes || "Fee bill"}
                         </div>
                       </div>
                       <div style={{ textAlign: "right" }}>
-                        <strong>{formatMoney(inv.grandTotalMinor, currency)}</strong>
-                        <div>
+                        <strong style={{ fontSize: 13 }}>{formatMoney(inv.grandTotalMinor, currency)}</strong>
+                        <div style={{ marginTop: 2 }}>
                           <Badge tone={inv.status === "PAID" ? "green" : "amber"}>
                             {inv.status}
                           </Badge>
