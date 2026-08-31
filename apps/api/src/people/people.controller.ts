@@ -21,8 +21,25 @@ export class PeopleController {
   @Get()
   @RequirePermissions("people.read")
   list(@Req() request: AuthenticatedRequest, @Query() query: Record<string, string | undefined>) {
-    const input = z.object({ search: z.string().trim().max(180).optional(), status: z.enum(["ACTIVE","ARCHIVED"]).optional(), type: personTypeSchema.optional(), tagId: z.string().uuid().optional(), cursor: z.string().uuid().optional(), limit: z.coerce.number().int().min(1).max(100).catch(25) }).parse(query);
-    return this.people.list(...this.context(request), input);
+    const input = z
+      .object({
+        search: z.string().trim().max(180).optional(),
+        status: z.enum(["ACTIVE", "ARCHIVED"]).optional(),
+        type: personTypeSchema.optional(),
+        excludeType: personTypeSchema.optional(),
+        types: z.string().optional(),
+        tagId: z.string().uuid().optional(),
+        cursor: z.string().uuid().optional(),
+        limit: z.coerce.number().int().min(1).max(100).catch(25),
+      })
+      .parse(query);
+    const parsedTypes = input.types
+      ? (input.types.split(",").map((t) => t.trim().toUpperCase()).filter(Boolean) as z.infer<typeof personTypeSchema>[])
+      : undefined;
+    return this.people.list(...this.context(request), {
+      ...input,
+      types: parsedTypes,
+    });
   }
 
   @Post("duplicates")

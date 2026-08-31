@@ -17,6 +17,7 @@ import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
+  { label: "Students & Attendance", icon: "student", href: "/students" },
   { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
   { label: "Finance & Fees", icon: "finance", href: "/finance" },

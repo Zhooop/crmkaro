@@ -46,11 +46,11 @@ export const invoiceSchema = z
   })
   .refine(
     (value) => {
-      const issueDay = new Date(value.issueDate).setHours(0, 0, 0, 0);
-      const dueDay = new Date(value.dueDate).setHours(0, 0, 0, 0);
-      return dueDay >= issueDay;
+      const issueDateStr = new Date(value.issueDate).toISOString().slice(0, 10);
+      const dueDateStr = new Date(value.dueDate).toISOString().slice(0, 10);
+      return dueDateStr >= issueDateStr;
     },
-    "Due date cannot be before issue date.",
+    { message: "Due date cannot be before issue date.", path: ["dueDate"] },
   );
 export const paymentSchema = z.object({
   invoiceId: z.string().uuid().optional().nullable(),

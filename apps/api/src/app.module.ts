@@ -16,6 +16,7 @@ import { InventoryModule } from "./inventory/inventory.module.js";
 import { DashboardModule } from "./dashboard/dashboard.module.js";
 import { SearchModule } from "./search/search.module.js";
 import { PlatformModule } from "./platform/platform.module.js";
+import { StudentsModule } from "./students/students.module.js";
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { PlatformModule } from "./platform/platform.module.js";
     OrganisationsModule,
     AccessModule,
     PeopleModule,
+    StudentsModule,
     CrmModule,
     FinanceModule,
     PayrollModule,

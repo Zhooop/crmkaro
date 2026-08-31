@@ -107,6 +107,23 @@ enum StockMovementType {
   ADJUSTMENT_OUT
 }
 
+enum AttendanceStatus {
+  PRESENT
+  ABSENT
+  LEAVE
+}
+
+enum StudentStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum FeeFrequency {
+  MONTHLY
+  QUARTERLY
+  ANNUAL
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   email       String     @unique @db.VarChar(320)
@@ -133,6 +150,7 @@ model User {
   approvedPayrollRuns PayrollRun[]             @relation("PayrollApprovedBy")
   paidPayrollRuns     PayrollRun[]             @relation("PayrollPaidBy")
   stockMovements      StockMovement[]
+  recordedAttendances AttendanceRecord[]
 
   @@map("users")
 }
@@ -242,6 +260,8 @@ model Organisation {
   productCategories ProductCategory[]
   products          Product[]
   stockMovements    StockMovement[]
+  students          StudentProfile[]
+  attendances       AttendanceRecord[]
 
   @@map("organisations")
 }
@@ -423,14 +443,16 @@ model Person {
   createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  organisation Organisation           @relation(fields: [organisationId], references: [id], onDelete: Cascade)
-  types        PersonTypeAssignment[]
-  tags         PersonTag[]
-  activities   PersonActivity[]
-  leads        Lead[]
-  invoices     Invoice[]
-  payments     Payment[]
-  employee     Employee?
+  organisation   Organisation           @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  types          PersonTypeAssignment[]
+  tags           PersonTag[]
+  activities     PersonActivity[]
+  leads          Lead[]
+  invoices       Invoice[]
+  payments       Payment[]
+  employee       Employee?
+  studentProfile StudentProfile?
+  attendances    AttendanceRecord[]
 
   @@index([organisationId, status, displayName])
   @@index([organisationId, primaryPhoneNormalised])
@@ -894,3 +916,56 @@ model StockMovement {
   @@index([organisationId, productId, createdAt(sort: Desc)])
   @@map("stock_movements")
 }
+
+model StudentProfile {
+  id               String             @id @default(uuid()) @db.Uuid
+  organisationId   String             @map("organisation_id") @db.Uuid
+  personId         String             @unique @map("person_id") @db.Uuid
+  rollNumber       String?            @map("roll_number") @db.VarChar(40)
+  standard         String?            @db.VarChar(100)
+  batch            String?            @db.VarChar(100)
+  guardianName     String?            @map("guardian_name") @db.VarChar(180)
+  guardianPhone    String?            @map("guardian_phone") @db.VarChar(32)
+  guardianRelation String?            @map("guardian_relation") @db.VarChar(60)
+  feeFrequency     FeeFrequency       @default(MONTHLY) @map("fee_frequency")
+  feeAmountMinor   Int                @default(0) @map("fee_amount_minor")
+  billingStartDate DateTime           @default(now()) @map("billing_start_date") @db.Date
+  status           StudentStatus      @default(ACTIVE)
+  admissionDate    DateTime           @default(now()) @map("admission_date") @db.Date
+  inactivatedAt    DateTime?          @map("inactivated_at") @db.Timestamptz(6)
+  createdAt        DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation     Organisation       @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  person           Person             @relation(fields: [personId], references: [id], onDelete: Cascade)
+  attendances      AttendanceRecord[]
+
+  @@unique([organisationId, rollNumber])
+  @@index([organisationId, status])
+  @@index([organisationId, standard, batch])
+  @@map("student_profiles")
+}
+
+model AttendanceRecord {
+  id               String           @id @default(uuid()) @db.Uuid
+  organisationId   String           @map("organisation_id") @db.Uuid
+  studentProfileId String           @map("student_profile_id") @db.Uuid
+  personId         String           @map("person_id") @db.Uuid
+  date             DateTime         @db.Date
+  status           AttendanceStatus @default(PRESENT)
+  remarks          String?          @db.VarChar(240)
+  recordedById     String?          @map("recorded_by_id") @db.Uuid
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation     Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  studentProfile   StudentProfile   @relation(fields: [studentProfileId], references: [id], onDelete: Cascade)
+  person           Person           @relation(fields: [personId], references: [id], onDelete: Cascade)
+  recordedBy       User?            @relation(fields: [recordedById], references: [id], onDelete: SetNull)
+
+  @@unique([organisationId, studentProfileId, date])
+  @@index([organisationId, date])
+  @@index([organisationId, studentProfileId])
+  @@map("attendance_records")
+}
+

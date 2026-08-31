@@ -18,6 +18,7 @@ import { authFetch, getApiUrl } from "@/lib/api";
 
 const nav: NavItem[] = [
   { label: "Dashboard", icon: "home", href: "/" },
+  { label: "Students & Attendance", icon: "student", href: "/students" },
   { label: "People & Directory", icon: "people", href: "/people" },
   { label: "Leads & CRM", icon: "crm", href: "/crm" },
   { label: "Finance & Fees", icon: "finance", href: "/finance" },
@@ -479,10 +480,10 @@ function FinanceContent() {
     }
   }, [api, router]);
 
-  // Load people for dropdown
+  // Load people for dropdown (Excluding employees)
   const loadPeople = useCallback(async () => {
     try {
-      const res = await authFetch(`${api}/people?limit=100`, { credentials: "include" });
+      const res = await authFetch(`${api}/people?excludeType=EMPLOYEE&limit=100`, { credentials: "include" });
       if (res.ok) {
         const data = await res.json();
         setPeople(data.items || []);
@@ -567,7 +568,7 @@ function FinanceContent() {
     }
   }, [searchParams, api]);
 
-  // Debounced live search for customers/students when creating invoice
+  // Debounced live search for customers/students when creating invoice (Excluding employees)
   useEffect(() => {
     if (!createInvoiceOpen || !personSearchQuery.trim()) {
       setSearchResults([]);
@@ -579,7 +580,7 @@ function FinanceContent() {
       setPersonSearchLoading(true);
       try {
         const res = await fetch(
-          `${api}/people?search=${encodeURIComponent(personSearchQuery.trim())}&limit=50`,
+          `${api}/people?excludeType=EMPLOYEE&search=${encodeURIComponent(personSearchQuery.trim())}&limit=50`,
           { credentials: "include" },
         );
         if (res.ok) {
@@ -595,6 +596,16 @@ function FinanceContent() {
 
     return () => clearTimeout(timer);
   }, [personSearchQuery, createInvoiceOpen, api]);
+
+  // Helper to ensure contacts are customer/student/member and not exclusively employee
+  const isCustomerOrStudent = (p: PersonOption) => {
+    if (!p.types || p.types.length === 0) return true;
+    const typeCodes = p.types.map((t) => t.type);
+    if (typeCodes.includes("EMPLOYEE") && !typeCodes.some((t) => ["CUSTOMER", "STUDENT", "MEMBER"].includes(t))) {
+      return false;
+    }
+    return true;
+  };
 
   // Calculate metrics
   const totalBilledMinor = invoices.reduce(
@@ -637,16 +648,15 @@ function FinanceContent() {
     try {
       const itemsPayload = validItems.map((item) => ({
         description: item.description.trim(),
-        quantity: Number(item.quantity) || 1,
-        unitPriceMinor: Math.round(Number(item.unitPrice) * 100) || 0,
-        taxRateBps: Math.round(Number(item.taxRate) * 100) || 0,
+        quantity: Math.max(1, Number(item.quantity) || 1),
+        unitPriceMinor: Math.max(0, Math.round(Number(item.unitPrice) * 100) || 0),
+        discountMinor: 0,
+        taxRateBps: Math.max(0, Math.round(Number(item.taxRate) * 100) || 0),
       }));
 
-      const now = new Date();
-      const issueDate = now.toISOString();
-      const dueDate = formDueDate
-        ? new Date(formDueDate).toISOString()
-        : new Date(now.getTime() + 15 * 86400000).toISOString();
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const issueDate = todayStr;
+      const dueDate = formDueDate && formDueDate >= todayStr ? formDueDate : todayStr;
 
       let res;
       if (editingInvoiceId) {
@@ -968,14 +978,17 @@ function FinanceContent() {
   );
   const invoiceGrandTotal = invoiceSubtotal + invoiceTax;
 
+  const eligiblePeople = people.filter(isCustomerOrStudent);
+  const eligibleSearchResults = searchResults.filter(isCustomerOrStudent);
+
   const selectedPerson =
-    people.find((p) => p.id === formPersonId) ||
-    searchResults.find((p) => p.id === formPersonId);
+    eligiblePeople.find((p) => p.id === formPersonId) ||
+    eligibleSearchResults.find((p) => p.id === formPersonId);
 
   const displayedPeople = personSearchQuery.trim()
-    ? searchResults.length > 0
-      ? searchResults
-      : people.filter((p) => {
+    ? eligibleSearchResults.length > 0
+      ? eligibleSearchResults
+      : eligiblePeople.filter((p) => {
           const q = personSearchQuery.toLowerCase();
           return (
             p.displayName.toLowerCase().includes(q) ||
@@ -983,7 +996,7 @@ function FinanceContent() {
             (p.primaryPhone && p.primaryPhone.includes(q))
           );
         })
-    : people.slice(0, 40);
+    : eligiblePeople.slice(0, 40);
 
   const tabItems = [
     { id: "invoices", label: "Invoices & Student Fees", count: invoices.length },

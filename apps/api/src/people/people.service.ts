@@ -34,14 +34,56 @@ export class PeopleService {
     return withTenant(this.database, organisationId, userId, (tx) => tx.person.findMany({ where, take: 10, select: { id: true, displayName: true, email: true, primaryPhone: true, status: true } }));
   }
 
-  list(organisationId: string, userId: string, input: { search?: string; status?: "ACTIVE" | "ARCHIVED"; type?: PersonTypeCode; tagId?: string; cursor?: string; limit: number }) {
+  list(
+    organisationId: string,
+    userId: string,
+    input: {
+      search?: string;
+      status?: "ACTIVE" | "ARCHIVED";
+      type?: PersonTypeCode;
+      types?: PersonTypeCode[];
+      excludeType?: PersonTypeCode;
+      tagId?: string;
+      cursor?: string;
+      limit: number;
+    },
+  ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
-      const rows = await tx.person.findMany({ where: {
-        organisationId, status: input.status ?? "ACTIVE",
-        ...(input.search ? { OR: [{ displayName: { contains: input.search, mode: "insensitive" } }, { email: { contains: input.search, mode: "insensitive" } }, { primaryPhone: { contains: input.search } }] } : {}),
-        ...(input.type ? { types: { some: { type: input.type } } } : {}), ...(input.tagId ? { tags: { some: { tagId: input.tagId } } } : {}),
-      }, orderBy: [{ displayName: "asc" }, { id: "asc" }], include: personInclude, take: input.limit + 1, ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}) });
-      const hasMore = rows.length > input.limit, items = hasMore ? rows.slice(0, input.limit) : rows;
+      const typeFilter: any = {};
+      if (input.types && input.types.length > 0) {
+        typeFilter.types = { some: { type: { in: input.types } } };
+      } else if (input.type) {
+        typeFilter.types = { some: { type: input.type } };
+      }
+      const excludeFilter: any = {};
+      if (input.excludeType) {
+        excludeFilter.types = { none: { type: input.excludeType } };
+      }
+
+      const rows = await tx.person.findMany({
+        where: {
+          organisationId,
+          status: input.status ?? "ACTIVE",
+          ...(input.search
+            ? {
+                OR: [
+                  { displayName: { contains: input.search, mode: "insensitive" } },
+                  { email: { contains: input.search, mode: "insensitive" } },
+                  { primaryPhone: { contains: input.search } },
+                ],
+              }
+            : {}),
+          ...typeFilter,
+          ...excludeFilter,
+          ...(input.tagId ? { tags: { some: { tagId: input.tagId } } } : {}),
+        },
+        orderBy: [{ displayName: "asc" }, { id: "asc" }],
+        include: personInclude,
+        take: input.limit + 1,
+        ...(input.cursor ? { cursor: { id: input.cursor }, skip: 1 } : {}),
+      });
+      const hasMore = rows.length > input.limit,
+        items = hasMore ? rows.slice(0, input.limit) : rows;
       return { items, nextCursor: hasMore ? items.at(-1)?.id ?? null : null };
     });
   }

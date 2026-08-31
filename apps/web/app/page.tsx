@@ -397,6 +397,7 @@ export default function HomePage() {
 
   const nav: NavItem[] = [
     { label: "Dashboard", icon: "home", href: "/" },
+    { label: "Students & Attendance", icon: "student", href: "/students" },
     ...data.services
       .map((service) => serviceNav[service])
       .filter((item): item is NavItem => Boolean(item)),
