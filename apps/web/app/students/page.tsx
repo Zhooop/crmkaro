@@ -42,6 +42,7 @@ type StudentProfile = {
     alternatePhone: string | null;
     email: string | null;
     address?: { street?: string; city?: string; state?: string; postalCode?: string } | null;
+    notes?: string | null;
     status: string;
   };
 };
@@ -195,7 +196,13 @@ function StudentsContent() {
     emailTarget?: string | null;
   } | null>(null);
 
-  // Admission Form State
+  // Admission & Edit Form State
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<StudentProfile | null>(null);
+  const [editBusy, setEditBusy] = useState(false);
+  const [editError, setEditError] = useState("");
+  const [formStatus, setFormStatus] = useState<"ACTIVE" | "INACTIVE">("ACTIVE");
+
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
   const [formAltPhone, setFormAltPhone] = useState("");
@@ -460,6 +467,121 @@ function StudentsContent() {
     setFormAdmissionDate(todayYyyyMmDd);
     setFormNotes("");
     setAdmissionError("");
+  }
+
+  function handleOpenEdit(std: StudentProfile) {
+    setEditingStudent(std);
+    setFormName(std.person.displayName || "");
+    setFormPhone(std.person.primaryPhone || "");
+    setFormAltPhone(std.person.alternatePhone || "");
+    setFormEmail(std.person.email || "");
+    setFormStreet(std.person.address?.street || "");
+    setFormCity(std.person.address?.city || "");
+    setFormState(std.person.address?.state || "");
+    setFormRollNumber(std.rollNumber || "");
+    setFormStandard(std.standard || "10th Standard");
+    setFormBatch(std.batch || "");
+    setFormGuardianName(std.guardianName || "");
+    setFormGuardianPhone(std.guardianPhone || "");
+    setFormGuardianRelation(std.guardianRelation || "Father");
+    setFormFeeFrequency(std.feeFrequency || "MONTHLY");
+    setFormFeeAmount(((std.feeAmountMinor || 0) / 100).toString());
+    setFormNotes(std.person.notes || "");
+    setFormStatus(std.status || "ACTIVE");
+    setEditError("");
+    setEditModalOpen(true);
+  }
+
+  async function handleSaveEditStudent(e: FormEvent) {
+    e.preventDefault();
+    if (!editingStudent) return;
+    if (!formName.trim()) {
+      setEditError("Student full name is required.");
+      return;
+    }
+    if (!formStandard.trim()) {
+      setEditError("Standard / Class is required.");
+      return;
+    }
+
+    setEditBusy(true);
+    setEditError("");
+
+    try {
+      const address =
+        formStreet.trim() || formCity.trim() || formState.trim()
+          ? {
+              street: formStreet.trim(),
+              city: formCity.trim(),
+              state: formState.trim(),
+            }
+          : undefined;
+
+      const payload = {
+        displayName: formName.trim(),
+        primaryPhone: formPhone.trim() || null,
+        alternatePhone: formAltPhone.trim() || null,
+        email: formEmail.trim() || null,
+        address,
+        rollNumber: formRollNumber.trim() || null,
+        standard: formStandard.trim(),
+        batch: formBatch.trim() || null,
+        guardianName: formGuardianName.trim() || null,
+        guardianPhone: formGuardianPhone.trim() || null,
+        guardianRelation: formGuardianRelation.trim() || null,
+        feeFrequency: formFeeFrequency,
+        feeAmountMinor: Math.max(0, Math.round(Number(formFeeAmount || 0) * 100)),
+        status: formStatus,
+        notes: formNotes.trim() || null,
+      };
+
+      const res = await authFetch(`${api}/students/${editingStudent.id}`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.message || "Failed to update student profile.");
+      }
+
+      showToast(`Student ${payload.displayName} updated successfully!`, "success");
+      setEditModalOpen(false);
+      loadStudents();
+      loadRecurringFees();
+
+      if (selectedStudent?.id === editingStudent.id) {
+        setSelectedStudent((prev) =>
+          prev
+            ? {
+                ...prev,
+                rollNumber: payload.rollNumber,
+                standard: payload.standard,
+                batch: payload.batch,
+                guardianName: payload.guardianName,
+                guardianPhone: payload.guardianPhone,
+                guardianRelation: payload.guardianRelation,
+                feeFrequency: payload.feeFrequency,
+                feeAmountMinor: payload.feeAmountMinor,
+                status: payload.status,
+                person: {
+                  ...prev.person,
+                  displayName: payload.displayName,
+                  primaryPhone: payload.primaryPhone,
+                  alternatePhone: payload.alternatePhone,
+                  email: payload.email,
+                  notes: payload.notes,
+                },
+              }
+            : null,
+        );
+      }
+    } catch (err: any) {
+      setEditError(err.message || "Error updating student details.");
+    } finally {
+      setEditBusy(false);
+    }
   }
 
   // Handle Status Toggle (Active / Inactive)
@@ -1047,6 +1169,22 @@ function StudentsContent() {
                       </td>
                       <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                         <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                          <button
+                            className="secondary-button"
+                            style={{
+                              padding: "5px 10px",
+                              fontSize: 11.5,
+                              borderRadius: 6,
+                              fontWeight: 700,
+                              color: "var(--brand)",
+                              background: "rgba(37, 99, 235, 0.06)",
+                              borderColor: "rgba(37, 99, 235, 0.2)",
+                            }}
+                            onClick={() => handleOpenEdit(std)}
+                            title="Edit student details & fee plan"
+                          >
+                            ✏️ Edit
+                          </button>
                           <button
                             className="secondary-button"
                             style={{
@@ -2287,6 +2425,514 @@ function StudentsContent() {
       </Modal>
 
       {/* ------------------------------------------------------------- */}
+      {/* MODAL: EDIT EXISTING STUDENT PROFILE                          */}
+      {/* ------------------------------------------------------------- */}
+      <Modal
+        isOpen={editModalOpen}
+        onClose={() => setEditModalOpen(false)}
+        title={`✏️ Edit Student: ${editingStudent?.person.displayName || "Profile"}`}
+        subtitle="Update academic allocation, contact numbers, guardian information, and recurring fee plan."
+        maxWidth={780}
+      >
+        <form onSubmit={handleSaveEditStudent}>
+          {editError && (
+            <div
+              style={{
+                padding: "12px 16px",
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                borderRadius: 8,
+                color: "#991b1b",
+                fontSize: 13,
+                marginBottom: 16,
+                fontWeight: 600,
+                display: "flex",
+                alignItems: "center",
+                gap: 8,
+              }}
+            >
+              <Icon name="alertCircle" size={16} />
+              <span>{editError}</span>
+            </div>
+          )}
+
+          {/* Section 1: Basic & Contact Details */}
+          <div style={{ marginBottom: 18 }}>
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "var(--ink)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="people" size={14} /> Student Profile & Contact
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student Full Name *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Aryan Sharma"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student Mobile Number
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 9876543210"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 12 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Student ID / Roll Number
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. STD-101"
+                  value={formRollNumber}
+                  onChange={(e) => setFormRollNumber(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Alternate Phone
+                </label>
+                <input
+                  type="tel"
+                  placeholder="Optional alternate phone"
+                  value={formAltPhone}
+                  onChange={(e) => setFormAltPhone(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Email ID (for Fee Receipts)
+                </label>
+                <input
+                  type="email"
+                  placeholder="student@example.com"
+                  value={formEmail}
+                  onChange={(e) => setFormEmail(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 2: Academic & Batch Allocation */}
+          <div
+            style={{
+              padding: "16px 18px",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
+              borderRadius: 10,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "var(--ink)",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="student" size={14} /> Class & Batch Allocation
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Standard / Class *
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. 10th Standard"
+                  value={formStandard}
+                  onChange={(e) => setFormStandard(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Section / Batch
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Morning Batch"
+                  value={formBatch}
+                  onChange={(e) => setFormBatch(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Enrollment Status
+                </label>
+                <select
+                  value={formStatus}
+                  onChange={(e) => setFormStatus(e.target.value as any)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 13,
+                    background: "#ffffff",
+                    fontWeight: 650,
+                  }}
+                >
+                  <option value="ACTIVE">Active Student</option>
+                  <option value="INACTIVE">Inactive / Alumni</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Section 3: Guardian Details */}
+          <div
+            style={{
+              padding: "16px 18px",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: 10,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "#166534",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="people" size={14} /> Parent & Guardian (WhatsApp Receipts)
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
+                  Guardian Name
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Ramesh Sharma"
+                  value={formGuardianName}
+                  onChange={(e) => setFormGuardianName(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
+                  Relationship
+                </label>
+                <select
+                  value={formGuardianRelation}
+                  onChange={(e) => setFormGuardianRelation(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                >
+                  <option value="Father">Father</option>
+                  <option value="Mother">Mother</option>
+                  <option value="Guardian">Guardian</option>
+                  <option value="Self">Self</option>
+                  <option value="Other">Other</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
+                  Guardian WhatsApp Mobile
+                </label>
+                <input
+                  type="tel"
+                  placeholder="e.g. +91 9876543210"
+                  value={formGuardianPhone}
+                  onChange={(e) => setFormGuardianPhone(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #86efac",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 4: Fee Plan */}
+          <div
+            style={{
+              padding: "16px 18px",
+              background: "#fefce8",
+              border: "1px solid #fef08a",
+              borderRadius: 10,
+              marginBottom: 16,
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: "#854d0e",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <Icon name="rupee" size={14} /> Recurring Fee Plan
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
+                <select
+                  value={formFeeFrequency}
+                  onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fde047",
+                    fontSize: 13,
+                    background: "#ffffff",
+                    fontWeight: 600,
+                  }}
+                >
+                  <option value="MONTHLY">Monthly</option>
+                  <option value="QUARTERLY">Quarterly</option>
+                  <option value="ANNUAL">Annual</option>
+                </select>
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Monthly Fee Amount (₹) *</label>
+                <input
+                  type="number"
+                  placeholder="e.g. 5000"
+                  value={formFeeAmount}
+                  onChange={(e) => setFormFeeAmount(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #fde047",
+                    fontSize: 13,
+                    background: "#ffffff",
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Section 5: Address & Notes */}
+          <div style={{ marginBottom: 18 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
+                <input
+                  type="text"
+                  placeholder="e.g. 42 MG Road"
+                  value={formStreet}
+                  onChange={(e) => setFormStreet(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>City</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Mumbai"
+                  value={formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
+              <div className="form-group" style={{ margin: 0 }}>
+                <label style={{ fontSize: 12, color: "var(--muted)" }}>State</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Maharashtra"
+                  value={formState}
+                  onChange={(e) => setFormState(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 12.5,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="form-group" style={{ marginTop: 12, marginBottom: 0 }}>
+              <label style={{ fontSize: 12, color: "var(--muted)" }}>Internal Notes / Remarks</label>
+              <textarea
+                placeholder="Internal academic or fee remarks..."
+                value={formNotes}
+                onChange={(e) => setFormNotes(e.target.value)}
+                rows={2}
+                style={{
+                  width: "100%",
+                  padding: "8px 12px",
+                  borderRadius: 8,
+                  border: "1px solid #cbd5e1",
+                  fontSize: 12.5,
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Action Buttons in Modal Footer */}
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 12,
+              paddingTop: 18,
+              borderTop: "1px solid #e2e8f0",
+              marginTop: 10,
+            }}
+          >
+            <button
+              type="button"
+              className="secondary-button"
+              onClick={() => setEditModalOpen(false)}
+              style={{
+                padding: "9px 18px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 650,
+                cursor: "pointer",
+              }}
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="primary-button"
+              disabled={editBusy}
+              style={{
+                padding: "9px 22px",
+                borderRadius: 8,
+                fontSize: 13,
+                fontWeight: 700,
+                boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
+                cursor: "pointer",
+              }}
+            >
+              {editBusy ? "Saving Changes…" : "Save Student Changes"}
+            </button>
+          </div>
+        </form>
+      </Modal>
+
+      {/* ------------------------------------------------------------- */}
       {/* MODAL: 1-CLICK COLLECT FEE                                     */}
       {/* ------------------------------------------------------------- */}
       <Modal
@@ -2634,6 +3280,22 @@ function StudentsContent() {
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 10 }}>
               <button
+                className="primary-button"
+                style={{
+                  flex: 1,
+                  justifyContent: "center",
+                  padding: "9px 14px",
+                  borderRadius: 8,
+                  fontWeight: 700,
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: 6,
+                }}
+                onClick={() => handleOpenEdit(selectedStudent)}
+              >
+                ✏️ Edit Student Profile
+              </button>
+              <button
                 className="secondary-button"
                 style={{
                   flex: 1,
@@ -2647,7 +3309,7 @@ function StudentsContent() {
                 }}
                 onClick={() => handleToggleStatus(selectedStudent.id, selectedStudent.status)}
               >
-                {selectedStudent.status === "ACTIVE" ? "Deactivate Student" : "Reactivate Student"}
+                {selectedStudent.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
               </button>
             </div>
 
