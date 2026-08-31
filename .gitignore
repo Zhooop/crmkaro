@@ -13,3 +13,5 @@ packages/database/src/generated/
 .DS_Store
 ._*
 pnpm-debug.log*
+askpass.bat
+scratch/

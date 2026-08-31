@@ -164,6 +164,11 @@ export class CrmController {
       parseBody(followUpSchema, body),
     );
   }
+  @Get("follow-ups/today")
+  @RequirePermissions("crm.lead.read")
+  todayFollowUps(@Req() request: AuthenticatedRequest) {
+    return this.crm.getTodayFollowUps(...this.context(request));
+  }
   @Patch("follow-ups/:followUpId")
   @RequirePermissions("crm.lead.update")
   updateFollowUp(

@@ -58,6 +58,8 @@ export type IconName =
   | "share"
   | "whatsapp"
   | "student"
+  | "zap"
+  | "transactions"
   | "moreVertical";
 
 export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
@@ -319,6 +321,13 @@ export function Icon({ name, size = 18 }: { name: IconName; size?: number }) {
         <path d="M6 12v5c3 3 9 3 12 0v-5" />
       </>
     ),
+    zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />,
+    transactions: (
+      <>
+        <rect width="20" height="14" x="2" y="5" rx="2" />
+        <line x1="2" x2="22" y1="10" y2="10" />
+      </>
+    ),
     moreVertical: (
       <>
         <circle cx="12" cy="12" r="1" />
@@ -393,6 +402,7 @@ export function AppShell({
   onCreateOrganisation,
   onLogout,
   onNavigate,
+  onPrefetch,
 }: {
   product: string;
   organisation: string;
@@ -410,6 +420,7 @@ export function AppShell({
   onCreateOrganisation?: () => void;
   onLogout?: () => void;
   onNavigate?: (href: string) => void;
+  onPrefetch?: (href: string) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -505,6 +516,44 @@ export function AppShell({
     return () => clearTimeout(timer);
   }, [searchQuery, searchOpen, resolvedApiUrl]);
 
+  // Sync browser tab title to current page dynamically
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const pathTitles: Record<string, string> = {
+      "/": "Dashboard",
+      "/people": "Members",
+      "/groups": "Groups & Batches",
+      "/quick-collect": "Quick Collect",
+      "/transactions": "Transactions",
+      "/students": "Students & Attendance",
+      "/crm": "Leads & CRM",
+      "/finance": "Finance & Fees",
+      "/payroll": "Staff & Salary",
+      "/inventory": "Inventory & Stock",
+      "/settings": "Settings",
+      "/login": "Login",
+      "/register": "Register",
+    };
+
+    const activeItem = nav?.find(
+      (n) => n.href === currentPath || (n.href !== "/" && currentPath?.startsWith(n.href ?? "")),
+    );
+    const titleFromMap = currentPath ? pathTitles[currentPath] : undefined;
+    const pageTitle = activeItem?.label || titleFromMap || (product || "CRMKaro");
+    document.title = `${pageTitle} · ${product || "CRMKaro"}`;
+  }, [currentPath, nav, product]);
+
+  // Background route prefetching for 0ms instantaneous page loads
+  useEffect(() => {
+    if (onPrefetch && nav && nav.length > 0) {
+      nav.forEach((item) => {
+        if (item.href && item.href !== "#") {
+          onPrefetch(item.href);
+        }
+      });
+    }
+  }, [nav, onPrefetch]);
+
   async function handleLogoutClick() {
     if (onLogout) {
       onLogout();
@@ -542,7 +591,7 @@ export function AppShell({
           onClick={() => setOpen(false)}
         />
       )}
-      <aside className={`sidebar${open ? " is-open" : ""}`}>
+      <aside className={`sidebar${open ? " is-open" : ""}`} suppressHydrationWarning>
         <div
           className="brand-row"
           style={{ cursor: onNavigate ? "pointer" : undefined }}
@@ -579,12 +628,12 @@ export function AppShell({
             onClick={() => setOrgSwitcherOpen(!orgSwitcherOpen)}
             aria-expanded={orgSwitcherOpen}
           >
-            <span className="organisation-avatar">
+            <span className="organisation-avatar" suppressHydrationWarning>
               {organisation ? organisation.slice(0, 2).toUpperCase() : "CK"}
             </span>
             <span>
               <small>Organisation</small>
-              <strong>{organisation || "Select workspace"}</strong>
+              <strong suppressHydrationWarning>{organisation || "Select workspace"}</strong>
             </span>
             <Icon name="chevronDown" size={15} />
           </button>
@@ -602,11 +651,11 @@ export function AppShell({
                       onSwitchOrganisation?.(org.id);
                     }}
                   >
-                    <span className="org-item-avatar">
+                    <span className="org-item-avatar" suppressHydrationWarning>
                       {org.name.slice(0, 2).toUpperCase()}
                     </span>
                     <div className="org-item-info">
-                      <strong>{org.name}</strong>
+                      <strong suppressHydrationWarning>{org.name}</strong>
                       <small>{org.businessType || "Workspace"}</small>
                     </div>
                     {org.name === organisation && (
@@ -633,7 +682,7 @@ export function AppShell({
           )}
         </div>
 
-        <nav aria-label="Main navigation">
+        <nav aria-label="Main navigation" suppressHydrationWarning>
           {nav.map((item) => {
             const isActive =
               currentPath === item.href ||
@@ -645,6 +694,12 @@ export function AppShell({
                 href={item.href ?? "#"}
                 key={item.label}
                 onClick={handleLinkClick(item.href)}
+                onMouseEnter={() => {
+                  if (item.href && onPrefetch) onPrefetch(item.href);
+                }}
+                onTouchStart={() => {
+                  if (item.href && onPrefetch) onPrefetch(item.href);
+                }}
               >
                 <Icon name={item.icon} />
                 <span>{item.label}</span>
@@ -661,7 +716,7 @@ export function AppShell({
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             style={{ cursor: "pointer" }}
           >
-            <div className="user-avatar">
+            <div className="user-avatar" suppressHydrationWarning>
               {(userName || "User")
                 .split(" ")
                 .map((part) => part[0])
@@ -670,8 +725,8 @@ export function AppShell({
                 .toUpperCase()}
             </div>
             <div>
-              <strong>{userName || "User"}</strong>
-              <span>{dark ? "Super administrator" : userRole}</span>
+              <strong suppressHydrationWarning>{userName || "User"}</strong>
+              <span suppressHydrationWarning>{dark ? "Super administrator" : userRole}</span>
             </div>
             <button
               className="icon-button"
@@ -752,7 +807,7 @@ export function AppShell({
           </div>
         </header>
 
-        <main id="main-content" className="main-content">
+        <main id="main-content" className="main-content" suppressHydrationWarning>
           {children}
         </main>
       </section>

@@ -17,7 +17,8 @@ import { authFetch, getApiUrl } from "@/lib/api";
 import {
   ALL_AVAILABLE_SERVICES,
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -72,16 +73,17 @@ export default function SettingsPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
+  const cached = getCachedWorkspaceContext();
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
   const [auditLogs, setAuditLogs] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Admin");
+  // Context & AppShell info (Instant 0ms cached state)
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
 
   // Load session context
@@ -225,6 +227,7 @@ export default function SettingsPage() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       <div className="page-heading">
         <div>

@@ -16,7 +16,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -79,12 +80,13 @@ function InventoryContent() {
   const [search, setSearch] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Staff");
+  // Context & AppShell info (Instant 0ms cached state)
+  const cached = getCachedWorkspaceContext();
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
 
   // Modals
   const [createProductOpen, setCreateProductOpen] = useState(false);
@@ -388,6 +390,7 @@ function InventoryContent() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       <div className="page-heading">
         <div>

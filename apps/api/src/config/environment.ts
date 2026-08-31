@@ -24,5 +24,9 @@ const environmentSchema = z.object({
 export type Environment = z.infer<typeof environmentSchema>;
 
 export function validateEnvironment(configuration: Record<string, unknown>): Environment {
-  return environmentSchema.parse(configuration);
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(configuration)) {
+    cleaned[key] = typeof value === "string" && value.trim() === "" ? undefined : value;
+  }
+  return environmentSchema.parse(cleaned);
 }

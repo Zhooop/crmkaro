@@ -11,7 +11,7 @@ const createOrganisationSchema = z.object({
   industry: z.string().trim().max(100).optional(),
   timezone: z.string().trim().min(1).max(64).default("Asia/Kolkata"),
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).default("INR"),
-  serviceCodes: z.array(z.enum(["people", "crm", "finance", "payroll", "inventory"])).min(1),
+  serviceCodes: z.array(z.string().trim().min(1)).min(1),
 });
 
 @Controller("organisations")

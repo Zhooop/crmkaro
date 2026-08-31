@@ -464,6 +464,40 @@ export class CrmService {
       return followUp;
     });
   }
+  getTodayFollowUps(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const endOfToday = new Date();
+      endOfToday.setHours(23, 59, 59, 999);
+
+      return tx.followUp.findMany({
+        where: {
+          organisationId,
+          status: "SCHEDULED",
+          dueAt: { lte: endOfToday },
+        },
+        include: {
+          lead: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              email: true,
+              expectedValueMinor: true,
+              stage: { select: { id: true, name: true, colour: true } },
+              pipeline: { select: { id: true, name: true } },
+            },
+          },
+          assignedTo: {
+            include: {
+              user: { select: { id: true, name: true, email: true } },
+            },
+          },
+        },
+        orderBy: { dueAt: "asc" },
+        take: 50,
+      });
+    });
+  }
   convert(
     organisationId: string,
     userId: string,

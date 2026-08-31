@@ -262,6 +262,8 @@ model Organisation {
   stockMovements    StockMovement[]
   students          StudentProfile[]
   attendances       AttendanceRecord[]
+  batchGroups       BatchGroup[]
+  groupMembers      GroupMember[]
 
   @@map("organisations")
 }
@@ -453,6 +455,7 @@ model Person {
   employee       Employee?
   studentProfile StudentProfile?
   attendances    AttendanceRecord[]
+  groupMemberships GroupMember[]
 
   @@index([organisationId, status, displayName])
   @@index([organisationId, primaryPhoneNormalised])
@@ -968,4 +971,52 @@ model AttendanceRecord {
   @@index([organisationId, studentProfileId])
   @@map("attendance_records")
 }
+
+model BatchGroup {
+  id             String        @id @default(uuid()) @db.Uuid
+  organisationId String        @map("organisation_id") @db.Uuid
+  name           String        @db.VarChar(160)
+  code           String?       @db.VarChar(40)
+  description    String?       @db.VarChar(500)
+  color          String        @default("#3b82f6") @db.VarChar(20)
+  feeAmountMinor Int           @default(0) @map("fee_amount_minor")
+  feeFrequency   FeeFrequency  @default(MONTHLY) @map("fee_frequency")
+  billingType    String        @default("Fixed") @map("billing_type") @db.VarChar(40)
+  collectionDay  String?       @map("collection_day") @db.VarChar(60)
+  startDate      DateTime      @default(now()) @map("start_date") @db.Date
+  endDate        DateTime?     @map("end_date") @db.Date
+  workingDays    String        @default("T,Th,S") @map("working_days") @db.VarChar(60)
+  isActive       Boolean       @default(true) @map("is_active")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  members        GroupMember[]
+
+  @@unique([organisationId, name])
+  @@index([organisationId, isActive])
+  @@map("batch_groups")
+}
+
+model GroupMember {
+  id             String        @id @default(uuid()) @db.Uuid
+  organisationId String        @map("organisation_id") @db.Uuid
+  groupId        String        @map("group_id") @db.Uuid
+  personId       String        @map("person_id") @db.Uuid
+  customFeeMinor Int?          @map("custom_fee_minor")
+  startDate      DateTime      @default(now()) @map("start_date") @db.Date
+  status         String        @default("ACTIVE") @db.VarChar(40)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation   Organisation  @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  group          BatchGroup    @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  person         Person        @relation(fields: [personId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, personId])
+  @@index([organisationId, groupId])
+  @@index([organisationId, personId])
+  @@map("group_members")
+}
+
 

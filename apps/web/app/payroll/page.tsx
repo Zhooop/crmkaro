@@ -17,7 +17,8 @@ import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -112,12 +113,13 @@ export default function PayrollPage() {
     setTimeout(() => setToast(null), 4500);
   }
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("HR");
+  // Context & AppShell info (Instant 0ms cached state)
+  const cached = getCachedWorkspaceContext();
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
 
   // Modals & Drawers
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
@@ -537,6 +539,7 @@ export default function PayrollPage() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       <div className="page-heading">
         <div>

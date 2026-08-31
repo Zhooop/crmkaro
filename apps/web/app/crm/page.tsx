@@ -16,7 +16,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -107,18 +108,20 @@ function CrmContent() {
   const [statusFilter, setStatusFilter] = useState<"OPEN" | "CONVERTED" | "LOST" | "ALL">("OPEN");
   const [search, setSearch] = useState("");
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Sales");
+  // Context & AppShell info (Instant 0ms cached state)
+  const cached = getCachedWorkspaceContext();
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [todayFollowUps, setTodayFollowUps] = useState<any[]>([]);
 
   // Form states - Create Lead
   const [formName, setFormName] = useState("");
@@ -278,11 +281,21 @@ function CrmContent() {
     }
   }, [api, selectedPipelineId, statusFilter, search, router]);
 
+  const loadTodayFollowUps = useCallback(async () => {
+    try {
+      const res = await authFetch(`${api}/crm/follow-ups/today`, { credentials: "include" });
+      if (res.ok) {
+        setTodayFollowUps(await res.json());
+      }
+    } catch {}
+  }, [api]);
+
   useEffect(() => {
     loadContext();
     loadPipelines();
     loadMetrics();
-  }, [loadContext, loadPipelines, loadMetrics]);
+    loadTodayFollowUps();
+  }, [loadContext, loadPipelines, loadMetrics, loadTodayFollowUps]);
 
   useEffect(() => {
     if (selectedPipelineId) {
@@ -497,6 +510,7 @@ function CrmContent() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       <div className="page-heading">
         <div>
@@ -560,6 +574,183 @@ function CrmContent() {
           tone="teal"
         />
       </div>
+
+      {/* 📞 Today's Scheduled Follow-ups & Calls Widget */}
+      {todayFollowUps.length > 0 && (
+        <div
+          style={{
+            background: "#ffffff",
+            border: "1px solid #7fabfd",
+            borderRadius: 14,
+            padding: "18px 20px",
+            marginBottom: 20,
+            boxShadow: "0 4px 16px rgba(127, 171, 253, 0.12)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 10,
+                  background: "#eef4ff",
+                  color: "#3572e8",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="phone" size={17} />
+              </div>
+              <div>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 800, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                  <span>Today&apos;s Follow-up Calls &amp; Tasks</span>
+                  <span
+                    style={{
+                      background: "#fee2e2",
+                      color: "#dc2626",
+                      fontSize: 11,
+                      fontWeight: 750,
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                    }}
+                  >
+                    {todayFollowUps.length} Pending
+                  </span>
+                </h3>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                  Scheduled client calls, site visits, and demo reminders due today
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 12 }}>
+            {todayFollowUps.map((fu) => {
+              const dueTime = new Date(fu.dueAt).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
+              const leadPhone = fu.lead?.phone;
+              const leadName = fu.lead?.name || "Client";
+              const cleanPhone = leadPhone ? leadPhone.replace(/\D/g, "") : "";
+              const waText = encodeURIComponent(`Hello ${leadName}, this is regarding our scheduled follow-up from ${orgName}.`);
+
+              return (
+                <div
+                  key={fu.id}
+                  style={{
+                    background: "#f8fbfe",
+                    border: "1px solid #dbe5f2",
+                    borderRadius: 10,
+                    padding: "12px 14px",
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "space-between",
+                    gap: 10,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8 }}>
+                    <div>
+                      <strong
+                        style={{ fontSize: 14, color: "var(--ink)", cursor: "pointer", textDecoration: "underline" }}
+                        onClick={() => {
+                          if (fu.lead?.id) {
+                            authFetch(`${api}/crm/leads/${fu.lead.id}`, { credentials: "include" })
+                              .then((r) => (r.ok ? r.json() : null))
+                              .then((l) => { if (l) setDetailLead(l); });
+                          }
+                        }}
+                      >
+                        {leadName}
+                      </strong>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, marginTop: 3 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "#3572e8", background: "#eef4ff", padding: "1px 6px", borderRadius: 4 }}>
+                          ⏰ {dueTime}
+                        </span>
+                        {fu.lead?.stage && (
+                          <span style={{ fontSize: 11, fontWeight: 600, color: "#475569" }}>
+                            • {fu.lead.stage.name}
+                          </span>
+                        )}
+                      </div>
+                      {fu.outcome && (
+                        <p style={{ margin: "5px 0 0", fontSize: 12, color: "#334155", fontStyle: "italic" }}>
+                          &ldquo;{fu.outcome}&rdquo;
+                        </p>
+                      )}
+                    </div>
+
+                    {fu.lead?.expectedValueMinor ? (
+                      <span style={{ fontSize: 12, fontWeight: 750, color: "#059669" }}>
+                        {formatMoney(fu.lead.expectedValueMinor)}
+                      </span>
+                    ) : null}
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, paddingTop: 6, borderTop: "1px dashed #dbe5f2" }}>
+                    {leadPhone && (
+                      <>
+                        <a
+                          href={`https://wa.me/${cleanPhone}?text=${waText}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          style={{
+                            flex: 1,
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            background: "#25D366",
+                            color: "#ffffff",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            textDecoration: "none",
+                          }}
+                        >
+                          <span>📲 WhatsApp</span>
+                        </a>
+
+                        <a
+                          href={`tel:${leadPhone}`}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            gap: 4,
+                            background: "#ffffff",
+                            border: "1px solid #cbd5e1",
+                            color: "#0f172a",
+                            padding: "6px 10px",
+                            borderRadius: 6,
+                            fontSize: 11.5,
+                            fontWeight: 700,
+                            textDecoration: "none",
+                          }}
+                        >
+                          <span>📞 Call</span>
+                        </a>
+                      </>
+                    )}
+
+                    <button
+                      onClick={async () => {
+                        await handleCompleteFollowUp(fu.id);
+                        loadTodayFollowUps();
+                      }}
+                      className="primary-button"
+                      style={{ padding: "6px 10px", fontSize: 11.5, background: "#059669", borderColor: "#059669" }}
+                    >
+                      <Icon name="check" size={12} />
+                      <span>Done</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Controls Bar */}
       <div className="toolbar">

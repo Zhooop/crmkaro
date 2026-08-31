@@ -19,6 +19,8 @@ import {
   ALL_AVAILABLE_SERVICES,
   SERVICE_NAV_MAP,
   buildNavItems,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -110,13 +112,10 @@ function formatRelativeTime(dateStr: string): string {
   const diffMs = now.getTime() - date.getTime();
   const diffSec = Math.floor(diffMs / 1000);
   const diffMin = Math.floor(diffSec / 60);
-  const diffHours = Math.floor(diffMin / 60);
-  const diffDays = Math.floor(diffHours / 24);
-
-  if (diffMin < 1) return "Just now";
   if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
   if (diffHours < 24) return `${diffHours}h ago`;
-  if (diffDays === 1) return "Yesterday";
+  const diffDays = Math.floor(diffHours / 24);
   if (diffDays < 7) return `${diffDays}d ago`;
   return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
 }
@@ -151,6 +150,22 @@ function humanizeAction(action: string): string {
   }
 }
 
+function getCachedDashboardData(): Dashboard | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem("crmkaro_dashboard_cache");
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return null;
+}
+
+function saveCachedDashboardData(d: Dashboard) {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem("crmkaro_dashboard_cache", JSON.stringify(d));
+  } catch {}
+}
+
 function DashboardLoading() {
   return (
     <main className="dashboard-state" aria-live="polite">
@@ -179,6 +194,43 @@ const BUSINESS_TYPE_OPTIONS = [
   "Trading & Wholesale",
   "Marketing & Advertising Agency",
   "Other",
+];
+
+const SOLUTION_PRESETS = [
+  {
+    id: "academy",
+    name: "Academy, Classes & Studios",
+    subtitle: "BEST FOR",
+    tags: "Dance Studios, Fitness & Gym, Yoga, Music, Martial Arts, Tuition Batches",
+    detail: "Members directory, batches, 1-click WhatsApp fees collect, transaction receipts & staff salary.",
+    modules: ["people", "groups", "quick-collect", "transactions", "payroll", "finance"],
+    badges: ["Members", "Groups & Batches", "Quick Collect", "Transactions", "Staff & Salary"],
+    isPopular: true,
+  },
+  {
+    id: "school",
+    name: "Schools, Colleges & Formal Institutes",
+    subtitle: "Schools, Junior Colleges, Degree Institutes, Formal Academies",
+    detail: "Formal student admissions, standard & division, daily attendance register, fees & salary.",
+    modules: ["students", "people", "groups", "finance", "payroll"],
+    badges: ["Students Admission", "Members", "Groups", "Attendance", "Finance & Fees", "Staff & Salary"],
+  },
+  {
+    id: "crm",
+    name: "Sales, Leads & Real Estate CRM",
+    subtitle: "Real Estate Brokers, Agencies, Consultants, Deal Pipelines",
+    detail: "Visual deal pipelines, stage management, client follow-up reminders, and invoicing.",
+    modules: ["people", "crm", "finance", "payroll"],
+    badges: ["Contacts", "Leads & CRM", "Follow-ups", "Invoices", "Staff & Salary"],
+  },
+  {
+    id: "retail",
+    name: "Retail, Trading & Inventory",
+    subtitle: "Shops, Wholesalers, Distributors, Dealerships",
+    detail: "Product catalog, inventory stock movements, ledger, invoices, and staff compensation.",
+    modules: ["people", "inventory", "finance", "payroll"],
+    badges: ["Customers", "Inventory & Stock", "Invoices", "Staff & Salary"],
+  },
 ] as const;
 
 export default function HomePage() {
@@ -190,11 +242,25 @@ export default function HomePage() {
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
   const [customBusinessType, setCustomBusinessType] = useState("");
-  const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [selectedPresetId, setSelectedPresetId] = useState<string>("academy");
+  const [selectedServices, setSelectedServices] = useState<string[]>([
+    "people",
+    "groups",
+    "quick-collect",
+    "transactions",
+    "payroll",
+  ]);
+  const [showAdvancedModules, setShowAdvancedModules] = useState<boolean>(false);
+  const [groupsList, setGroupsList] = useState<any[]>([]);
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupError, setSetupError] = useState("");
 
   const api = getApiUrl();
+
+  function handleSelectPreset(preset: (typeof SOLUTION_PRESETS)[number]) {
+    setSelectedPresetId(preset.id);
+    setSelectedServices([...preset.modules]);
+  }
 
   const loadDashboard = useCallback(async () => {
     const response = await authFetch(`${api}/dashboard`);
@@ -229,7 +295,17 @@ export default function HomePage() {
       if (!retry.ok) throw new Error("Could not load your workspace summary.");
       const retryData = (await retry.json()) as Dashboard;
       setData(retryData);
+      saveCachedDashboardData(retryData);
       saveActiveServicesToStorage(retryData.services || []);
+
+      // Also load groups
+      try {
+        const gRes = await authFetch(`${api}/groups?limit=30`);
+        if (gRes.ok) {
+          const gData = await gRes.json();
+          setGroupsList(gData.items || []);
+        }
+      } catch {}
       return;
     }
 
@@ -239,7 +315,23 @@ export default function HomePage() {
       );
     const dashboardData = (await response.json()) as Dashboard;
     setData(dashboardData);
+    saveCachedDashboardData(dashboardData);
     saveActiveServicesToStorage(dashboardData.services || []);
+    saveCachedWorkspaceContext({
+      orgName: dashboardData.organisation.name,
+      userName: dashboardData.user?.name || undefined,
+      currency: dashboardData.organisation.currency || "INR",
+      activeServices: dashboardData.services || [],
+    });
+
+    // Also load groups for Today's Batches widget
+    try {
+      const gRes = await authFetch(`${api}/groups?limit=30`);
+      if (gRes.ok) {
+        const gData = await gRes.json();
+        setGroupsList(gData.items || []);
+      }
+    } catch {}
 
     const orgsRes = await authFetch(`${api}/organisations`);
     if (orgsRes.ok) {
@@ -253,6 +345,10 @@ export default function HomePage() {
   }, [api, router]);
 
   useEffect(() => {
+    const cached = getCachedDashboardData();
+    if (cached) {
+      setData(cached);
+    }
     loadDashboard().catch((reason: Error) => setError(reason.message));
   }, [loadDashboard]);
 
@@ -312,12 +408,29 @@ export default function HomePage() {
       <main className="onboarding-page">
         <section className="onboarding-card">
           <div className="onboarding-intro">
-            <span className="onboarding-mark" aria-hidden="true" />
-            <p className="eyebrow">First workspace</p>
-            <h1>Let’s set up your business.</h1>
-            <p>
-              Create a private workspace. Select the services and modules you need now (you can add or archive anytime in Settings).
-            </p>
+            <div>
+              <span className="onboarding-mark" aria-hidden="true" />
+              <p className="eyebrow" style={{ color: "#059669" }}>First Workspace Setup</p>
+              <h1>Let’s set up your business.</h1>
+              <p>
+                Choose your solution package. CRMKaro will automatically configure your navigation, rosters, and ledger workflows.
+              </p>
+            </div>
+
+            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+                <span>Multi-tenant isolated & secure</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+                <span>1-Click WhatsApp payment reminders</span>
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
+                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+                <span>Cloud PostgreSQL & instant sync</span>
+              </div>
+            </div>
           </div>
           <form className="onboarding-form" onSubmit={createWorkspace}>
             <label htmlFor="organisation-name">
@@ -349,75 +462,119 @@ export default function HomePage() {
             </select>
 
             {selectedBusinessType === "Other" && (
-              <div style={{ marginTop: 10 }}>
-                <label htmlFor="custom-business-type">Describe your business</label>
+              <div className="onboarding-custom-field" style={{ marginTop: 4, marginBottom: 12 }}>
+                <label
+                  htmlFor="custom-business-type"
+                  style={{
+                    display: "block",
+                    marginBottom: 4,
+                    fontSize: 11,
+                    fontWeight: 750,
+                    color: "var(--ink)",
+                  }}
+                >
+                  Describe your business <span style={{ color: "#ef4444" }}>*</span>
+                </label>
                 <input
                   id="custom-business-type"
                   value={customBusinessType}
                   onChange={(e) => setCustomBusinessType(e.target.value)}
                   placeholder="e.g. Dance Academy, Solar Installation, Dental Clinic"
                   required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid var(--line)",
+                    fontSize: 12.5,
+                    background: "#ffffff",
+                    color: "var(--ink)",
+                    boxSizing: "border-box",
+                  }}
                 />
               </div>
             )}
 
-            <fieldset className="service-selection-fieldset" style={{ marginTop: 22 }}>
-              <legend style={{ fontSize: 13, fontWeight: 700, marginBottom: 8, color: "var(--ink)" }}>
-                Select initial modules to activate
+            {/* Smart Solution Presets Selection */}
+            <fieldset className="service-selection-fieldset" style={{ marginTop: 14 }}>
+              <legend style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2, color: "var(--ink)" }}>
+                Choose Your Solution Package
               </legend>
-              <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 14px 0" }}>
-                Select only what you need. (All services are deselected by default. You can enable or archive modules anytime in Settings).
+              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 6px 0" }}>
+                Select the preset that matches your workflow. All pages can also be customized later in Settings.
               </p>
-              <div className="service-checkbox-grid" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                {ALL_AVAILABLE_SERVICES.map((srv) => {
-                  const isChecked = selectedServices.includes(srv.code);
+
+              <div className="preset-grid">
+                {SOLUTION_PRESETS.map((preset) => {
+                  const isSelected = selectedPresetId === preset.id;
                   return (
-                    <label
-                      key={srv.code}
-                      className={`service-checkbox-card ${isChecked ? "active" : ""}`}
-                      style={{
-                        display: "flex",
-                        alignItems: "flex-start",
-                        gap: 10,
-                        padding: "12px 14px",
-                        border: isChecked ? "1.5px solid var(--brand)" : "1px solid #e2e8f0",
-                        borderRadius: 9,
-                        background: isChecked ? "rgba(37, 99, 235, 0.04)" : "#ffffff",
-                        cursor: "pointer",
-                      }}
+                    <div
+                      key={preset.id}
+                      className={`preset-card preset-card-${preset.id} ${isSelected ? "active" : ""}`}
+                      onClick={() => handleSelectPreset(preset)}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isChecked}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedServices([...selectedServices, srv.code]);
-                          } else {
-                            setSelectedServices(selectedServices.filter((c) => c !== srv.code));
-                          }
-                        }}
-                        style={{ marginTop: 3 }}
-                      />
                       <div>
-                        <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>{srv.name}</strong>
-                        <span style={{ fontSize: 11.5, color: "var(--muted)", display: "block", marginTop: 2 }}>
-                          {srv.detail}
-                        </span>
+                        <div className="preset-header">
+                          <h3 className="preset-title">{preset.name}</h3>
+                          <div className="preset-radio-mark" />
+                        </div>
+
+                        <div className="preset-desc-box">
+                          <span className="preset-desc-label">Best for</span>
+                          <p className="preset-desc">{preset.subtitle}</p>
+                        </div>
                       </div>
-                    </label>
+
+                      <div className="preset-modules-section">
+                        <span className="preset-modules-label">Included Modules</span>
+                        <div className="preset-badges">
+                          {preset.badges.map((badge, idx) => (
+                            <span key={idx} className="preset-badge">
+                              <span className="preset-badge-dot" />
+                              <span>{badge}</span>
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   );
                 })}
               </div>
+
+              {/* Talk to sales team for custom setup */}
+              <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
+                <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>
+                  Need a custom workflow or custom modules?
+                </p>
+                <a
+                  href="https://wa.me/919004520400?text=Hello%20CRMKaro%20Team%2C%20I%20need%20a%20custom%20workflow%20setup%20for%20my%20business."
+                  target="_blank"
+                  rel="noreferrer"
+                  style={{
+                    color: "#3572e8",
+                    fontSize: 12.5,
+                    fontWeight: 700,
+                    textDecoration: "none",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 4,
+                  }}
+                >
+                  <span>Talk to sales team →</span>
+                </a>
+              </div>
             </fieldset>
+
             <button
               className="primary-button onboarding-submit"
               disabled={
                 setupBusy ||
                 organisationName.trim().length < 2 ||
-                !selectedBusinessType
+                !selectedBusinessType ||
+                selectedServices.length === 0
               }
               type="submit"
-              style={{ marginTop: 20 }}
+              style={{ marginTop: 14, background: "#4784f6", borderColor: "#4784f6" }}
             >
               {setupBusy ? "Creating workspace…" : "Complete workspace setup"}
             </button>
@@ -449,14 +606,14 @@ export default function HomePage() {
       </main>
     );
 
-  if (!data) return <DashboardLoading />;
-
+  const cachedContext = getCachedWorkspaceContext();
+  const orgName = data?.organisation?.name || cachedContext.orgName;
   const displayName =
-    data.user?.name && data.user.name.trim().length > 0
+    data?.user?.name && data.user.name.trim().length > 0
       ? data.user.name
-      : (data.user?.email.split("@")[0] ?? "Team Member");
+      : (data?.user?.email?.split("@")[0] ?? cachedContext.userName ?? "Team Member");
 
-  const nav: NavItem[] = buildNavItems(data.services || []);
+  const nav: NavItem[] = buildNavItems(data?.services || cachedContext.activeServices || []);
   const todayFormatted = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -468,16 +625,24 @@ export default function HomePage() {
     <AppShell
       currentPath="/"
       nav={nav}
-      organisation={data.organisation.name}
+      organisation={orgName}
       organisations={organisations}
       product="CRMKaro"
       userName={displayName}
-      userRole={data.role?.name ?? "Owner"}
-      notifications={data.notifications}
+      userRole={data?.role?.name ?? cachedContext.userRole ?? "Owner"}
+      notifications={data?.notifications}
       apiUrl={api}
       onSwitchOrganisation={handleSwitchOrg}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
+      {!data ? (
+        <div style={{ padding: "60px 20px", display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
+          <div className="state-spinner" />
+          <p style={{ fontSize: 13, color: "var(--muted)" }}>Loading workspace summary…</p>
+        </div>
+      ) : (
+        <>
       {/* 🌟 Modern Hero Banner */}
       <div
         style={{
@@ -529,7 +694,7 @@ export default function HomePage() {
               <span style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 600 }}>{data.organisation.name}</span>
             </div>
 
-            <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.02em" }}>
+            <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
               {getGreeting(displayName)} 👋
             </h1>
             <p style={{ margin: 0, fontSize: 13.5, color: "#94a3b8", maxWidth: 650 }}>
@@ -539,6 +704,7 @@ export default function HomePage() {
 
           <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <span
+              suppressHydrationWarning
               style={{
                 background: "rgba(255, 255, 255, 0.08)",
                 padding: "6px 14px",
@@ -569,6 +735,27 @@ export default function HomePage() {
           <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Fast Launch:
           </span>
+
+          <button
+            onClick={() => router.push("/groups?action=new")}
+            style={{
+              background: "#059669",
+              color: "#ffffff",
+              border: "none",
+              padding: "7px 14px",
+              borderRadius: 7,
+              fontSize: 12.5,
+              fontWeight: 700,
+              cursor: "pointer",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              boxShadow: "0 2px 8px rgba(5, 150, 105, 0.35)",
+            }}
+          >
+            <Icon name="activity" size={13} />
+            <span>+ New Group</span>
+          </button>
 
           {data.services.includes("students") && (
             <>
@@ -724,6 +911,176 @@ export default function HomePage() {
           );
         })}
       </div>
+
+      {/* 📅 Today's Batches & Daily Schedule Widget */}
+      {(() => {
+        const DAY_CODES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+        const todayDayIndex = new Date().getDay();
+        const todayDayCode = DAY_CODES[todayDayIndex];
+        const todayDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+        const todaysBatches = groupsList.filter((g) => {
+          if (!g.workingDays || !Array.isArray(g.workingDays) || g.workingDays.length === 0) return true;
+          return g.workingDays.includes(todayDayCode);
+        });
+
+        return (
+          <div className="today-batches-widget">
+            <div className="today-batches-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div
+                  style={{
+                    width: 38,
+                    height: 38,
+                    borderRadius: 10,
+                    background: "#eef4ff",
+                    color: "#3572e8",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                  }}
+                >
+                  <Icon name="calendar" size={18} />
+                </div>
+                <div>
+                  <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                    <span>Today&apos;s Batches &amp; Schedule</span>
+                    <span
+                      style={{
+                        fontSize: 11,
+                        fontWeight: 700,
+                        padding: "2px 8px",
+                        borderRadius: 12,
+                        background: "#eef4ff",
+                        color: "#3572e8",
+                        border: "1px solid #c7dcfe",
+                      }}
+                    >
+                      {todayDayName} • {todaysBatches.length} {todaysBatches.length === 1 ? "Batch" : "Batches"}
+                    </span>
+                  </h2>
+                  <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+                    Active classes, schedules, and rapid attendance marking for today
+                  </p>
+                </div>
+              </div>
+
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <button
+                  onClick={() => router.push("/groups?action=new")}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
+                >
+                  <Icon name="plus" size={13} />
+                  <span>New Batch</span>
+                </button>
+                <button
+                  onClick={() => router.push("/groups")}
+                  className="btn btn-secondary btn-sm"
+                  style={{ fontSize: 12, padding: "5px 11px", color: "#3572e8" }}
+                >
+                  <span>View All Groups →</span>
+                </button>
+              </div>
+            </div>
+
+            {todaysBatches.length === 0 ? (
+              <div
+                style={{
+                  padding: "24px 20px",
+                  textAlign: "center",
+                  background: "#f8fafc",
+                  borderRadius: 10,
+                  border: "1px dashed var(--line)",
+                }}
+              >
+                <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                  No batches scheduled for {todayDayName}.
+                </p>
+                <button
+                  onClick={() => router.push("/groups?action=new")}
+                  className="primary-button"
+                  style={{ margin: "10px auto 0", fontSize: 12, padding: "6px 14px" }}
+                >
+                  <span>+ Create First Batch</span>
+                </button>
+              </div>
+            ) : (
+              <div className="today-batches-grid">
+                {todaysBatches.map((batch) => {
+                  const monogram = batch.code || batch.name.substring(0, 2).toUpperCase();
+                  const memberCount = batch._count?.members ?? batch.membersCount ?? 0;
+                  const dueFormatted = ((batch.feeAmountMinor || 0) / 100).toLocaleString("en-IN");
+
+                  return (
+                    <div key={batch.id} className="today-batch-card">
+                      <div className="today-batch-hero">
+                        <div className="today-batch-monogram" style={{ background: batch.color || "#e0f2fe" }}>
+                          {monogram}
+                        </div>
+                        <div style={{ minWidth: 0, flex: 1 }}>
+                          <strong style={{ fontSize: 14, color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {batch.name}
+                          </strong>
+                          <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
+                            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => {
+                              const isToday = d === todayDayCode;
+                              const isWorking = batch.workingDays?.includes(d);
+                              return (
+                                <span
+                                  key={d}
+                                  style={{
+                                    width: 18,
+                                    height: 18,
+                                    borderRadius: "50%",
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 9,
+                                    fontWeight: 800,
+                                    background: isToday ? "#7fabfd" : isWorking ? "#f1f5f9" : "transparent",
+                                    color: isToday ? "#ffffff" : isWorking ? "#334155" : "#cbd5e1",
+                                    border: isToday ? "1px solid #548ef7" : "none",
+                                  }}
+                                >
+                                  {d[0]}
+                                </span>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="today-batch-meta">
+                        <span><strong>{memberCount}</strong> Members</span>
+                        <span>Fee: <strong>₹{dueFormatted}</strong></span>
+                      </div>
+
+                      <div className="today-batch-actions">
+                        <button
+                          onClick={() => router.push(`/groups`)}
+                          className="primary-button"
+                          style={{ flex: 1, justifyContent: "center", padding: "6px 10px", fontSize: 12 }}
+                        >
+                          <Icon name="check" size={13} />
+                          <span>Mark Attendance</span>
+                        </button>
+                        <button
+                          onClick={() => router.push("/quick-collect")}
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: "6px 10px", fontSize: 12 }}
+                          title="Collect Fee"
+                        >
+                          <Icon name="zap" size={13} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        );
+      })()}
 
       {/* 2-Column Content Layout */}
       <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 24, alignItems: "start" }}>
@@ -1043,6 +1400,8 @@ export default function HomePage() {
           </SectionCard>
         </div>
       </div>
+        </>
+      )}
     </AppShell>
   );
 }

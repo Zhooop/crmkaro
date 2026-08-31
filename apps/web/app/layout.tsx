@@ -51,6 +51,17 @@ export const metadata: Metadata = {
       "Keep fees collection, send receipts to customers, collect leads, and manage staff salaries seamlessly.",
     images: ["/brand/crmkaro-mark.png"],
   },
+  icons: {
+    icon: [
+      { url: "/brand/crmkaro-mark.png", type: "image/png" },
+      { url: "/favicon.png", type: "image/png" },
+      { url: "/favicon.ico", type: "image/x-icon" },
+    ],
+    shortcut: "/brand/crmkaro-mark.png",
+    apple: [
+      { url: "/brand/crmkaro-mark.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
   robots: {
     index: true,
     follow: true,
@@ -103,6 +114,8 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
   return (
     <html lang="en">
       <head>
+        <link rel="icon" href="/brand/crmkaro-mark.png" type="image/png" />
+        <link rel="apple-touch-icon" href="/brand/crmkaro-mark.png" />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

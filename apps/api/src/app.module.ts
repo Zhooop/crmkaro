@@ -17,10 +17,15 @@ import { DashboardModule } from "./dashboard/dashboard.module.js";
 import { SearchModule } from "./search/search.module.js";
 import { PlatformModule } from "./platform/platform.module.js";
 import { StudentsModule } from "./students/students.module.js";
+import { GroupsModule } from "./groups/groups.module.js";
 
 @Module({
   imports: [
-    ConfigModule.forRoot({ isGlobal: true, validate: validateEnvironment }),
+    ConfigModule.forRoot({
+      isGlobal: true,
+      envFilePath: [".env", "../../.env", "../.env"],
+      validate: validateEnvironment,
+    }),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     DatabaseModule,
     AuthModule,
@@ -28,6 +33,7 @@ import { StudentsModule } from "./students/students.module.js";
     AccessModule,
     PeopleModule,
     StudentsModule,
+    GroupsModule,
     CrmModule,
     FinanceModule,
     PayrollModule,

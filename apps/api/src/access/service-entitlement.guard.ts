@@ -16,8 +16,20 @@ export class ServiceEntitlementGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const organisationId = request.auth.activeOrganisationId;
     if (!organisationId) throw new ForbiddenException("Organisation access is required.");
+    const serviceAliases: Record<string, string[]> = {
+      finance: ["finance", "quick-collect", "transactions", "students"],
+      people: ["people", "students", "crm", "groups"],
+    };
+    const allowedCodes = serviceAliases[serviceCode] || [serviceCode];
+
     const entitlement = await withTenant(this.database, organisationId, request.auth.userId, (tx) =>
-      tx.organisationService.findFirst({ where: { organisationId, service: { code: serviceCode }, status: "ACTIVE" } }),
+      tx.organisationService.findFirst({
+        where: {
+          organisationId,
+          service: { code: { in: allowedCodes } },
+          status: "ACTIVE",
+        },
+      }),
     );
     if (!entitlement) throw new ForbiddenException(`The ${serviceCode} service is not enabled.`);
     return true;

@@ -16,15 +16,35 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
-import { State, City } from "country-state-city";
+import { Country, State, City } from "country-state-city";
+
+const ALL_COUNTRIES = Country.getAllCountries().sort((a, b) =>
+  a.name.localeCompare(b.name),
+);
 
 const ALL_INDIAN_STATES = State.getStatesOfCountry("IN").sort((a, b) =>
   a.name.localeCompare(b.name),
 );
+
+const COUNTRY_DIAL_CODES = [
+  { code: "+91", label: "+ 91 (India)", iso: "IN" },
+  { code: "+1", label: "+ 1 (US / Canada)", iso: "US" },
+  { code: "+44", label: "+ 44 (UK)", iso: "GB" },
+  { code: "+971", label: "+ 971 (UAE)", iso: "AE" },
+  { code: "+65", label: "+ 65 (Singapore)", iso: "SG" },
+  { code: "+61", label: "+ 61 (Australia)", iso: "AU" },
+  { code: "+966", label: "+ 966 (Saudi Arabia)", iso: "SA" },
+  { code: "+974", label: "+ 974 (Qatar)", iso: "QA" },
+  { code: "+968", label: "+ 968 (Oman)", iso: "OM" },
+  { code: "+977", label: "+ 977 (Nepal)", iso: "NP" },
+  { code: "+880", label: "+ 880 (Bangladesh)", iso: "BD" },
+  { code: "+94", label: "+ 94 (Sri Lanka)", iso: "LK" },
+];
 
 type PersonType = "CUSTOMER" | "STUDENT" | "MEMBER" | "EMPLOYEE";
 
@@ -41,11 +61,19 @@ type Person = {
   alternatePhone: string | null;
   email: string | null;
   address?: {
+    addressLine1?: string;
+    addressLine2?: string;
     street?: string;
     city?: string;
     state?: string;
     postalCode?: string;
+    pincode?: string;
     country?: string;
+    dateOfBirth?: string;
+    dob?: string;
+    guardianName?: string;
+    admissionNumber?: string;
+    admissionDate?: string;
   } | null;
   notes: string | null;
   status: "ACTIVE" | "ARCHIVED";
@@ -78,12 +106,13 @@ function PeopleContent() {
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Admin");
+  // Context & AppShell info (Instant 0ms cached state)
+  const cached = getCachedWorkspaceContext();
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
@@ -103,18 +132,35 @@ function PeopleContent() {
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
 
-  // Form states
+  // Segmented Modal Navigation Tab
+  const [modalActiveTab, setModalActiveTab] = useState<"personal" | "address" | "more">("personal");
+
+  // Form states - Personal info
   const [formName, setFormName] = useState("");
-  const [formEmail, setFormEmail] = useState("");
+  const [formNameTouched, setFormNameTouched] = useState(false);
+  const [formPrimaryCountryCode, setFormPrimaryCountryCode] = useState("+91");
   const [formPhone, setFormPhone] = useState("");
+  const [formAltCountryCode, setFormAltCountryCode] = useState("+91");
   const [formAltPhone, setFormAltPhone] = useState("");
-  const [formNotes, setFormNotes] = useState("");
-  const [formCity, setFormCity] = useState("");
-  const [formState, setFormState] = useState("");
-  const [formStreet, setFormStreet] = useState("");
-  const [formPostalCode, setFormPostalCode] = useState("");
-  const [formTypes, setFormTypes] = useState<PersonType[]>(["CUSTOMER"]);
+  const [formEmail, setFormEmail] = useState("");
+  const [formDob, setFormDob] = useState("");
+  const [formTypes, setFormTypes] = useState<PersonType[]>(["MEMBER"]);
   const [formSelectedTags, setFormSelectedTags] = useState<string[]>([]);
+
+  // Form states - Address details
+  const [formAddressLine1, setFormAddressLine1] = useState("");
+  const [formAddressLine2, setFormAddressLine2] = useState("");
+  const [formCountry, setFormCountry] = useState("India");
+  const [formState, setFormState] = useState("");
+  const [formCity, setFormCity] = useState("");
+  const [formPincode, setFormPincode] = useState("");
+
+  // Form states - More info
+  const [formGuardianName, setFormGuardianName] = useState("");
+  const [formAdmissionNo, setFormAdmissionNo] = useState("");
+  const [formAdmissionDate, setFormAdmissionDate] = useState("");
+  const [formNotes, setFormNotes] = useState("");
+
   const [formBusy, setFormBusy] = useState(false);
   const [formError, setFormError] = useState("");
   const [duplicateWarnings, setDuplicateWarnings] = useState<
@@ -131,14 +177,25 @@ function PeopleContent() {
   const [importResult, setImportResult] = useState<{ imported: number; errors?: string[] } | null>(null);
 
   // Computed state and city lists for address selection
-  const selectedStateObj = ALL_INDIAN_STATES.find(
+  const selectedCountryObj = ALL_COUNTRIES.find(
+    (c) =>
+      c.name.toLowerCase() === formCountry.toLowerCase() ||
+      c.isoCode.toLowerCase() === formCountry.toLowerCase(),
+  );
+  const countryIso = selectedCountryObj ? selectedCountryObj.isoCode : "IN";
+
+  const availableStates = State.getStatesOfCountry(countryIso).sort((a, b) =>
+    a.name.localeCompare(b.name),
+  );
+
+  const selectedStateObj = availableStates.find(
     (s) =>
       s.name.toLowerCase() === formState.trim().toLowerCase() ||
       s.isoCode.toLowerCase() === formState.trim().toLowerCase(),
   );
 
   const availableCities = selectedStateObj
-    ? City.getCitiesOfState("IN", selectedStateObj.isoCode).sort((a, b) =>
+    ? City.getCitiesOfState(countryIso, selectedStateObj.isoCode).sort((a, b) =>
         a.name.localeCompare(b.name),
       )
     : [];
@@ -155,6 +212,11 @@ function PeopleContent() {
       ) &&
       formCity !== "Other",
   );
+
+  // Validation
+  const isNameValid = formName.trim().length >= 3;
+  const isPhoneValid = formPhone.trim().length >= 6;
+  const isFormValid = isNameValid && isPhoneValid;
 
   // Load user session & current active org info
   const loadContext = useCallback(async () => {
@@ -206,11 +268,9 @@ function PeopleContent() {
       if (selectedTag) params.set("tagId", selectedTag);
 
       const res = await authFetch(`${api}/people?${params.toString()}`, { credentials: "include" });
-      if (res.status === 401) {
-        router.replace("/login");
-        return;
+      if (!res.ok) {
+        throw new Error("Failed to load directory records.");
       }
-      if (!res.ok) throw new Error("Could not load people records.");
       const data = await res.json();
       setPeople(data.items || []);
     } catch (err) {
@@ -218,7 +278,7 @@ function PeopleContent() {
     } finally {
       setLoading(false);
     }
-  }, [api, search, activeTab, selectedTag, router]);
+  }, [api, search, activeTab, selectedTag]);
 
   // Load tags
   const loadTags = useCallback(async () => {
@@ -246,7 +306,10 @@ function PeopleContent() {
   useEffect(() => {
     const action = searchParams.get("action");
     const personId = searchParams.get("id");
-    if (action === "new") setCreateOpen(true);
+    if (action === "new") {
+      resetForm();
+      setCreateOpen(true);
+    }
     if (personId) {
       authFetch(`${api}/people/${personId}`, { credentials: "include" })
         .then((res) => (res.ok ? res.json() : null))
@@ -293,7 +356,10 @@ function PeopleContent() {
           method: "POST",
           credentials: "include",
           headers: { "content-type": "application/json" },
-          body: JSON.stringify({ email: formEmail || undefined, phone: formPhone || undefined }),
+          body: JSON.stringify({
+            email: formEmail || undefined,
+            phone: formPhone ? `${formPrimaryCountryCode} ${formPhone}`.trim() : undefined,
+          }),
         });
         if (res.ok) {
           const dups = await res.json();
@@ -304,50 +370,157 @@ function PeopleContent() {
       }
     }, 400);
     return () => clearTimeout(timer);
-  }, [formEmail, formPhone, createOpen, api]);
+  }, [formEmail, formPhone, formPrimaryCountryCode, createOpen, api]);
 
   function resetForm() {
+    setModalActiveTab("personal");
     setFormName("");
-    setFormEmail("");
+    setFormNameTouched(false);
+    setFormPrimaryCountryCode("+91");
     setFormPhone("");
+    setFormAltCountryCode("+91");
     setFormAltPhone("");
-    setFormNotes("");
-    setFormCity("");
+    setFormEmail("");
+    setFormDob("");
+    setFormAddressLine1("");
+    setFormAddressLine2("");
+    setFormCountry("India");
     setFormState("");
-    setFormStreet("");
-    setFormPostalCode("");
-    setFormTypes(["CUSTOMER"]);
+    setFormCity("");
+    setFormPincode("");
+    setFormGuardianName("");
+    setFormAdmissionNo("");
+    setFormAdmissionDate("");
+    setFormNotes("");
+    setFormTypes(["MEMBER"]);
     setFormSelectedTags([]);
     setFormError("");
     setDuplicateWarnings([]);
   }
 
+  function openEditModal(person: Person) {
+    setModalActiveTab("personal");
+    setFormName(person.displayName);
+    setFormNameTouched(false);
+
+    // Extract primary phone code
+    let pPhone = person.primaryPhone || "";
+    let pCode = "+91";
+    if (pPhone.startsWith("+")) {
+      const match = COUNTRY_DIAL_CODES.find((c) => pPhone.startsWith(c.code));
+      if (match) {
+        pCode = match.code;
+        pPhone = pPhone.slice(match.code.length).trim();
+      } else {
+        const parts = pPhone.split(" ");
+        if (parts.length > 1 && parts[0]) {
+          pCode = parts[0];
+          pPhone = parts.slice(1).join(" ");
+        }
+      }
+    }
+    setFormPrimaryCountryCode(pCode);
+    setFormPhone(pPhone);
+
+    // Extract alt phone code
+    let aPhone = person.alternatePhone || "";
+    let aCode = "+91";
+    if (aPhone.startsWith("+")) {
+      const match = COUNTRY_DIAL_CODES.find((c) => aPhone.startsWith(c.code));
+      if (match) {
+        aCode = match.code;
+        aPhone = aPhone.slice(match.code.length).trim();
+      } else {
+        const parts = aPhone.split(" ");
+        if (parts.length > 1 && parts[0]) {
+          aCode = parts[0];
+          aPhone = parts.slice(1).join(" ");
+        }
+      }
+    }
+    setFormAltCountryCode(aCode);
+    setFormAltPhone(aPhone);
+
+    setFormEmail(person.email || "");
+    setFormNotes(person.notes || "");
+
+    const addr = person.address || {};
+    setFormAddressLine1(addr.addressLine1 || addr.street || "");
+    setFormAddressLine2(addr.addressLine2 || "");
+    setFormCountry(addr.country || "India");
+    setFormState(addr.state || "");
+    setFormCity(addr.city || "");
+    setFormPincode(addr.pincode || addr.postalCode || "");
+    setFormDob(addr.dateOfBirth || addr.dob || "");
+    setFormGuardianName(addr.guardianName || "");
+    setFormAdmissionNo(addr.admissionNumber || "");
+    setFormAdmissionDate(addr.admissionDate || "");
+
+    const firstType = person.types[0]?.type;
+    setFormTypes(firstType ? [firstType] : ["MEMBER"]);
+    setFormSelectedTags(person.tags.map((t) => t.tagId));
+    setEditOpen(true);
+  }
+
   async function handleCreate(e: FormEvent) {
     e.preventDefault();
+    if (!isNameValid || !isPhoneValid) {
+      setFormNameTouched(true);
+      setFormError("Please provide a valid member name (at least 3 characters) and primary phone number.");
+      return;
+    }
     setFormBusy(true);
     setFormError("");
     try {
       const finalState = formState === "Other" ? "" : formState.trim();
       const finalCity = formCity === "Other" ? "" : formCity.trim();
+      const finalPincode = formPincode.trim();
+      const fullStreet = [formAddressLine1.trim(), formAddressLine2.trim()].filter(Boolean).join(", ");
+
+      const fullPrimaryPhone = formPhone.trim()
+        ? (formPhone.startsWith("+") ? formPhone.trim() : `${formPrimaryCountryCode} ${formPhone.trim()}`)
+        : undefined;
+
+      const fullAltPhone = formAltPhone.trim()
+        ? (formAltPhone.startsWith("+") ? formAltPhone.trim() : `${formAltCountryCode} ${formAltPhone.trim()}`)
+        : undefined;
+
+      const addressPayload: Record<string, string> = {};
+      if (formAddressLine1.trim()) addressPayload.addressLine1 = formAddressLine1.trim();
+      if (formAddressLine2.trim()) addressPayload.addressLine2 = formAddressLine2.trim();
+      if (fullStreet) addressPayload.street = fullStreet;
+      if (formCountry.trim()) addressPayload.country = formCountry.trim();
+      if (finalState) addressPayload.state = finalState;
+      if (finalCity) addressPayload.city = finalCity;
+      if (finalPincode) {
+        addressPayload.pincode = finalPincode;
+        addressPayload.postalCode = finalPincode;
+      }
+      if (formDob.trim()) {
+        addressPayload.dateOfBirth = formDob.trim();
+        addressPayload.dob = formDob.trim();
+      }
+      if (formGuardianName.trim()) addressPayload.guardianName = formGuardianName.trim();
+      if (formAdmissionNo.trim()) addressPayload.admissionNumber = formAdmissionNo.trim();
+      if (formAdmissionDate.trim()) addressPayload.admissionDate = formAdmissionDate.trim();
+
       const res = await authFetch(`${api}/people`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          displayName: formName,
-          email: formEmail || undefined,
-          primaryPhone: formPhone || undefined,
-          alternatePhone: formAltPhone || undefined,
-          notes: formNotes || undefined,
-          address: finalCity || finalState || formStreet
-            ? { street: formStreet, city: finalCity, state: finalState, postalCode: formPostalCode }
-            : undefined,
-          types: formTypes,
+          displayName: formName.trim(),
+          email: formEmail.trim() || undefined,
+          primaryPhone: fullPrimaryPhone,
+          alternatePhone: fullAltPhone,
+          notes: formNotes.trim() || undefined,
+          address: Object.keys(addressPayload).length > 0 ? addressPayload : undefined,
+          types: formTypes.length > 0 ? formTypes : ["MEMBER"],
           tagIds: formSelectedTags,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create person.");
+      if (!res.ok) throw new Error(data.message || "Failed to create member record.");
       setCreateOpen(false);
       resetForm();
       loadPeople();
@@ -361,30 +534,63 @@ function PeopleContent() {
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
     if (!detailPerson) return;
+    if (!isNameValid || !isPhoneValid) {
+      setFormNameTouched(true);
+      setFormError("Please provide a valid member name (at least 3 characters) and primary phone number.");
+      return;
+    }
     setFormBusy(true);
     setFormError("");
     try {
       const finalState = formState === "Other" ? "" : formState.trim();
       const finalCity = formCity === "Other" ? "" : formCity.trim();
+      const finalPincode = formPincode.trim();
+      const fullStreet = [formAddressLine1.trim(), formAddressLine2.trim()].filter(Boolean).join(", ");
+
+      const fullPrimaryPhone = formPhone.trim()
+        ? (formPhone.startsWith("+") ? formPhone.trim() : `${formPrimaryCountryCode} ${formPhone.trim()}`)
+        : undefined;
+
+      const fullAltPhone = formAltPhone.trim()
+        ? (formAltPhone.startsWith("+") ? formAltPhone.trim() : `${formAltCountryCode} ${formAltPhone.trim()}`)
+        : undefined;
+
+      const addressPayload: Record<string, string> = {};
+      if (formAddressLine1.trim()) addressPayload.addressLine1 = formAddressLine1.trim();
+      if (formAddressLine2.trim()) addressPayload.addressLine2 = formAddressLine2.trim();
+      if (fullStreet) addressPayload.street = fullStreet;
+      if (formCountry.trim()) addressPayload.country = formCountry.trim();
+      if (finalState) addressPayload.state = finalState;
+      if (finalCity) addressPayload.city = finalCity;
+      if (finalPincode) {
+        addressPayload.pincode = finalPincode;
+        addressPayload.postalCode = finalPincode;
+      }
+      if (formDob.trim()) {
+        addressPayload.dateOfBirth = formDob.trim();
+        addressPayload.dob = formDob.trim();
+      }
+      if (formGuardianName.trim()) addressPayload.guardianName = formGuardianName.trim();
+      if (formAdmissionNo.trim()) addressPayload.admissionNumber = formAdmissionNo.trim();
+      if (formAdmissionDate.trim()) addressPayload.admissionDate = formAdmissionDate.trim();
+
       const res = await authFetch(`${api}/people/${detailPerson.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          displayName: formName,
-          email: formEmail || undefined,
-          primaryPhone: formPhone || undefined,
-          alternatePhone: formAltPhone || undefined,
-          notes: formNotes || undefined,
-          address: finalCity || finalState || formStreet
-            ? { street: formStreet, city: finalCity, state: finalState, postalCode: formPostalCode }
-            : undefined,
-          types: formTypes,
+          displayName: formName.trim(),
+          email: formEmail.trim() || undefined,
+          primaryPhone: fullPrimaryPhone,
+          alternatePhone: fullAltPhone,
+          notes: formNotes.trim() || undefined,
+          address: Object.keys(addressPayload).length > 0 ? addressPayload : undefined,
+          types: formTypes.length > 0 ? formTypes : ["MEMBER"],
           tagIds: formSelectedTags,
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to update person.");
+      if (!res.ok) throw new Error(data.message || "Failed to update member details.");
       setEditOpen(false);
       setDetailPerson(data);
       loadPeople();
@@ -396,7 +602,7 @@ function PeopleContent() {
   }
 
   async function handleArchive(personId: string) {
-    if (!confirm("Are you sure you want to archive this person?")) return;
+    if (!confirm("Are you sure you want to archive this member / person?")) return;
     try {
       const res = await authFetch(`${api}/people/${personId}/archive`, {
         method: "POST",
@@ -455,31 +661,611 @@ function PeopleContent() {
     }
   }
 
-  function openEditModal(person: Person) {
-    setFormName(person.displayName);
-    setFormEmail(person.email || "");
-    setFormPhone(person.primaryPhone || "");
-    setFormAltPhone(person.alternatePhone || "");
-    setFormNotes(person.notes || "");
-    setFormStreet(person.address?.street || "");
-    setFormCity(person.address?.city || "");
-    setFormState(person.address?.state || "");
-    const firstType = person.types[0]?.type;
-    setFormTypes(firstType ? [firstType] : ["CUSTOMER"]);
-    setFormSelectedTags(person.tags.map((t) => t.tagId));
-    setEditOpen(true);
-  }
-
   const tabItems = [
     { id: "ALL", label: "All Directory" },
+    { id: "MEMBER", label: "Members" },
     { id: "STUDENT", label: "Students / Learners" },
     { id: "CUSTOMER", label: "Customers / Clients" },
     { id: "EMPLOYEE", label: "Employees / Staff" },
-    { id: "MEMBER", label: "Members" },
     { id: "ARCHIVED", label: "Archived" },
   ];
 
   const nav: NavItem[] = buildNavItems(activeServiceCodes);
+
+  // Reusable render function for the 2-column segmented Add/Edit Member Form
+  const renderMemberForm = (isEdit: boolean) => (
+    <div className="add-member-dialog">
+      {/* Left Sidebar Navigation */}
+      <aside className="add-member-nav">
+        <button
+          type="button"
+          className={`add-member-nav-btn ${modalActiveTab === "personal" ? "active" : ""}`}
+          onClick={() => setModalActiveTab("personal")}
+        >
+          <Icon name="user" size={15} />
+          <span>Personal information</span>
+        </button>
+
+        <button
+          type="button"
+          className={`add-member-nav-btn ${modalActiveTab === "address" ? "active" : ""}`}
+          onClick={() => setModalActiveTab("address")}
+        >
+          <Icon name="tag" size={15} />
+          <span>Address details</span>
+        </button>
+
+        <button
+          type="button"
+          className={`add-member-nav-btn ${modalActiveTab === "more" ? "active" : ""}`}
+          onClick={() => setModalActiveTab("more")}
+        >
+          <Icon name="activity" size={15} />
+          <span>More info</span>
+        </button>
+      </aside>
+
+      {/* Right Form Content */}
+      <div className="add-member-content">
+        {formError && (
+          <div style={{ padding: "10px 12px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+            ⚠️ {formError}
+          </div>
+        )}
+
+        {duplicateWarnings.length > 0 && (
+          <div style={{ padding: "10px 12px", background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: 12 }}>
+            <strong>Potential duplicate found:</strong>
+            <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
+              {duplicateWarnings.map((d) => (
+                <li key={d.id}>
+                  {d.displayName} ({d.email || d.primaryPhone})
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* Section 1: Personal Information */}
+        <section
+          className="add-member-section"
+          style={{ display: modalActiveTab === "personal" ? "flex" : "none" }}
+        >
+          <h3 className="add-member-section-title">Personal information</h3>
+
+          <div className="add-member-grid">
+            {/* Name */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Name <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <input
+                type="text"
+                placeholder="Name"
+                value={formName}
+                onChange={(e) => setFormName(e.target.value)}
+                onBlur={() => setFormNameTouched(true)}
+                className={formNameTouched && !isNameValid ? "add-member-input-error" : ""}
+                required
+                autoFocus={!isEdit}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+              {formNameTouched && !isNameValid && (
+                <span style={{ color: "#ef4444", fontSize: 11, fontWeight: 600, display: "block", marginTop: 4 }}>
+                  Minimum length should be 3
+                </span>
+              )}
+            </div>
+
+            {/* Primary Number */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Primary Number <span style={{ color: "#ef4444" }}>*</span>
+              </label>
+              <div className="add-member-phone-input">
+                <select
+                  className="add-member-country-select"
+                  value={formPrimaryCountryCode}
+                  onChange={(e) => setFormPrimaryCountryCode(e.target.value)}
+                >
+                  {COUNTRY_DIAL_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  className="add-member-phone-field"
+                  placeholder="Enter phone number"
+                  value={formPhone}
+                  onChange={(e) => setFormPhone(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="add-member-grid">
+            {/* Alternate Number */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Alternate Number
+              </label>
+              <div className="add-member-phone-input">
+                <select
+                  className="add-member-country-select"
+                  value={formAltCountryCode}
+                  onChange={(e) => setFormAltCountryCode(e.target.value)}
+                >
+                  {COUNTRY_DIAL_CODES.map((c) => (
+                    <option key={c.code} value={c.code}>
+                      {c.code}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="tel"
+                  className="add-member-phone-field"
+                  placeholder="Enter phone number"
+                  value={formAltPhone}
+                  onChange={(e) => setFormAltPhone(e.target.value)}
+                />
+              </div>
+            </div>
+
+            {/* Email ID */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Email ID
+              </label>
+              <input
+                type="email"
+                placeholder="Enter email ID"
+                value={formEmail}
+                onChange={(e) => setFormEmail(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="add-member-grid single-col">
+            {/* Date of Birth */}
+            <div className="form-group" style={{ margin: 0, maxWidth: "50%" }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Date of Birth
+              </label>
+              <input
+                type="date"
+                value={formDob}
+                onChange={(e) => setFormDob(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Member / Person Type Pills */}
+          <div className="form-group" style={{ margin: 0, paddingTop: 4 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6 }}>
+              Directory Category
+            </label>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              {[
+                { type: "MEMBER" as PersonType, label: "🤝 Member" },
+                { type: "STUDENT" as PersonType, label: "🎓 Student / Learner" },
+                { type: "CUSTOMER" as PersonType, label: "💼 Customer / Client" },
+                { type: "EMPLOYEE" as PersonType, label: "👔 Staff / Employee" },
+              ].map(({ type, label }) => {
+                const checked = formTypes.includes(type);
+                return (
+                  <label
+                    key={type}
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 6,
+                      padding: "6px 12px",
+                      borderRadius: 8,
+                      border: "1.5px solid",
+                      borderColor: checked ? "var(--brand)" : "#cbd5e1",
+                      background: checked ? "#eff6ff" : "#ffffff",
+                      color: checked ? "#1d4ed8" : "#334155",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="personCategory"
+                      checked={checked}
+                      onChange={() => setFormTypes([type])}
+                      style={{ display: "none" }}
+                    />
+                    <span>{label}</span>
+                  </label>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Tags */}
+          {tags.length > 0 && (
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6 }}>
+                Tags
+              </label>
+              <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                {tags.map((tag) => {
+                  const checked = formSelectedTags.includes(tag.id);
+                  return (
+                    <button
+                      type="button"
+                      key={tag.id}
+                      onClick={() =>
+                        setFormSelectedTags((curr) =>
+                          checked ? curr.filter((id) => id !== tag.id) : [...curr, tag.id],
+                        )
+                      }
+                      style={{
+                        padding: "3px 10px",
+                        borderRadius: 6,
+                        border: "1px solid",
+                        borderColor: checked ? "var(--brand)" : "var(--line)",
+                        background: checked ? "#eff6ff" : "#fff",
+                        color: checked ? "var(--brand)" : "var(--ink)",
+                        fontSize: 11.5,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Section 2: Address Details */}
+        <section
+          className="add-member-section"
+          style={{ display: modalActiveTab === "address" ? "flex" : "none" }}
+        >
+          <h3 className="add-member-section-title">Address details</h3>
+
+          <div className="add-member-grid">
+            {/* Address Line 1 */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Address Line 1
+              </label>
+              <input
+                type="text"
+                placeholder="Eg: House no.56"
+                value={formAddressLine1}
+                onChange={(e) => setFormAddressLine1(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {/* Address Line 2 */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Address Line 2
+              </label>
+              <input
+                type="text"
+                placeholder="Eg: Street road"
+                value={formAddressLine2}
+                onChange={(e) => setFormAddressLine2(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="add-member-grid">
+            {/* Country */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Country
+              </label>
+              <select
+                value={formCountry}
+                onChange={(e) => {
+                  setFormCountry(e.target.value);
+                  setFormState("");
+                  setFormCity("");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                  background: "#fff",
+                }}
+              >
+                <option value="">Select Country</option>
+                {ALL_COUNTRIES.map((c) => (
+                  <option key={c.isoCode} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {/* State */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                State
+              </label>
+              <select
+                value={
+                  selectedStateObj
+                    ? selectedStateObj.name
+                    : formState === "Other" || isCustomState
+                      ? "Other"
+                      : ""
+                }
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setFormState(val);
+                  setFormCity("");
+                }}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                  background: "#fff",
+                }}
+              >
+                <option value="">Select State</option>
+                {availableStates.map((s) => (
+                  <option key={s.isoCode} value={s.name}>
+                    {s.name}
+                  </option>
+                ))}
+                <option value="Other">Other (Enter manually)</option>
+              </select>
+              {(formState === "Other" || isCustomState) && (
+                <input
+                  type="text"
+                  style={{ marginTop: 6, width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}
+                  placeholder="Enter state name..."
+                  value={formState === "Other" ? "" : formState}
+                  onChange={(e) => setFormState(e.target.value || "Other")}
+                  autoFocus
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="add-member-grid">
+            {/* City */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                City
+              </label>
+              {availableCities.length > 0 ? (
+                <>
+                  <select
+                    value={
+                      availableCities.some((c) => c.name.toLowerCase() === formCity.trim().toLowerCase())
+                        ? formCity
+                        : formCity === "Other" || isCustomCity
+                          ? "Other"
+                          : ""
+                    }
+                    onChange={(e) => setFormCity(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid var(--line)",
+                      fontSize: 13,
+                      outline: "none",
+                      background: "#fff",
+                    }}
+                  >
+                    <option value="">Enter City / Select ({availableCities.length})</option>
+                    {availableCities.map((c) => (
+                      <option key={c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
+                    <option value="Other">Other (Enter manually)</option>
+                  </select>
+                  {(formCity === "Other" || isCustomCity) && (
+                    <input
+                      type="text"
+                      style={{ marginTop: 6, width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--line)", fontSize: 13 }}
+                      placeholder="Enter city / town name..."
+                      value={formCity === "Other" ? "" : formCity}
+                      onChange={(e) => setFormCity(e.target.value || "Other")}
+                      autoFocus
+                    />
+                  )}
+                </>
+              ) : (
+                <input
+                  type="text"
+                  placeholder="Enter City"
+                  value={formCity === "Other" ? "" : formCity}
+                  onChange={(e) => setFormCity(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid var(--line)",
+                    fontSize: 13,
+                    outline: "none",
+                  }}
+                />
+              )}
+            </div>
+
+            {/* Pincode */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Pincode
+              </label>
+              <input
+                type="text"
+                placeholder="Enter pincode"
+                value={formPincode}
+                onChange={(e) => setFormPincode(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+        </section>
+
+        {/* Section 3: More Info */}
+        <section
+          className="add-member-section"
+          style={{ display: modalActiveTab === "more" ? "flex" : "none" }}
+        >
+          <h3 className="add-member-section-title">More info</h3>
+
+          <div className="add-member-grid">
+            {/* Guardian Name */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Guardian Name
+              </label>
+              <input
+                type="text"
+                placeholder="Enter Name"
+                value={formGuardianName}
+                onChange={(e) => setFormGuardianName(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+
+            {/* Admission Number */}
+            <div className="form-group" style={{ margin: 0 }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Admission Number
+              </label>
+              <input
+                type="text"
+                placeholder="Enter admission number"
+                value={formAdmissionNo}
+                onChange={(e) => setFormAdmissionNo(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          <div className="add-member-grid single-col">
+            {/* Admission Date */}
+            <div className="form-group" style={{ margin: 0, maxWidth: "50%" }}>
+              <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                Admission Date
+              </label>
+              <input
+                type="date"
+                value={formAdmissionDate}
+                onChange={(e) => setFormAdmissionDate(e.target.value)}
+                style={{
+                  width: "100%",
+                  padding: "9px 12px",
+                  borderRadius: 8,
+                  border: "1px solid var(--line)",
+                  fontSize: 13,
+                  outline: "none",
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Notes */}
+          <div className="form-group" style={{ margin: 0 }}>
+            <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+              Additional Notes
+            </label>
+            <textarea
+              rows={3}
+              placeholder="Background information, special requirements, or internal notes..."
+              value={formNotes}
+              onChange={(e) => setFormNotes(e.target.value)}
+              style={{
+                width: "100%",
+                padding: "9px 12px",
+                borderRadius: 8,
+                border: "1px solid var(--line)",
+                fontSize: 13,
+                outline: "none",
+              }}
+            />
+          </div>
+        </section>
+      </div>
+    </div>
+  );
 
   return (
     <AppShell
@@ -492,6 +1278,7 @@ function PeopleContent() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       <div className="page-heading">
         <div>
@@ -500,7 +1287,7 @@ function PeopleContent() {
           </p>
           <h1>People & Directory</h1>
           <p className="subheading">
-            Centralized directory for students, customers / clients, staff / employees, and members.
+            Centralized directory for members, students, customers / clients, and staff.
           </p>
         </div>
         <div className="toolbar-actions">
@@ -535,7 +1322,7 @@ function PeopleContent() {
             }}
           >
             <Icon name="plus" size={15} />
-            <span>Add Person</span>
+            <span>Add Member</span>
           </button>
         </div>
       </div>
@@ -590,13 +1377,13 @@ function PeopleContent() {
       ) : people.length === 0 ? (
         <EmptyState
           icon="people"
-          title="No people records found"
+          title="No member records found"
           description={
             search || selectedTag || activeTab !== "ALL"
               ? "Try adjusting your search or active filters."
-              : "Start by adding your first customer, student, or member to your directory."
+              : "Start by adding your first member, student, or customer to your directory."
           }
-          actionLabel="Add Person"
+          actionLabel="Add Member"
           onAction={() => {
             resetForm();
             setCreateOpen(true);
@@ -607,9 +1394,10 @@ function PeopleContent() {
           <table className="data-table">
             <thead>
               <tr>
-                <th>Person Name</th>
+                <th>Person / Member</th>
                 <th>Contact</th>
-                <th>Types</th>
+                <th>Category</th>
+                <th>Location</th>
                 <th>Tags</th>
                 <th>Status</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
@@ -629,9 +1417,9 @@ function PeopleContent() {
                       </div>
                       <div>
                         <strong>{person.displayName}</strong>
-                        {person.address?.city && (
+                        {person.address?.guardianName && (
                           <small style={{ color: "var(--muted)", display: "block" }}>
-                            {person.address.city}, {person.address.state || ""}
+                            Guardian: {person.address.guardianName}
                           </small>
                         )}
                       </div>
@@ -639,10 +1427,12 @@ function PeopleContent() {
                   </td>
                   <td>
                     <div>
-                      {person.email && <div>{person.email}</div>}
                       {person.primaryPhone && (
-                        <small style={{ color: "var(--muted)" }}>
-                          {person.primaryPhone}
+                        <div style={{ fontWeight: 600 }}>{person.primaryPhone}</div>
+                      )}
+                      {person.email && (
+                        <small style={{ color: "var(--muted)", display: "block" }}>
+                          {person.email}
                         </small>
                       )}
                       {!person.email && !person.primaryPhone && (
@@ -658,6 +1448,15 @@ function PeopleContent() {
                         </Badge>
                       ))}
                     </div>
+                  </td>
+                  <td>
+                    {person.address?.city || person.address?.state ? (
+                      <span style={{ fontSize: 12.5, color: "var(--ink)" }}>
+                        {[person.address.city, person.address.state].filter(Boolean).join(", ")}
+                      </span>
+                    ) : (
+                      <span style={{ color: "var(--muted)" }}>—</span>
+                    )}
                   </td>
                   <td>
                     <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
@@ -681,7 +1480,7 @@ function PeopleContent() {
                     <div className="table-actions">
                       <button
                         className="btn-icon"
-                        title="Edit"
+                        title="Edit Details"
                         onClick={() => openEditModal(person)}
                       >
                         <Icon name="edit" size={15} />
@@ -708,23 +1507,29 @@ function PeopleContent() {
       <Drawer
         isOpen={Boolean(detailPerson)}
         onClose={() => setDetailPerson(null)}
-        title={detailPerson?.displayName || "Person Details"}
-        subtitle="Directory Profile & Timeline"
+        title={detailPerson?.displayName || "Member Details"}
+        subtitle="Directory Profile & Activity"
       >
         {detailPerson && (
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             <div className="key-value-list">
               <div className="key-value-item">
-                <label>Email</label>
-                <span>{detailPerson.email || "—"}</span>
-              </div>
-              <div className="key-value-item">
                 <label>Primary Phone</label>
-                <span>{detailPerson.primaryPhone || "—"}</span>
+                <span style={{ fontWeight: 700 }}>{detailPerson.primaryPhone || "—"}</span>
               </div>
               <div className="key-value-item">
                 <label>Alternate Phone</label>
                 <span>{detailPerson.alternatePhone || "—"}</span>
+              </div>
+              <div className="key-value-item">
+                <label>Email ID</label>
+                <span>{detailPerson.email || "—"}</span>
+              </div>
+              <div className="key-value-item">
+                <label>Date of Birth</label>
+                <span>
+                  {detailPerson.address?.dateOfBirth || detailPerson.address?.dob || "—"}
+                </span>
               </div>
               <div className="key-value-item">
                 <label>Status</label>
@@ -736,27 +1541,68 @@ function PeopleContent() {
               </div>
             </div>
 
+            {/* Address Details */}
             {detailPerson.address && (
-              <div>
-                <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>
-                  Address
+              <div style={{ background: "#f8fafc", padding: 12, borderRadius: 10, border: "1px solid var(--line)" }}>
+                <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  📍 Address Details
                 </label>
-                <div style={{ fontSize: 13, marginTop: 4 }}>
-                  {[
-                    detailPerson.address.street,
-                    detailPerson.address.city,
-                    detailPerson.address.state,
-                    detailPerson.address.postalCode,
-                  ]
-                    .filter(Boolean)
-                    .join(", ") || "No address provided"}
+                <div style={{ fontSize: 13, marginTop: 6, display: "flex", flexDirection: "column", gap: 3 }}>
+                  {detailPerson.address.addressLine1 && (
+                    <div><strong>Line 1:</strong> {detailPerson.address.addressLine1}</div>
+                  )}
+                  {detailPerson.address.addressLine2 && (
+                    <div><strong>Line 2:</strong> {detailPerson.address.addressLine2}</div>
+                  )}
+                  <div>
+                    <strong>Location:</strong>{" "}
+                    {[
+                      detailPerson.address.city,
+                      detailPerson.address.state,
+                      detailPerson.address.pincode || detailPerson.address.postalCode,
+                      detailPerson.address.country,
+                    ]
+                      .filter(Boolean)
+                      .join(", ") || detailPerson.address.street || "No address specified"}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* More Info Details */}
+            {(detailPerson.address?.guardianName ||
+              detailPerson.address?.admissionNumber ||
+              detailPerson.address?.admissionDate) && (
+              <div style={{ background: "#f8fafc", padding: 12, borderRadius: 10, border: "1px solid var(--line)" }}>
+                <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  📋 Admission & Guardian Info
+                </label>
+                <div style={{ fontSize: 13, marginTop: 6, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  {detailPerson.address.guardianName && (
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Guardian Name</small>
+                      <strong>{detailPerson.address.guardianName}</strong>
+                    </div>
+                  )}
+                  {detailPerson.address.admissionNumber && (
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Admission No.</small>
+                      <strong>{detailPerson.address.admissionNumber}</strong>
+                    </div>
+                  )}
+                  {detailPerson.address.admissionDate && (
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Admission Date</small>
+                      <strong>{detailPerson.address.admissionDate}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
 
             <div>
               <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 600 }}>
-                Person Types
+                Categories
               </label>
               <div style={{ display: "flex", gap: 6, marginTop: 6, flexWrap: "wrap" }}>
                 {detailPerson.types.map((t) => (
@@ -939,7 +1785,7 @@ function PeopleContent() {
                 </div>
               ) : (
                 <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 0" }}>
-                  No fee bills issued yet for this student.
+                  No fee bills issued yet for this member.
                 </div>
               )}
             </div>
@@ -1006,512 +1852,99 @@ function PeopleContent() {
         )}
       </Drawer>
 
-      {/* Create Person Modal */}
+      {/* Add Member Modal */}
       <Modal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Add New Person"
-        subtitle="Register customer, student, member or employee"
-        maxWidth={560}
+        title="Add Member"
+        subtitle="Enter personal information, address details and more"
+        maxWidth={780}
       >
-        <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {formError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
-              {formError}
-            </div>
-          )}
+        <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column" }}>
+          {renderMemberForm(false)}
 
-          {duplicateWarnings.length > 0 && (
-            <div style={{ padding: 10, background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: 12 }}>
-              <strong>Potential duplicate found:</strong>
-              <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
-                {duplicateWarnings.map((d) => (
-                  <li key={d.id}>
-                    {d.displayName} ({d.email || d.primaryPhone})
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          <div className="form-grid">
-            <div className="form-group full">
-              <label>Full Name *</label>
-              <input
-                type="text"
-                placeholder="e.g. Ramesh Sharma"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                required
-                autoFocus
-              />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                placeholder="ramesh@example.com"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Primary Phone</label>
-              <input
-                type="tel"
-                placeholder="+91 98765 43210"
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-              />
-            </div>
-            <div className="form-group full">
-              <label>Alternate Phone</label>
-              <input
-                type="tel"
-                placeholder="Optional second number"
-                value={formAltPhone}
-                onChange={(e) => setFormAltPhone(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label style={{ fontWeight: 700 }}>Person Type *</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              {[
-                { type: "STUDENT" as PersonType, label: "🎓 Student / Learner" },
-                { type: "CUSTOMER" as PersonType, label: "💼 Customer / Client" },
-                { type: "EMPLOYEE" as PersonType, label: "👔 Staff / Employee" },
-                { type: "MEMBER" as PersonType, label: "🤝 Member / Partner" },
-              ].map(({ type, label }) => {
-                const checked = formTypes[0] === type || formTypes.includes(type);
-                return (
-                  <label
-                    key={type}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "7px 14px",
-                      borderRadius: 9,
-                      border: "1.5px solid",
-                      borderColor: checked ? "var(--brand)" : "#cbd5e1",
-                      background: checked ? "#eff6ff" : "#ffffff",
-                      color: checked ? "#1d4ed8" : "#334155",
-                      fontSize: 12.5,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                      boxShadow: checked ? "0 0 0 2px rgba(37, 99, 235, 0.15)" : "none",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="addPersonType"
-                      checked={checked}
-                      onChange={() => setFormTypes([type])}
-                      style={{ display: "none" }}
-                    />
-                    <span>{label}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {tags.length > 0 && (
-            <div className="form-group">
-              <label>Tags</label>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                {tags.map((tag) => {
-                  const checked = formSelectedTags.includes(tag.id);
-                  return (
-                    <button
-                      type="button"
-                      key={tag.id}
-                      onClick={() =>
-                        setFormSelectedTags((curr) =>
-                          checked ? curr.filter((id) => id !== tag.id) : [...curr, tag.id],
-                        )
-                      }
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 6,
-                        border: "1px solid",
-                        borderColor: checked ? "var(--brand)" : "var(--line)",
-                        background: checked ? "#eff6ff" : "#fff",
-                        color: checked ? "var(--brand)" : "var(--ink)",
-                        fontSize: 12,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="form-grid">
-            <div className="form-group">
-              <label>State</label>
-              <select
-                className="filter-select"
-                value={
-                  selectedStateObj
-                    ? selectedStateObj.name
-                    : formState === "Other" || isCustomState
-                      ? "Other"
-                      : ""
-                }
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "Other") {
-                    setFormState("Other");
-                  } else {
-                    setFormState(val);
-                  }
-                  setFormCity("");
-                }}
-              >
-                <option value="">-- Select State / UT --</option>
-                {ALL_INDIAN_STATES.map((s) => (
-                  <option key={s.isoCode} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-                <option value="Other">Other / Outside India</option>
-              </select>
-              {(formState === "Other" || isCustomState) && (
-                <input
-                  type="text"
-                  style={{ marginTop: 6 }}
-                  placeholder="Enter state name..."
-                  value={formState === "Other" ? "" : formState}
-                  onChange={(e) => setFormState(e.target.value || "Other")}
-                  autoFocus
-                />
-              )}
-            </div>
-
-            <div className="form-group">
-              <label>City</label>
-              {selectedStateObj ? (
-                <>
-                  <select
-                    className="filter-select"
-                    value={
-                      availableCities.some(
-                        (c) => c.name.toLowerCase() === formCity.trim().toLowerCase(),
-                      )
-                        ? formCity
-                        : formCity === "Other" || isCustomCity
-                          ? "Other"
-                          : ""
-                    }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "Other") {
-                        setFormCity("Other");
-                      } else {
-                        setFormCity(val);
-                      }
-                    }}
-                  >
-                    <option value="">-- Select City ({availableCities.length}) --</option>
-                    {availableCities.map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                    <option value="Other">Other (Enter manually)</option>
-                  </select>
-                  {(formCity === "Other" || isCustomCity) && (
-                    <input
-                      type="text"
-                      style={{ marginTop: 6 }}
-                      placeholder="Enter city / town name..."
-                      value={formCity === "Other" ? "" : formCity}
-                      onChange={(e) => setFormCity(e.target.value || "Other")}
-                      autoFocus
-                    />
-                  )}
-                </>
-              ) : (
-                <input
-                  type="text"
-                  placeholder={formState ? "Enter city..." : "Select state first"}
-                  value={formCity === "Other" ? "" : formCity}
-                  onChange={(e) => setFormCity(e.target.value)}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              rows={2}
-              placeholder="Additional background notes..."
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-            />
-          </div>
-
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div
+            className="modal-footer"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              paddingTop: 16,
+              marginTop: 18,
+              borderTop: "1px solid var(--line)",
+            }}
+          >
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => setCreateOpen(false)}
+              style={{ padding: "9px 20px" }}
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={formBusy}>
-              {formBusy ? "Saving…" : "Create Person"}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!isFormValid || formBusy}
+              style={{
+                padding: "9px 24px",
+                background: isFormValid ? "#059669" : undefined,
+                borderColor: isFormValid ? "#059669" : undefined,
+                opacity: !isFormValid ? 0.45 : 1,
+                cursor: !isFormValid ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {formBusy ? "Saving…" : "Save"}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Edit Person Modal */}
+      {/* Edit Member Details Modal */}
       <Modal
         isOpen={editOpen}
         onClose={() => setEditOpen(false)}
-        title="Edit Person"
-        subtitle="Update contact and profile details"
-        maxWidth={560}
+        title="Edit Member Details"
+        subtitle="Update contact, address and profile info"
+        maxWidth={780}
       >
-        <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-          {formError && (
-            <div style={{ padding: 10, background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
-              {formError}
-            </div>
-          )}
+        <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column" }}>
+          {renderMemberForm(true)}
 
-          <div className="form-grid">
-            <div className="form-group full">
-              <label>Full Name *</label>
-              <input
-                type="text"
-                value={formName}
-                onChange={(e) => setFormName(e.target.value)}
-                required
-              />
-            </div>
-            <div className="form-group">
-              <label>Email</label>
-              <input
-                type="email"
-                value={formEmail}
-                onChange={(e) => setFormEmail(e.target.value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Primary Phone</label>
-              <input
-                type="tel"
-                value={formPhone}
-                onChange={(e) => setFormPhone(e.target.value)}
-              />
-            </div>
-            <div className="form-group full">
-              <label>Alternate Phone</label>
-              <input
-                type="tel"
-                value={formAltPhone}
-                onChange={(e) => setFormAltPhone(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Person Type</label>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-              {(["CUSTOMER", "STUDENT", "MEMBER", "EMPLOYEE"] as PersonType[]).map((type) => {
-                const checked = formTypes[0] === type || formTypes.includes(type);
-                return (
-                  <label
-                    key={type}
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      gap: 6,
-                      padding: "6px 14px",
-                      borderRadius: 8,
-                      border: "1.5px solid",
-                      borderColor: checked ? "var(--brand)" : "var(--line)",
-                      background: checked ? "#eff6ff" : "#fff",
-                      color: checked ? "var(--brand)" : "var(--ink)",
-                      fontSize: 12,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <input
-                      type="radio"
-                      name="editPersonType"
-                      checked={checked}
-                      onChange={() => setFormTypes([type])}
-                      style={{ display: "none" }}
-                    />
-                    <span>{type}</span>
-                  </label>
-                );
-              })}
-            </div>
-          </div>
-
-          {tags.length > 0 && (
-            <div className="form-group">
-              <label>Tags</label>
-              <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 4 }}>
-                {tags.map((tag) => {
-                  const checked = formSelectedTags.includes(tag.id);
-                  return (
-                    <button
-                      type="button"
-                      key={tag.id}
-                      onClick={() =>
-                        setFormSelectedTags((curr) =>
-                          checked ? curr.filter((id) => id !== tag.id) : [...curr, tag.id],
-                        )
-                      }
-                      style={{
-                        padding: "4px 10px",
-                        borderRadius: 6,
-                        border: "1px solid",
-                        borderColor: checked ? "var(--brand)" : "var(--line)",
-                        background: checked ? "#eff6ff" : "#fff",
-                        color: checked ? "var(--brand)" : "var(--ink)",
-                        fontSize: 12,
-                        cursor: "pointer",
-                      }}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          <div className="form-grid">
-            <div className="form-group">
-              <label>State</label>
-              <select
-                className="filter-select"
-                value={
-                  selectedStateObj
-                    ? selectedStateObj.name
-                    : formState === "Other" || isCustomState
-                      ? "Other"
-                      : ""
-                }
-                onChange={(e) => {
-                  const val = e.target.value;
-                  if (val === "Other") {
-                    setFormState("Other");
-                  } else {
-                    setFormState(val);
-                  }
-                  setFormCity("");
-                }}
-              >
-                <option value="">-- Select State / UT --</option>
-                {ALL_INDIAN_STATES.map((s) => (
-                  <option key={s.isoCode} value={s.name}>
-                    {s.name}
-                  </option>
-                ))}
-                <option value="Other">Other / Outside India</option>
-              </select>
-              {(formState === "Other" || isCustomState) && (
-                <input
-                  type="text"
-                  style={{ marginTop: 6 }}
-                  placeholder="Enter state name..."
-                  value={formState === "Other" ? "" : formState}
-                  onChange={(e) => setFormState(e.target.value || "Other")}
-                  autoFocus
-                />
-              )}
-            </div>
-
-            <div className="form-group">
-              <label>City</label>
-              {selectedStateObj ? (
-                <>
-                  <select
-                    className="filter-select"
-                    value={
-                      availableCities.some(
-                        (c) => c.name.toLowerCase() === formCity.trim().toLowerCase(),
-                      )
-                        ? formCity
-                        : formCity === "Other" || isCustomCity
-                          ? "Other"
-                          : ""
-                    }
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (val === "Other") {
-                        setFormCity("Other");
-                      } else {
-                        setFormCity(val);
-                      }
-                    }}
-                  >
-                    <option value="">-- Select City ({availableCities.length}) --</option>
-                    {availableCities.map((c) => (
-                      <option key={c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
-                    <option value="Other">Other (Enter manually)</option>
-                  </select>
-                  {(formCity === "Other" || isCustomCity) && (
-                    <input
-                      type="text"
-                      style={{ marginTop: 6 }}
-                      placeholder="Enter city / town name..."
-                      value={formCity === "Other" ? "" : formCity}
-                      onChange={(e) => setFormCity(e.target.value || "Other")}
-                      autoFocus
-                    />
-                  )}
-                </>
-              ) : (
-                <input
-                  type="text"
-                  placeholder={formState ? "Enter city..." : "Select state first"}
-                  value={formCity === "Other" ? "" : formCity}
-                  onChange={(e) => setFormCity(e.target.value)}
-                />
-              )}
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Notes</label>
-            <textarea
-              rows={2}
-              value={formNotes}
-              onChange={(e) => setFormNotes(e.target.value)}
-            />
-          </div>
-
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div
+            className="modal-footer"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              paddingTop: 16,
+              marginTop: 18,
+              borderTop: "1px solid var(--line)",
+            }}
+          >
             <button
               type="button"
               className="btn btn-secondary"
               onClick={() => setEditOpen(false)}
+              style={{ padding: "9px 20px" }}
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-primary" disabled={formBusy}>
-              {formBusy ? "Saving…" : "Save Changes"}
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!isFormValid || formBusy}
+              style={{
+                padding: "9px 24px",
+                background: isFormValid ? "#059669" : undefined,
+                borderColor: isFormValid ? "#059669" : undefined,
+                opacity: !isFormValid ? 0.45 : 1,
+                cursor: !isFormValid ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {formBusy ? "Saving…" : "Save"}
             </button>
           </div>
         </form>
@@ -1522,14 +1955,14 @@ function PeopleContent() {
         isOpen={tagsModalOpen}
         onClose={() => setTagsModalOpen(false)}
         title="Manage Directory Tags"
-        subtitle="Organize people with custom labels"
+        subtitle="Organize directory members with custom labels"
         maxWidth={440}
       >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <form onSubmit={handleCreateTag} style={{ display: "flex", gap: 8 }}>
             <input
               type="text"
-              placeholder="New tag name (e.g. VIP, Morning Batch)"
+              placeholder="New tag name (e.g. VIP, Batch A)"
               value={newTagName}
               onChange={(e) => setNewTagName(e.target.value)}
               style={{ flex: 1, padding: "8px 12px", border: "1px solid var(--line)", borderRadius: 8 }}
@@ -1566,8 +1999,8 @@ function PeopleContent() {
           setImportOpen(false);
           setImportResult(null);
         }}
-        title="Import People from CSV"
-        subtitle="Bulk import customers, students or members"
+        title="Import Directory from CSV"
+        subtitle="Bulk import members, students or customers"
         maxWidth={560}
       >
         <form onSubmit={handleImportCsv} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
@@ -1576,7 +2009,7 @@ function PeopleContent() {
           </p>
           <textarea
             rows={7}
-            placeholder={`displayName,email,phone,type\nAnil Verma,anil@example.com,+919876543210,CUSTOMER\nPooja Sharma,pooja@example.com,+919876543211,STUDENT`}
+            placeholder={`displayName,email,phone,type\nAnil Verma,anil@example.com,+919876543210,MEMBER\nPooja Sharma,pooja@example.com,+919876543211,STUDENT`}
             value={importCsvText}
             onChange={(e) => setImportCsvText(e.target.value)}
             style={{
@@ -1650,4 +2083,3 @@ export default function PeoplePage() {
     </Suspense>
   );
 }
-

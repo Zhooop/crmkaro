@@ -15,7 +15,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
-  getActiveServicesFromStorage,
+  getCachedWorkspaceContext,
+  saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -111,13 +112,14 @@ function StudentsContent() {
   // Active Tab: "directory" | "recurring-fees" | "attendance" | "summary"
   const [activeTab, setActiveTab] = useState<string>("directory");
 
-  // Context & AppShell info
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Admin");
-  const [userRole, setUserRole] = useState("Administrator");
-  const [currency, setCurrency] = useState("INR");
+  // Context & AppShell info (Instant 0ms cached state)
+  const cached = getCachedWorkspaceContext();
+  const [orgName, setOrgName] = useState(cached.orgName);
+  const [userName, setUserName] = useState(cached.userName);
+  const [userRole, setUserRole] = useState(cached.userRole);
+  const [currency, setCurrency] = useState(cached.currency);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(getActiveServicesFromStorage);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
 
   // Students Directory State
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -218,6 +220,13 @@ function StudentsContent() {
   const [formGuardianRelation, setFormGuardianRelation] = useState("Father");
   const [formFeeFrequency, setFormFeeFrequency] = useState<"MONTHLY" | "QUARTERLY" | "ANNUAL">("MONTHLY");
   const [formFeeAmount, setFormFeeAmount] = useState("500");
+  const [feePlanType, setFeePlanType] = useState<"MONTHLY" | "TERM_INSTALLMENTS">("MONTHLY");
+  const [term1Amount, setTerm1Amount] = useState("15000");
+  const [term1DueDate, setTerm1DueDate] = useState("2026-04-15");
+  const [term2Amount, setTerm2Amount] = useState("15000");
+  const [term2DueDate, setTerm2DueDate] = useState("2026-08-15");
+  const [term3Amount, setTerm3Amount] = useState("15000");
+  const [term3DueDate, setTerm3DueDate] = useState("2026-12-15");
   const [formAdmissionDate, setFormAdmissionDate] = useState(todayYyyyMmDd);
   const [formNotes, setFormNotes] = useState("");
   const [admissionBusy, setAdmissionBusy] = useState(false);
@@ -403,6 +412,18 @@ function StudentsContent() {
     setAdmissionBusy(true);
     setAdmissionError("");
     try {
+      let finalNotes = formNotes.trim();
+      let calculatedFeeAmount = Math.round(Number(formFeeAmount) * 100) || 0;
+      let finalFeeFrequency = formFeeFrequency;
+
+      if (feePlanType === "TERM_INSTALLMENTS") {
+        finalFeeFrequency = "QUARTERLY";
+        const t1 = Math.round(Number(term1Amount) * 100) || 0;
+        calculatedFeeAmount = t1;
+        const termMetadata = `[TERM_PLAN:Term 1:₹${term1Amount}:${term1DueDate}|Term 2:₹${term2Amount}:${term2DueDate}|Term 3:₹${term3Amount}:${term3DueDate}]`;
+        finalNotes = finalNotes ? `${finalNotes}\n${termMetadata}` : termMetadata;
+      }
+
       const payload = {
         displayName: formName.trim(),
         primaryPhone: formPhone.trim() || undefined,
@@ -418,11 +439,11 @@ function StudentsContent() {
         guardianName: formGuardianName.trim() || undefined,
         guardianPhone: formGuardianPhone.trim() || undefined,
         guardianRelation: formGuardianRelation.trim() || undefined,
-        feeFrequency: formFeeFrequency,
-        feeAmountMinor: Math.round(Number(formFeeAmount) * 100) || 0,
+        feeFrequency: finalFeeFrequency,
+        feeAmountMinor: calculatedFeeAmount,
         admissionDate: formAdmissionDate,
         billingStartDate: formAdmissionDate,
-        notes: formNotes.trim() || undefined,
+        notes: finalNotes || undefined,
       };
 
       const res = await authFetch(`${api}/students`, {
@@ -768,6 +789,7 @@ function StudentsContent() {
       userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
+      onPrefetch={(href) => router.prefetch(href)}
     >
       {/* Toast Feedback */}
       {toast && (
@@ -2228,7 +2250,7 @@ function StudentsContent() {
             </div>
           </div>
 
-          {/* Section 4: Recurring Fee Plan */}
+          {/* Section 4: Recurring Fee / Term Installment Plan */}
           <div
             style={{
               padding: "16px 18px",
@@ -2245,70 +2267,196 @@ function StudentsContent() {
                 color: "#854d0e",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
-                gap: 6,
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 8,
               }}
             >
-              <Icon name="rupee" size={14} /> Recurring Fee Plan (Auto-rolls Every Month)
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
-                <select
-                  value={formFeeFrequency}
-                  onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="rupee" size={14} /> Fee Plan &amp; Billing Structure
+              </span>
+
+              {/* Plan Choice Pills */}
+              <div style={{ display: "inline-flex", background: "#ffffff", padding: "2px", borderRadius: 8, border: "1px solid #fde047" }}>
+                <button
+                  type="button"
+                  onClick={() => setFeePlanType("MONTHLY")}
                   style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #fde047",
-                    fontSize: 13,
-                    background: "#ffffff",
-                    fontWeight: 600,
+                    padding: "3px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: feePlanType === "MONTHLY" ? "#854d0e" : "transparent",
+                    color: feePlanType === "MONTHLY" ? "#ffffff" : "#854d0e",
                   }}
                 >
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="QUARTERLY">Quarterly</option>
-                  <option value="ANNUAL">Annual</option>
-                </select>
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Fee Amount (₹) *</label>
-                <input
-                  type="number"
-                  placeholder="e.g. 500"
-                  value={formFeeAmount}
-                  onChange={(e) => setFormFeeAmount(e.target.value)}
-                  required
+                  Monthly Recurring
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeePlanType("TERM_INSTALLMENTS")}
                   style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #fde047",
-                    fontSize: 13,
-                    background: "#ffffff",
+                    padding: "3px 10px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 11.5,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: feePlanType === "TERM_INSTALLMENTS" ? "#854d0e" : "transparent",
+                    color: feePlanType === "TERM_INSTALLMENTS" ? "#ffffff" : "#854d0e",
                   }}
-                />
-              </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Admission Date</label>
-                <input
-                  type="date"
-                  value={formAdmissionDate}
-                  onChange={(e) => setFormAdmissionDate(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #fde047",
-                    fontSize: 13,
-                    background: "#ffffff",
-                  }}
-                />
+                >
+                  📋 3-Term Installments (Term 1, 2, 3)
+                </button>
               </div>
             </div>
+
+            {feePlanType === "MONTHLY" ? (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
+                  <select
+                    value={formFeeFrequency}
+                    onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fde047",
+                      fontSize: 13,
+                      background: "#ffffff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="ANNUAL">Annual</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Monthly Fee (₹) *</label>
+                  <input
+                    type="number"
+                    placeholder="e.g. 500"
+                    value={formFeeAmount}
+                    onChange={(e) => setFormFeeAmount(e.target.value)}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fde047",
+                      fontSize: 13,
+                      background: "#ffffff",
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Admission Date</label>
+                  <input
+                    type="date"
+                    value={formAdmissionDate}
+                    onChange={(e) => setFormAdmissionDate(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fde047",
+                      fontSize: 13,
+                      background: "#ffffff",
+                    }}
+                  />
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ margin: "0 0 10px", fontSize: 12, color: "#713f12" }}>
+                  Annual academic fee is divided into 3 flexible term installments. Each installment has its own due date.
+                </p>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                  {/* Term 1 */}
+                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                      📚 Term 1 (Admission)
+                    </strong>
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={term1Amount}
+                      onChange={(e) => setTerm1Amount(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                    />
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <input
+                      type="date"
+                      value={term1DueDate}
+                      onChange={(e) => setTerm1DueDate(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                    />
+                  </div>
+
+                  {/* Term 2 */}
+                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                      📖 Term 2 (Mid-Term)
+                    </strong>
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={term2Amount}
+                      onChange={(e) => setTerm2Amount(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                    />
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <input
+                      type="date"
+                      value={term2DueDate}
+                      onChange={(e) => setTerm2DueDate(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                    />
+                  </div>
+
+                  {/* Term 3 */}
+                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                      🎓 Term 3 (Final Term)
+                    </strong>
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <input
+                      type="number"
+                      value={term3Amount}
+                      onChange={(e) => setTerm3Amount(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                    />
+                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <input
+                      type="date"
+                      value={term3DueDate}
+                      onChange={(e) => setTerm3DueDate(e.target.value)}
+                      required
+                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                    />
+                  </div>
+                </div>
+
+                <div style={{ marginTop: 10, display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 8, borderTop: "1px dashed #fde047", fontSize: 12 }}>
+                  <span style={{ color: "#713f12", fontWeight: 650 }}>Total Academic Annual Fee:</span>
+                  <strong style={{ fontSize: 14, color: "#854d0e" }}>
+                    ₹{((Number(term1Amount) || 0) + (Number(term2Amount) || 0) + (Number(term3Amount) || 0)).toLocaleString("en-IN")}
+                  </strong>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 5: Address */}
@@ -3276,6 +3424,97 @@ function StudentsContent() {
                 </div>
               </div>
             </div>
+
+            {/* Term Installment Plan Schedule if present */}
+            {(() => {
+              const notesStr = selectedStudent.person.notes || "";
+              const termMatch = notesStr.match(/\[TERM_PLAN:(.*?)\]/);
+              if (!termMatch || !termMatch[1]) return null;
+
+              const terms = termMatch[1].split("|").map((t) => {
+                const parts = t.split(":");
+                return { name: parts[0] || "Term", amount: parts[1] || "₹0", dueDate: parts[2] || "" };
+              });
+
+              return (
+                <div style={{ border: "1px solid #fde047", borderRadius: 10, padding: 16, background: "#fefce8" }}>
+                  <strong
+                    style={{
+                      fontSize: 11.5,
+                      textTransform: "uppercase",
+                      color: "#854d0e",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      marginBottom: 10,
+                      letterSpacing: "0.04em",
+                    }}
+                  >
+                    <span>📋 Academic Term Installments Schedule</span>
+                  </strong>
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                    {terms.map((term, i) => {
+                      const guardianPhone = selectedStudent.guardianPhone || selectedStudent.person.primaryPhone;
+                      const cleanPhone = guardianPhone ? guardianPhone.replace(/\D/g, "") : "";
+                      const studentName = selectedStudent.person.displayName;
+                      const waReminderText = encodeURIComponent(
+                        `Dear Parent, this is a gentle reminder regarding ${studentName}'s school fee for ${term.name} (${term.amount}), due on ${term.dueDate ? new Date(term.dueDate).toLocaleDateString("en-IN") : "due date"}. - ${orgName}`
+                      );
+
+                      return (
+                        <div
+                          key={i}
+                          style={{
+                            background: "#ffffff",
+                            padding: "10px 12px",
+                            borderRadius: 8,
+                            border: "1px solid #fde047",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: 12.5,
+                          }}
+                        >
+                          <div>
+                            <strong style={{ color: "#854d0e" }}>{term.name}</strong>
+                            <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>
+                              Due: {term.dueDate ? new Date(term.dueDate).toLocaleDateString("en-IN") : "—"}
+                            </div>
+                          </div>
+
+                          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                            <strong style={{ fontSize: 13, color: "#0f172a" }}>{term.amount}</strong>
+                            {cleanPhone && (
+                              <a
+                                href={`https://wa.me/${cleanPhone}?text=${waReminderText}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                style={{
+                                  padding: "3px 8px",
+                                  borderRadius: 6,
+                                  background: "#25D366",
+                                  color: "#ffffff",
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  textDecoration: "none",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 3,
+                                }}
+                                title="Send WhatsApp Fee Reminder"
+                              >
+                                📲 WhatsApp
+                              </a>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Action buttons */}
             <div style={{ display: "flex", gap: 10 }}>
