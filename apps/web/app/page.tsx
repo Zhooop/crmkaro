@@ -1660,28 +1660,22 @@ export default function HomePage() {
             title="Live Workspace Activity"
             subtitle="Real-time operational audit timeline"
           >
-            <ul className="activity-list" style={{ margin: 0, padding: 0 }}>
+            <ul className="activity-list">
               {data.activity.length ? (
                 data.activity.map((item) => (
-                  <li key={item.id} style={{ padding: "10px 0", borderBottom: "1px solid #f1f5f9" }}>
-                    <span className="activity-dot" style={{ background: "#eff6ff", color: "var(--brand)" }}>
-                      <Icon name={icons[item.entityType] ?? "activity"} size={14} />
+                  <li key={item.id}>
+                    <span className="activity-dot">
+                      <Icon name={icons[item.entityType] ?? "activity"} size={15} />
                     </span>
                     <span className="activity-copy">
-                      <strong style={{ fontSize: 13, color: "var(--ink)" }}>
-                        {humanizeAction(item.action)}
-                      </strong>
-                      <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                        {item.entityType.replace(/_/g, " ")}
-                      </span>
+                      <strong>{humanizeAction(item.action)}</strong>
+                      <span>{item.entityType.replace(/_/g, " ")}</span>
                     </span>
-                    <time style={{ fontSize: 11.5, color: "#94a3b8", whiteSpace: "nowrap" }}>
-                      {formatRelativeTime(item.createdAt)}
-                    </time>
+                    <time>{formatRelativeTime(item.createdAt)}</time>
                   </li>
                 ))
               ) : (
-                <li className="empty-row" style={{ padding: "14px 0" }}>
+                <li className="empty-row">
                   <span className="activity-copy">
                     <strong>No recent activity</strong>
                     <span>New workspace events will stream here in real time.</span>
