@@ -256,7 +256,7 @@ const SOLUTION_PRESETS = [
   {
     id: "academy",
     name: "Academy, Classes & Studios",
-    subtitle: "BEST FOR",
+    subtitle: "Dance Studios, Fitness & Gym, Yoga, Music, Martial Arts, Tuition Batches",
     tags: "Dance Studios, Fitness & Gym, Yoga, Music, Martial Arts, Tuition Batches",
     detail: "Members directory, batches, 1-click WhatsApp fees collect, transaction receipts & staff salary.",
     modules: ["people", "groups", "quick-collect", "transactions", "payroll", "finance"],
