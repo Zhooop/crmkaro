@@ -142,6 +142,8 @@ function PeopleContent() {
   const [invoicesLoading, setInvoicesLoading] = useState(false);
   const [tagsModalOpen, setTagsModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [archiveCandidate, setArchiveCandidate] = useState<Person | null>(null);
+  const [archiveBusy, setArchiveBusy] = useState(false);
 
   // Segmented Modal Navigation Tab
   const [modalActiveTab, setModalActiveTab] = useState<"personal" | "address" | "more">("personal");
@@ -612,19 +614,23 @@ function PeopleContent() {
     }
   }
 
-  async function handleArchive(personId: string) {
-    if (!confirm("Are you sure you want to archive this member / person?")) return;
+  async function confirmArchive() {
+    if (!archiveCandidate) return;
+    setArchiveBusy(true);
     try {
-      const res = await authFetch(`${api}/people/${personId}/archive`, {
+      const res = await authFetch(`${api}/people/${archiveCandidate.id}/archive`, {
         method: "POST",
         credentials: "include",
       });
       if (res.ok) {
-        if (detailPerson?.id === personId) setDetailPerson(null);
+        if (detailPerson?.id === archiveCandidate.id) setDetailPerson(null);
+        setArchiveCandidate(null);
         loadPeople();
       }
     } catch {
       // ignore
+    } finally {
+      setArchiveBusy(false);
     }
   }
 
@@ -1637,7 +1643,7 @@ function PeopleContent() {
                         <button
                           className="btn-icon"
                           title="Archive"
-                          onClick={() => handleArchive(person.id)}
+                          onClick={() => setArchiveCandidate(person)}
                         >
                           <Icon name="trash" size={15} />
                         </button>
@@ -2026,6 +2032,94 @@ function PeopleContent() {
           {renderMemberForm(true)}
           {renderModalFooter(true, () => setEditOpen(false))}
         </form>
+      </Modal>
+
+      {/* Custom Archive / Delete Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(archiveCandidate)}
+        onClose={() => {
+          if (!archiveBusy) setArchiveCandidate(null);
+        }}
+        title="Archive Member"
+        subtitle="Move member profile to archive"
+        maxWidth={480}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 14,
+              padding: "16px",
+              background: "#fff1f2",
+              borderRadius: 10,
+              border: "1px solid #fecdd3",
+            }}
+          >
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                background: "#fee2e2",
+                color: "#e11d48",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="trash" size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#9f1239" }}>
+                Archive &quot;{archiveCandidate?.displayName}&quot;?
+              </div>
+              <div style={{ fontSize: 12.5, color: "#4c0519", marginTop: 4, lineHeight: 1.5 }}>
+                This member will be moved to the <strong>Archived</strong> tab. Their past payments, batch histories, and invoices will remain completely safe and preserved.
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="modal-footer"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              paddingTop: 12,
+              marginTop: 4,
+              borderTop: "1px solid var(--line)",
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setArchiveCandidate(null)}
+              disabled={archiveBusy}
+              style={{ padding: "8px 18px" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              disabled={archiveBusy}
+              onClick={confirmArchive}
+              style={{
+                padding: "8px 22px",
+                background: "#e11d48",
+                color: "#ffffff",
+                fontWeight: 700,
+                border: "none",
+                borderRadius: 8,
+                cursor: archiveBusy ? "not-allowed" : "pointer",
+              }}
+            >
+              {archiveBusy ? "Archiving…" : "Yes, Archive"}
+            </button>
+          </div>
+        </div>
       </Modal>
 
       {/* Manage Tags Modal */}
