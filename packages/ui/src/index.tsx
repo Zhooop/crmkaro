@@ -772,15 +772,27 @@ export function AppShell({
 
       <section className="workspace">
         <header className="topbar">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              className="icon-button menu-button"
+              onClick={() => setOpen(true)}
+              aria-label="Open menu"
+            >
+              <Icon name="menu" />
+            </button>
+            <div
+              className="mobile-topbar-brand"
+              onClick={() => {
+                if (onNavigate) onNavigate("/");
+              }}
+            >
+              <img src="/brand/crmkaro-mark.png" alt="CRMKaro" />
+              <span>{product || "CRMKaro"}</span>
+            </div>
+          </div>
+
           <button
-            className="icon-button menu-button"
-            onClick={() => setOpen(true)}
-            aria-label="Open menu"
-          >
-            <Icon name="menu" />
-          </button>
-          <button
-            className="global-search"
+            className="global-search desktop-only-search"
             onClick={() => setSearchOpen(true)}
             aria-label="Search"
           >
@@ -788,7 +800,15 @@ export function AppShell({
             <span>Search anything…</span>
             <kbd>⌘ K</kbd>
           </button>
+
           <div className="topbar-actions">
+            <button
+              className="icon-button mobile-only-icon-btn"
+              onClick={() => setSearchOpen(true)}
+              aria-label="Search"
+            >
+              <Icon name="search" />
+            </button>
             <button
               className="icon-button notification-button"
               aria-label={`${notificationCount} notifications`}
@@ -798,11 +818,11 @@ export function AppShell({
               {notificationCount > 0 && <i />}
             </button>
             <button
-              className="primary-button"
+              className="primary-button topbar-quick-add"
               onClick={() => setQuickAddOpen(true)}
             >
               <Icon name="plus" size={17} />
-              <span>Quick add</span>
+              <span className="quick-add-text">Quick add</span>
             </button>
           </div>
         </header>

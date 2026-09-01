@@ -775,6 +775,7 @@ export default function HomePage() {
         <>
       {/* 🌟 Modern Hero Banner */}
       <div
+        className="dashboard-hero"
         style={{
           background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
           borderRadius: 16,
@@ -802,7 +803,7 @@ export default function HomePage() {
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <div className="hero-badge-row" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
               <span
                 style={{
                   background: "rgba(59, 130, 246, 0.2)",
@@ -824,15 +825,15 @@ export default function HomePage() {
               <span style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 600 }}>{data.organisation.name}</span>
             </div>
 
-            <h1 style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
+            <h1 className="hero-heading" style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
               {getGreeting(displayName)} 👋
             </h1>
-            <p style={{ margin: 0, fontSize: 13.5, color: "#94a3b8", maxWidth: 650 }}>
+            <p className="hero-subtitle" style={{ margin: 0, fontSize: 13.5, color: "#94a3b8", maxWidth: 650 }}>
               Live pulse of your active business operations, student admissions, fee dues, and communications.
             </p>
           </div>
 
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div className="hero-date-pill" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
             <span
               suppressHydrationWarning
               style={{
@@ -852,6 +853,7 @@ export default function HomePage() {
 
         {/* ⚡ Quick Routine Launch Bar */}
         <div
+          className="hero-fast-launch"
           style={{
             marginTop: 20,
             paddingTop: 16,
@@ -862,12 +864,13 @@ export default function HomePage() {
             flexWrap: "wrap",
           }}
         >
-          <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span className="hero-fast-launch-label" style={{ fontSize: 12, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Fast Launch:
           </span>
 
           <button
             onClick={() => router.push("/groups?action=new")}
+            className="hero-launch-btn"
             style={{
               background: "#059669",
               color: "#ffffff",
@@ -1368,14 +1371,15 @@ export default function HomePage() {
       })()}
 
       {/* 2-Column Content Layout */}
-      <div style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 24, alignItems: "start" }}>
+      <div className="content-grid-2col" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 24, alignItems: "start" }}>
         {/* Left Column: Alerts & Recent Transactions */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* 🚨 Priority Action Hub */}
-          <SectionCard
-            title="Operational Focus & Action Items"
-            subtitle="Prioritized signals that need your team's attention"
-          >
+          {/* 🚨 Priority Action Hub (Hidden on mobile if no active alerts to keep mobile clean) */}
+          <div className={data.notifications.length === 0 ? "desktop-only-widget" : ""}>
+            <SectionCard
+              title="Operational Focus & Action Items"
+              subtitle="Prioritized signals that need your team's attention"
+            >
             {data.notifications.length ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 {data.notifications.map((item) => (
@@ -1510,6 +1514,7 @@ export default function HomePage() {
               </div>
             )}
           </SectionCard>
+          </div>
 
           {/* 💵 Recent Transactions & Collections */}
           <SectionCard
@@ -1564,89 +1569,91 @@ export default function HomePage() {
 
         {/* Right Column: Active Modules & Activity Timeline */}
         <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-          {/* 🚀 Active Modules Launch Hub */}
-          <SectionCard
-            title="Active Modules & Services"
-            subtitle={`${data.services.length} active modules enabled for ${data.organisation.name}`}
-          >
-            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
-              {data.services.map((service) => {
-                const navItem = SERVICE_NAV_MAP[service];
-                if (!navItem || !navItem.href) return null;
-                const href = navItem.href;
-                return (
-                  <div
-                    key={service}
-                    onClick={() => router.push(href)}
-                    style={{
-                      display: "flex",
-                      justifyContent: "space-between",
-                      alignItems: "center",
-                      padding: "12px 14px",
-                      borderRadius: 9,
-                      border: "1px solid #e2e8f0",
-                      background: "#ffffff",
-                      cursor: "pointer",
-                      transition: "all 0.15s ease",
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.borderColor = "var(--brand)";
-                      e.currentTarget.style.background = "#f8fafc";
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.borderColor = "#e2e8f0";
-                      e.currentTarget.style.background = "#ffffff";
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div
-                        style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: 7,
-                          background: "#eff6ff",
-                          color: "var(--brand)",
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "center",
-                        }}
-                      >
-                        <Icon name={icons[service] ?? "services"} size={16} />
+          {/* 🚀 Active Modules Launch Hub (Desktop Only - mobile users have the navigation menu) */}
+          <div className="desktop-only-widget">
+            <SectionCard
+              title="Active Modules & Services"
+              subtitle={`${data.services.length} active modules enabled for ${data.organisation.name}`}
+            >
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+                {data.services.map((service) => {
+                  const navItem = SERVICE_NAV_MAP[service];
+                  if (!navItem || !navItem.href) return null;
+                  const href = navItem.href;
+                  return (
+                    <div
+                      key={service}
+                      onClick={() => router.push(href)}
+                      style={{
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        padding: "12px 14px",
+                        borderRadius: 9,
+                        border: "1px solid #e2e8f0",
+                        background: "#ffffff",
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.borderColor = "var(--brand)";
+                        e.currentTarget.style.background = "#f8fafc";
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.borderColor = "#e2e8f0";
+                        e.currentTarget.style.background = "#ffffff";
+                      }}
+                    >
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: 7,
+                            background: "#eff6ff",
+                            color: "var(--brand)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <Icon name={icons[service] ?? "services"} size={16} />
+                        </div>
+                        <div>
+                          <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
+                            {navItem.label}
+                          </strong>
+                          <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Click to launch</span>
+                        </div>
                       </div>
-                      <div>
-                        <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
-                          {navItem.label}
-                        </strong>
-                        <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Click to launch</span>
-                      </div>
+
+                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand)" }}>
+                        Open →
+                      </span>
                     </div>
+                  );
+                })}
 
-                    <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand)" }}>
-                      Open →
-                    </span>
-                  </div>
-                );
-              })}
-
-              <div
-                onClick={() => router.push("/settings")}
-                style={{
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  border: "1px dashed #cbd5e1",
-                  background: "#f8fafc",
-                  textAlign: "center",
-                  fontSize: 12,
-                  fontWeight: 650,
-                  color: "var(--muted)",
-                  cursor: "pointer",
-                  marginTop: 4,
-                }}
-              >
-                + Add or Discontinue Services in Settings
+                <div
+                  onClick={() => router.push("/settings")}
+                  style={{
+                    padding: "10px 14px",
+                    borderRadius: 8,
+                    border: "1px dashed #cbd5e1",
+                    background: "#f8fafc",
+                    textAlign: "center",
+                    fontSize: 12,
+                    fontWeight: 650,
+                    color: "var(--muted)",
+                    cursor: "pointer",
+                    marginTop: 4,
+                  }}
+                >
+                  + Add or Discontinue Services in Settings
+                </div>
               </div>
-            </div>
-          </SectionCard>
+            </SectionCard>
+          </div>
 
           {/* 🕒 Live Activity Stream */}
           <SectionCard
