@@ -108,6 +108,7 @@ function TransactionsContent() {
   const [paymentMethod, setPaymentMethod] = useState("UPI");
   const [paymentRef, setPaymentRef] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
+  const [paymentError, setPaymentError] = useState("");
 
   // Load Session Context
   const loadContext = useCallback(async () => {
@@ -179,6 +180,7 @@ function TransactionsContent() {
     e.preventDefault();
     if (!paymentModalInvoice || paymentAmount <= 0) return;
     setPaymentBusy(true);
+    setPaymentError("");
     try {
       const res = await authFetch(`${api}/finance/payments`, {
         method: "POST",
@@ -202,9 +204,10 @@ function TransactionsContent() {
       setPaymentModalInvoice(null);
       setPaymentAmount(0);
       setPaymentRef("");
+      setPaymentError("");
       loadInvoices();
     } catch (err) {
-      alert((err as Error).message);
+      setPaymentError((err as Error).message);
     } finally {
       setPaymentBusy(false);
     }
@@ -655,6 +658,21 @@ function TransactionsContent() {
         >
           {paymentModalInvoice && (
             <form onSubmit={handleRecordPayment} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {paymentError && (
+                <div
+                  style={{
+                    padding: "10px 14px",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: 8,
+                    color: "#991b1b",
+                    fontSize: 12.5,
+                    fontWeight: 650,
+                  }}
+                >
+                  ⚠️ {paymentError}
+                </div>
+              )}
               <div className="form-group">
                 <label>Amount to Collect (₹) *</label>
                 <input

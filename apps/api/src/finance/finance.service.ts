@@ -327,7 +327,12 @@ export class FinanceService {
         throw new BadRequestException(
           "Invoice does not belong to this customer.",
         );
-      if (invoice && !["ISSUED", "PARTIALLY_PAID"].includes(invoice.status))
+      if (invoice && ["VOID", "PAID"].includes(invoice.status))
+        throw new ConflictException("Invoice is already settled or void.");
+      if (
+        invoice &&
+        !["DRAFT", "ISSUED", "PARTIALLY_PAID"].includes(invoice.status)
+      )
         throw new ConflictException("Invoice is not payable.");
       if (invoice && input.amountMinor > invoice.balanceDueMinor)
         throw new BadRequestException("Payment exceeds the invoice balance.");
@@ -342,8 +347,8 @@ export class FinanceService {
         include: { invoice: true, person: true },
       });
       if (invoice) {
-        const paidTotalMinor = invoice.paidTotalMinor + input.amountMinor,
-          balanceDueMinor = invoice.grandTotalMinor - paidTotalMinor;
+        const paidTotalMinor = (invoice.paidTotalMinor || 0) + input.amountMinor;
+        const balanceDueMinor = Math.max(0, invoice.grandTotalMinor - paidTotalMinor);
         await tx.invoice.update({
           where: { id: invoice.id },
           data: {
