@@ -236,7 +236,39 @@ const SOLUTION_PRESETS = [
     modules: ["people", "inventory", "finance", "payroll"],
     badges: ["Customers", "Inventory & Stock", "Invoices", "Staff & Salary"],
   },
-] as const;
+] as const;function getDateBoundsForPreset(
+  preset: string,
+  customStart?: string,
+  customEnd?: string,
+): { startDate?: string; endDate?: string; label: string } {
+  const now = new Date();
+  const todayStr = now.toISOString().slice(0, 10);
+
+  if (preset === "today") {
+    return { startDate: todayStr, endDate: todayStr, label: "Today" };
+  }
+  if (preset === "this_week") {
+    const current = new Date();
+    const day = current.getDay();
+    const diff = current.getDate() - day + (day === 0 ? -6 : 1);
+    const monday = new Date(current.setDate(diff));
+    const startStr = monday.toISOString().slice(0, 10);
+    return { startDate: startStr, endDate: todayStr, label: "This Week" };
+  }
+  if (preset === "this_month") {
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10);
+    return { startDate: startOfMonth, endDate: todayStr, label: "This Month" };
+  }
+  if (preset === "last_month") {
+    const startOfLastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().slice(0, 10);
+    const endOfLastMonth = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().slice(0, 10);
+    return { startDate: startOfLastMonth, endDate: endOfLastMonth, label: "Last Month" };
+  }
+  if (preset === "custom" && customStart && customEnd) {
+    return { startDate: customStart, endDate: customEnd, label: `${customStart} to ${customEnd}` };
+  }
+  return { label: "All Time" };
+}
 
 export default function HomePage() {
   const router = useRouter();
@@ -261,6 +293,12 @@ export default function HomePage() {
   const [setupBusy, setSetupBusy] = useState(false);
   const [setupError, setSetupError] = useState("");
 
+  // Date Range Filter States
+  const [datePreset, setDatePreset] = useState<string>("all");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+  const [dashboardLoading, setDashboardLoading] = useState<boolean>(false);
+
   const api = getApiUrl();
 
   function handleSelectPreset(preset: (typeof SOLUTION_PRESETS)[number]) {
@@ -268,43 +306,78 @@ export default function HomePage() {
     setSelectedServices([...preset.modules]);
   }
 
-  const loadDashboard = useCallback(async () => {
-    const response = await authFetch(`${api}/dashboard`);
-    if (response.status === 401) {
-      router.replace("/login");
-      return;
-    }
-    if (response.status === 403) {
-      const organisationsResponse = await authFetch(`${api}/organisations`);
-      if (organisationsResponse.status === 401) {
+  const loadDashboard = useCallback(
+    async (preset = "all", start = "", end = "") => {
+      const { startDate, endDate } = getDateBoundsForPreset(preset, start, end);
+      let url = `${api}/dashboard`;
+      const params = new URLSearchParams();
+      if (startDate) params.set("startDate", startDate);
+      if (endDate) params.set("endDate", endDate);
+      const qs = params.toString();
+      if (qs) url += `?${qs}`;
+
+      const response = await authFetch(url);
+      if (response.status === 401) {
         router.replace("/login");
         return;
       }
-      if (!organisationsResponse.ok)
-        throw new Error("Your workspace could not be loaded.");
-      const orgs =
-        (await organisationsResponse.json()) as OrganisationEntry[];
-      const firstOrganisation = orgs.find(
-        ({ organisation }) => organisation,
-      )?.organisation;
-      if (!firstOrganisation) {
-        setNeedsSetup(true);
+      if (response.status === 403) {
+        const organisationsResponse = await authFetch(`${api}/organisations`);
+        if (organisationsResponse.status === 401) {
+          router.replace("/login");
+          return;
+        }
+        if (!organisationsResponse.ok)
+          throw new Error("Your workspace could not be loaded.");
+        const orgs =
+          (await organisationsResponse.json()) as OrganisationEntry[];
+        const firstOrganisation = orgs.find(
+          ({ organisation }) => organisation,
+        )?.organisation;
+        if (!firstOrganisation) {
+          setNeedsSetup(true);
+          return;
+        }
+        const activateResponse = await authFetch(
+          `${api}/organisations/${firstOrganisation.id}/activate`,
+          { method: "POST" },
+        );
+        if (!activateResponse.ok)
+          throw new Error("Could not switch to your active workspace.");
+        const retry = await authFetch(url);
+        if (!retry.ok) throw new Error("Could not load your workspace summary.");
+        const retryData = (await retry.json()) as Dashboard;
+        setData(retryData);
+        if (preset === "all") saveCachedDashboardData(retryData);
+        saveActiveServicesToStorage(retryData.services || []);
+
+        // Also load groups
+        try {
+          const gRes = await authFetch(`${api}/groups?limit=30`);
+          if (gRes.ok) {
+            const gData = await gRes.json();
+            setGroupsList(gData.items || []);
+          }
+        } catch {}
         return;
       }
-      const activateResponse = await authFetch(
-        `${api}/organisations/${firstOrganisation.id}/activate`,
-        { method: "POST" },
-      );
-      if (!activateResponse.ok)
-        throw new Error("Could not switch to your active workspace.");
-      const retry = await authFetch(`${api}/dashboard`);
-      if (!retry.ok) throw new Error("Could not load your workspace summary.");
-      const retryData = (await retry.json()) as Dashboard;
-      setData(retryData);
-      saveCachedDashboardData(retryData);
-      saveActiveServicesToStorage(retryData.services || []);
 
-      // Also load groups
+      if (!response.ok)
+        throw new Error(
+          "Could not load your workspace overview. Please try again.",
+        );
+      const dashboardData = (await response.json()) as Dashboard;
+      setData(dashboardData);
+      if (preset === "all") saveCachedDashboardData(dashboardData);
+      saveActiveServicesToStorage(dashboardData.services || []);
+      saveCachedWorkspaceContext({
+        orgName: dashboardData.organisation.name,
+        userName: dashboardData.user?.name || undefined,
+        currency: dashboardData.organisation.currency || "INR",
+        activeServices: dashboardData.services || [],
+      });
+
+      // Also load groups for Today's Batches widget
       try {
         const gRes = await authFetch(`${api}/groups?limit=30`);
         if (gRes.ok) {
@@ -312,50 +385,48 @@ export default function HomePage() {
           setGroupsList(gData.items || []);
         }
       } catch {}
-      return;
-    }
 
-    if (!response.ok)
-      throw new Error(
-        "Could not load your workspace overview. Please try again.",
-      );
-    const dashboardData = (await response.json()) as Dashboard;
-    setData(dashboardData);
-    saveCachedDashboardData(dashboardData);
-    saveActiveServicesToStorage(dashboardData.services || []);
-    saveCachedWorkspaceContext({
-      orgName: dashboardData.organisation.name,
-      userName: dashboardData.user?.name || undefined,
-      currency: dashboardData.organisation.currency || "INR",
-      activeServices: dashboardData.services || [],
-    });
-
-    // Also load groups for Today's Batches widget
-    try {
-      const gRes = await authFetch(`${api}/groups?limit=30`);
-      if (gRes.ok) {
-        const gData = await gRes.json();
-        setGroupsList(gData.items || []);
+      const orgsRes = await authFetch(`${api}/organisations`);
+      if (orgsRes.ok) {
+        const orgList = await orgsRes.json();
+        setOrganisations(
+          orgList
+            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
+            .filter(Boolean),
+        );
       }
-    } catch {}
+    },
+    [api, router],
+  );
 
-    const orgsRes = await authFetch(`${api}/organisations`);
-    if (orgsRes.ok) {
-      const orgList = await orgsRes.json();
-      setOrganisations(
-        orgList
-          .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-          .filter(Boolean),
-      );
+  async function handlePresetChange(preset: string) {
+    setDatePreset(preset);
+    if (preset !== "custom") {
+      setDashboardLoading(true);
+      try {
+        await loadDashboard(preset, customStartDate, customEndDate);
+      } finally {
+        setDashboardLoading(false);
+      }
     }
-  }, [api, router]);
+  }
+
+  async function handleApplyCustomDate() {
+    if (!customStartDate || !customEndDate) return;
+    setDashboardLoading(true);
+    try {
+      await loadDashboard("custom", customStartDate, customEndDate);
+    } finally {
+      setDashboardLoading(false);
+    }
+  }
 
   useEffect(() => {
     const cached = getCachedDashboardData();
     if (cached) {
       setData(cached);
     }
-    loadDashboard().catch((reason: Error) => setError(reason.message));
+    loadDashboard("all").catch((reason: Error) => setError(reason.message));
   }, [loadDashboard]);
 
   async function handleSwitchOrg(orgId: string) {
@@ -891,6 +962,147 @@ export default function HomePage() {
             <Icon name="settings" size={13} />
             <span>Settings</span>
           </button>
+        </div>
+      </div>
+
+      {/* 📅 Date Range Filter Bar */}
+      <div
+        style={{
+          display: "flex",
+          flexWrap: "wrap",
+          alignItems: "center",
+          justifyContent: "space-between",
+          gap: 12,
+          padding: "11px 18px",
+          background: "#ffffff",
+          borderRadius: 12,
+          border: "1px solid var(--line, #e2e8f0)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+          marginBottom: 20,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 28,
+              height: 28,
+              borderRadius: 6,
+              background: "#eff6ff",
+              color: "#2563eb",
+            }}
+          >
+            <Icon name="calendar" size={15} />
+          </div>
+          <span style={{ fontSize: 13.5, fontWeight: 750, color: "#1e293b" }}>
+            Payment & Analytics Period:
+          </span>
+          <span
+            style={{
+              fontSize: 12,
+              fontWeight: 700,
+              color: datePreset === "all" ? "#475569" : "#047857",
+              background: datePreset === "all" ? "#f1f5f9" : "#d1fae5",
+              padding: "3px 10px",
+              borderRadius: 6,
+            }}
+          >
+            {getDateBoundsForPreset(datePreset, customStartDate, customEndDate).label}
+          </span>
+          {dashboardLoading && (
+            <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 600 }}>
+              Updating…
+            </span>
+          )}
+        </div>
+
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+          {/* Preset Pill Buttons */}
+          <div
+            style={{
+              display: "inline-flex",
+              background: "#f1f5f9",
+              borderRadius: 8,
+              padding: 3,
+              gap: 2,
+              border: "1px solid #e2e8f0",
+            }}
+          >
+            {[
+              { id: "all", label: "All Time" },
+              { id: "today", label: "Today" },
+              { id: "this_week", label: "This Week" },
+              { id: "this_month", label: "This Month" },
+              { id: "last_month", label: "Last Month" },
+              { id: "custom", label: "Custom Range 📅" },
+            ].map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => handlePresetChange(p.id)}
+                style={{
+                  padding: "5px 12px",
+                  fontSize: 12,
+                  fontWeight: datePreset === p.id ? 750 : 550,
+                  color: datePreset === p.id ? "#0f172a" : "#64748b",
+                  background: datePreset === p.id ? "#ffffff" : "transparent",
+                  border: "none",
+                  borderRadius: 6,
+                  boxShadow: datePreset === p.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Custom Date Pickers (Shown when custom is selected) */}
+          {datePreset === "custom" && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <input
+                type="date"
+                value={customStartDate}
+                onChange={(e) => setCustomStartDate(e.target.value)}
+                style={{
+                  padding: "5px 9px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid var(--line, #cbd5e1)",
+                  background: "#fff",
+                  color: "#1e293b",
+                  fontWeight: 600,
+                }}
+              />
+              <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>to</span>
+              <input
+                type="date"
+                value={customEndDate}
+                onChange={(e) => setCustomEndDate(e.target.value)}
+                style={{
+                  padding: "5px 9px",
+                  fontSize: 12,
+                  borderRadius: 6,
+                  border: "1px solid var(--line, #cbd5e1)",
+                  background: "#fff",
+                  color: "#1e293b",
+                  fontWeight: 600,
+                }}
+              />
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={handleApplyCustomDate}
+                disabled={!customStartDate || !customEndDate}
+                style={{ padding: "5px 12px", fontSize: 12, fontWeight: 700 }}
+              >
+                Apply Range
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

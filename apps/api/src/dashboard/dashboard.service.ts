@@ -17,7 +17,12 @@ type DashboardNotification = {
 export class DashboardService {
   constructor(@Inject(DATABASE) private readonly database: DatabaseClient) {}
 
-  summary(organisationId: string, userId: string, roleId: string) {
+  summary(
+    organisationId: string,
+    userId: string,
+    roleId: string,
+    query?: { startDate?: string; endDate?: string },
+  ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       const role = await tx.role.findFirst({
         where: { id: roleId, organisationId },
@@ -42,9 +47,34 @@ export class DashboardService {
         tone?: "blue" | "emerald" | "amber" | "rose" | "purple" | "teal";
       }> = [];
       const notifications: DashboardNotification[] = [];
-      const currentMonth = new Date().toISOString().slice(0, 7);
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
+
+      // Date range filtering setup
+      const paymentWhere: any = { organisationId };
+      const invoiceWhere: any = {
+        organisationId,
+        status: { in: ["DRAFT", "ISSUED", "PARTIALLY_PAID"] },
+      };
+
+      let isDateFiltered = false;
+      if (query?.startDate || query?.endDate) {
+        isDateFiltered = true;
+        paymentWhere.receivedAt = {};
+        invoiceWhere.createdAt = {};
+
+        if (query.startDate) {
+          const start = new Date(query.startDate);
+          paymentWhere.receivedAt.gte = start;
+          invoiceWhere.createdAt.gte = start;
+        }
+        if (query.endDate) {
+          const end = new Date(query.endDate);
+          end.setHours(23, 59, 59, 999);
+          paymentWhere.receivedAt.lte = end;
+          invoiceWhere.createdAt.lte = end;
+        }
+      }
 
       // 1. Universal Core KPI 1: Total Active Members / Directory
       const totalMembersCount = await tx.person.count({
@@ -59,35 +89,32 @@ export class DashboardService {
         tone: "blue",
       });
 
-      // 2. Universal Core KPI 2: Total Amount Received (All recorded payments)
+      // 2. Universal Core KPI 2: Total Amount Received (Filtered by date range)
       const totalPayments = await tx.payment.aggregate({
-        where: { organisationId },
+        where: paymentWhere,
         _sum: { amountMinor: true },
         _count: true,
       });
       const totalReceivedMinor = totalPayments._sum.amountMinor ?? 0;
       cards.push({
         key: "total_received",
-        label: "Total Amount Received",
+        label: isDateFiltered ? "Amount Received (In Range)" : "Total Amount Received",
         value: totalReceivedMinor,
         detail: `${totalPayments._count} payment${totalPayments._count === 1 ? "" : "s"} recorded`,
         format: "money",
         tone: "emerald",
       });
 
-      // 3. Universal Core KPI 3: Total Amount Due (Pending balances on all active invoices)
+      // 3. Universal Core KPI 3: Total Amount Due (Pending balances on active invoices)
       const pendingInvoices = await tx.invoice.aggregate({
-        where: {
-          organisationId,
-          status: { in: ["DRAFT", "ISSUED", "PARTIALLY_PAID"] },
-        },
+        where: invoiceWhere,
         _sum: { balanceDueMinor: true },
         _count: true,
       });
       const totalDueMinor = pendingInvoices._sum.balanceDueMinor ?? 0;
       cards.push({
         key: "total_due",
-        label: "Total Amount Due",
+        label: isDateFiltered ? "Amount Due (In Range)" : "Total Amount Due",
         value: totalDueMinor,
         detail:
           totalDueMinor > 0
@@ -97,7 +124,7 @@ export class DashboardService {
         tone: totalDueMinor > 0 ? "rose" : "teal",
       });
 
-      if (totalDueMinor > 0) {
+      if (totalDueMinor > 0 && !isDateFiltered) {
         notifications.push({
           id: "dues-pending-alert",
           module: "finance",
@@ -268,9 +295,9 @@ export class DashboardService {
 
       // Recent Transactions (Collections & Invoices)
       const recentPayments = await tx.payment.findMany({
-        where: { organisationId },
+        where: paymentWhere,
         orderBy: { receivedAt: "desc" },
-        take: 5,
+        take: isDateFiltered ? 20 : 5,
         include: {
           person: { select: { displayName: true } },
           invoice: { select: { invoiceNumber: true } },
@@ -318,6 +345,11 @@ export class DashboardService {
         notifications,
         transactions,
         activity,
+        dateFilter: {
+          startDate: query?.startDate || null,
+          endDate: query?.endDate || null,
+          isFiltered: isDateFiltered,
+        },
         isNewUser: sessionCount <= 1,
         generatedAt: new Date().toISOString(),
       };

@@ -1,4 +1,4 @@
-import { Controller, Get, Inject, Req, UseGuards } from "@nestjs/common";
+import { Controller, Get, Inject, Query, Req, UseGuards } from "@nestjs/common";
 import { ActiveOrganisationGuard } from "../access/active-organisation.guard.js";
 import { PermissionGuard } from "../access/permission.guard.js";
 import type { AuthenticatedRequest } from "../auth/auth.types.js";
@@ -13,11 +13,16 @@ export class DashboardController {
   ) {}
 
   @Get()
-  async summary(@Req() request: AuthenticatedRequest) {
+  async summary(
+    @Req() request: AuthenticatedRequest,
+    @Query("startDate") startDate?: string,
+    @Query("endDate") endDate?: string,
+  ) {
     const dashboard = await this.dashboard.summary(
       request.auth.activeOrganisationId!,
       request.auth.userId,
       request.auth.roleId!,
+      { startDate, endDate },
     );
     return {
       ...dashboard,
