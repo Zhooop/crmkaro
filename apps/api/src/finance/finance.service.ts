@@ -11,6 +11,7 @@ import PDFDocument from "pdfkit";
 import { DATABASE } from "../database/database.module.js";
 import type { InvoiceInput, PaymentInput, UpdateInvoiceInput } from "./finance.schemas.js";
 import { calculateInvoice, formatMoney } from "./finance.utils.js";
+import { CRMKARO_LOGO_BASE64 } from "./crmkaro-logo.base64.js";
 
 const invoiceInclude = {
   person: true,
@@ -767,9 +768,18 @@ export class FinanceService {
       doc.fillColor("#64748b").fontSize(8).font("Helvetica").text(`Thank you for your business! · ${clean(organisation.name)}`, 40, footerY + 10, { width: 280 });
       doc.fillColor("#94a3b8").fontSize(7).font("Helvetica").text("This is an electronically generated tax invoice and is valid without a physical signature.", 40, footerY + 22, { width: 300 });
 
-      // Right footer with CRMKaro branding
-      doc.fillColor("#2563eb").fontSize(8.5).font("Helvetica-Bold").text("Powered by CRMKaro", 350, footerY + 10, { width: 205, align: "right" });
-      doc.fillColor("#64748b").fontSize(7.5).font("Helvetica").text("Unified CRM & Cloud Billing · crmkaro.com", 350, footerY + 22, { width: 205, align: "right" });
+      // Right footer with CRMKaro Logo & branding badge
+      const badgeX = 390;
+      const badgeY = footerY + 6;
+      doc.roundedRect(badgeX, badgeY, 165, 26, 6).fillAndStroke("#f8fafc", "#e2e8f0");
+
+      try {
+        const crmLogoBuffer = Buffer.from(CRMKARO_LOGO_BASE64, "base64");
+        doc.image(crmLogoBuffer, badgeX + 8, badgeY + 4, { fit: [18, 18] });
+      } catch {}
+
+      doc.fillColor("#2563eb").fontSize(8).font("Helvetica-Bold").text("Powered by CRMKaro", badgeX + 32, badgeY + 5);
+      doc.fillColor("#64748b").fontSize(6.5).font("Helvetica").text("crmkaro.com · Cloud CRM", badgeX + 32, badgeY + 15);
 
       doc.end();
     });
