@@ -128,6 +128,7 @@ function PeopleContent() {
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
+  const [editingPerson, setEditingPerson] = useState<Person | null>(null);
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
   const [personInvoices, setPersonInvoices] = useState<
     Array<{
@@ -229,8 +230,8 @@ function PeopleContent() {
   );
 
   // Validation
-  const isNameValid = formName.trim().length >= 3;
-  const isPhoneValid = formPhone.trim().length >= 6;
+  const isNameValid = formName.trim().length >= 2;
+  const isPhoneValid = !formPhone.trim() || formPhone.trim().length >= 5;
   const isFormValid = isNameValid && isPhoneValid;
 
   // Load user session & current active org info
@@ -414,9 +415,12 @@ function PeopleContent() {
   }
 
   function openEditModal(person: Person) {
+    setEditingPerson(person);
+    setDetailPerson(person);
     setModalActiveTab("personal");
-    setFormName(person.displayName);
+    setFormName(person.displayName || "");
     setFormNameTouched(false);
+    setFormError("");
 
     // Extract primary phone code
     let pPhone = person.primaryPhone || "";
@@ -471,9 +475,9 @@ function PeopleContent() {
     setFormAdmissionNo(addr.admissionNumber || "");
     setFormAdmissionDate(addr.admissionDate || "");
 
-    const firstType = person.types[0]?.type;
+    const firstType = person.types?.[0]?.type;
     setFormTypes(firstType ? [firstType] : ["MEMBER"]);
-    setFormSelectedTags(person.tags.map((t) => t.tagId));
+    setFormSelectedTags(person.tags?.map((t) => t.tagId) || []);
     setEditOpen(true);
   }
 
@@ -548,10 +552,14 @@ function PeopleContent() {
 
   async function handleUpdate(e: FormEvent) {
     e.preventDefault();
-    if (!detailPerson) return;
+    const target = editingPerson || detailPerson;
+    if (!target) {
+      setFormError("No member selected for editing.");
+      return;
+    }
     if (!isNameValid || !isPhoneValid) {
       setFormNameTouched(true);
-      setFormError("Please provide a valid member name (at least 3 characters) and primary phone number.");
+      setFormError("Please provide a valid member name (at least 2 characters) and primary phone number.");
       return;
     }
     setFormBusy(true);
@@ -589,7 +597,7 @@ function PeopleContent() {
       if (formAdmissionNo.trim()) addressPayload.admissionNumber = formAdmissionNo.trim();
       if (formAdmissionDate.trim()) addressPayload.admissionDate = formAdmissionDate.trim();
 
-      const res = await authFetch(`${api}/people/${detailPerson.id}`, {
+      const res = await authFetch(`${api}/people/${target.id}`, {
         method: "PATCH",
         credentials: "include",
         headers: { "content-type": "application/json" },
@@ -606,9 +614,11 @@ function PeopleContent() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.message || "Failed to update member details.");
+      const updatedPerson = data.person || data;
       setEditOpen(false);
-      setDetailPerson(data);
-      loadPeople();
+      setDetailPerson(updatedPerson);
+      setEditingPerson(null);
+      await loadPeople();
     } catch (err) {
       setFormError((err as Error).message);
     } finally {
@@ -1308,6 +1318,97 @@ function PeopleContent() {
   );
 
   const renderModalFooter = (isEdit: boolean, onClose: () => void) => {
+    if (isEdit) {
+      return (
+        <div
+          className="modal-footer"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: 16,
+            marginTop: 18,
+            borderTop: "1px solid var(--line)",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            style={{ padding: "9px 20px" }}
+          >
+            Cancel
+          </button>
+
+          <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            {modalActiveTab === "personal" && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => {
+                  setFormNameTouched(true);
+                  if (isFormValid) setModalActiveTab("address");
+                }}
+                style={{ padding: "9px 16px", fontWeight: 600 }}
+              >
+                <span>Address Details →</span>
+              </button>
+            )}
+
+            {modalActiveTab === "address" && (
+              <>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setModalActiveTab("personal")}
+                  style={{ padding: "9px 14px" }}
+                >
+                  <span>← Back</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => setModalActiveTab("more")}
+                  style={{ padding: "9px 16px", fontWeight: 600 }}
+                >
+                  <span>More Info →</span>
+                </button>
+              </>
+            )}
+
+            {modalActiveTab === "more" && (
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setModalActiveTab("address")}
+                style={{ padding: "9px 14px" }}
+              >
+                <span>← Back</span>
+              </button>
+            )}
+
+            <button
+              type="submit"
+              className="btn btn-primary"
+              disabled={!isFormValid || formBusy}
+              style={{
+                padding: "9px 24px",
+                background: isFormValid ? "#059669" : undefined,
+                borderColor: isFormValid ? "#059669" : undefined,
+                opacity: !isFormValid ? 0.45 : 1,
+                cursor: !isFormValid ? "not-allowed" : "pointer",
+                fontWeight: 700,
+              }}
+            >
+              {formBusy ? "Saving Changes…" : "Save Changes"}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (modalActiveTab === "personal") {
       return (
         <div
@@ -1429,7 +1530,7 @@ function PeopleContent() {
             fontWeight: 700,
           }}
         >
-          {formBusy ? "Saving…" : isEdit ? "Save Changes" : "Save Member"}
+          {formBusy ? "Saving…" : "Save Member"}
         </button>
       </div>
     );
