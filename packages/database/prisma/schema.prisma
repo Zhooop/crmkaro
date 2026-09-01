@@ -221,6 +221,9 @@ model Organisation {
   id           String             @id @default(uuid()) @db.Uuid
   name         String             @db.VarChar(180)
   slug         String             @unique @db.VarChar(120)
+  logoUrl      String?            @map("logo_url") @db.Text
+  phone        String?            @db.VarChar(32)
+  address      String?            @db.VarChar(300)
   businessType String?            @map("business_type") @db.VarChar(80)
   industry     String?            @db.VarChar(100)
   timezone     String             @default("Asia/Kolkata") @db.VarChar(64)

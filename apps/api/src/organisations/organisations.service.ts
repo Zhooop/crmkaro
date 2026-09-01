@@ -251,4 +251,51 @@ export class OrganisationsService {
     await this.sessions.setActiveOrganisation(sessionId, organisationId);
     return { activeOrganisationId: organisationId };
   }
+
+  async update(
+    organisationId: string,
+    userId: string,
+    input: {
+      name?: string;
+      logoUrl?: string | null;
+      phone?: string | null;
+      address?: string | null;
+      businessType?: string | null;
+      timezone?: string;
+      currency?: string;
+    },
+  ) {
+    return withTenant(
+      this.database,
+      organisationId,
+      userId,
+      async (transaction) => {
+        const updated = await transaction.organisation.update({
+          where: { id: organisationId },
+          data: {
+            ...(input.name ? { name: input.name } : {}),
+            ...(input.logoUrl !== undefined ? { logoUrl: input.logoUrl } : {}),
+            ...(input.phone !== undefined ? { phone: input.phone } : {}),
+            ...(input.address !== undefined ? { address: input.address } : {}),
+            ...(input.businessType !== undefined ? { businessType: input.businessType } : {}),
+            ...(input.timezone ? { timezone: input.timezone } : {}),
+            ...(input.currency ? { currency: input.currency } : {}),
+          },
+        });
+
+        await transaction.auditLog.create({
+          data: {
+            organisationId,
+            actorUserId: userId,
+            action: "organisation.updated",
+            entityType: "organisation",
+            entityId: organisationId,
+            metadata: { updatedFields: Object.keys(input) },
+          },
+        });
+
+        return updated;
+      },
+    );
+  }
 }

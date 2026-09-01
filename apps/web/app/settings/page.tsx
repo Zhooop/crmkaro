@@ -70,8 +70,25 @@ export default function SettingsPage() {
     businessType?: string;
     currency?: string;
     timezone?: string;
+    logoUrl?: string | null;
+    phone?: string | null;
+    address?: string | null;
     createdAt?: string;
   } | null>(null);
+
+  // Branding Form State
+  const [formName, setFormName] = useState("");
+  const [formBusinessType, setFormBusinessType] = useState("");
+  const [formPhone, setFormPhone] = useState("");
+  const [formAddress, setFormAddress] = useState("");
+  const [formLogoUrl, setFormLogoUrl] = useState<string | null>(null);
+  const [savingBranding, setSavingBranding] = useState(false);
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" = "success") => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4000);
+  };
 
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
@@ -96,6 +113,67 @@ export default function SettingsPage() {
       setActiveServiceCodes(cached.activeServices);
     }
   }, [isMounted, cached]);
+
+  useEffect(() => {
+    if (orgDetails) {
+      setFormName(orgDetails.name || "");
+      setFormBusinessType(orgDetails.businessType || "");
+      setFormPhone(orgDetails.phone || "");
+      setFormAddress(orgDetails.address || "");
+      setFormLogoUrl(orgDetails.logoUrl || null);
+    }
+  }, [orgDetails]);
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast("Logo file size must be less than 2MB.", "error");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const base64 = event.target?.result as string;
+      setFormLogoUrl(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveBranding = async () => {
+    if (!orgDetails?.id) return;
+    if (!formName.trim()) {
+      showToast("Organisation name is required.", "error");
+      return;
+    }
+    setSavingBranding(true);
+    try {
+      const res = await authFetch(`${api}/organisations/${orgDetails.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: formName.trim(),
+          businessType: formBusinessType.trim() || null,
+          phone: formPhone.trim() || null,
+          address: formAddress.trim() || null,
+          logoUrl: formLogoUrl,
+        }),
+      });
+      if (res.ok) {
+        const updated = await res.json();
+        setOrgDetails(updated);
+        setOrgName(updated.name);
+        saveCachedWorkspaceContext({ orgName: updated.name });
+        showToast("✨ Organisation branding & logo saved successfully! PDFs will now include this branding.", "success");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || "Failed to save branding.", "error");
+      }
+    } catch {
+      showToast("Network error while saving branding.", "error");
+    } finally {
+      setSavingBranding(false);
+    }
+  };
 
   // Load session context
   const loadContext = useCallback(async () => {
@@ -302,6 +380,170 @@ export default function SettingsPage() {
               change="PostgreSQL Append-Only"
               icon="activity"
             />
+          </div>
+
+          {/* Organisation Branding & Invoice Logo Card */}
+          <div style={{ marginBottom: 24 }}>
+            <SectionCard
+              title="Organisation Branding & Invoicing Identity"
+              subtitle="Upload your custom business logo, contact number, and address to appear on all Invoice PDFs and receipts"
+            >
+              <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+                {/* Logo Uploader Row */}
+                <div style={{ display: "flex", alignItems: "center", gap: 24, padding: "16px 20px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                  <div
+                    style={{
+                      width: 80,
+                      height: 80,
+                      borderRadius: 12,
+                      border: "2px dashed #cbd5e1",
+                      background: "#ffffff",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      overflow: "hidden",
+                      position: "relative",
+                      flexShrink: 0,
+                    }}
+                  >
+                    {formLogoUrl ? (
+                      <img
+                        src={formLogoUrl}
+                        alt="Org Logo"
+                        style={{ width: "100%", height: "100%", objectFit: "contain" }}
+                      />
+                    ) : (
+                      <div style={{ fontSize: 24, fontWeight: 800, color: "var(--brand)" }}>
+                        {initials}
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                      Custom Business Logo
+                    </div>
+                    <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10 }}>
+                      PNG, JPG, or WEBP up to 2MB. This logo is automatically printed on all client & student Invoice PDFs.
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <label
+                        className="secondary-button"
+                        style={{
+                          cursor: "pointer",
+                          padding: "6px 14px",
+                          fontSize: 12.5,
+                          fontWeight: 600,
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 6,
+                        }}
+                      >
+                        <Icon name="upload" size={14} />
+                        <span>{formLogoUrl ? "Change Logo" : "Upload Logo"}</span>
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/webp"
+                          style={{ display: "none" }}
+                          onChange={handleLogoUpload}
+                        />
+                      </label>
+                      {formLogoUrl && (
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          onClick={() => setFormLogoUrl(null)}
+                          style={{ padding: "6px 12px", fontSize: 12.5, color: "#dc2626" }}
+                        >
+                          Remove Logo
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Form Fields Grid */}
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      Business / Institute Name *
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                      value={formName}
+                      onChange={(e) => setFormName(e.target.value)}
+                      placeholder="e.g. Gurubrahma Classes"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      Category / Business Type
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                      value={formBusinessType}
+                      onChange={(e) => setFormBusinessType(e.target.value)}
+                      placeholder="e.g. Education, Coaching, Fitness Academy"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      Official Invoicing Phone
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                      value={formPhone}
+                      onChange={(e) => setFormPhone(e.target.value)}
+                      placeholder="e.g. +91 9876543210"
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      Office / Institute Address
+                    </label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                      value={formAddress}
+                      onChange={(e) => setFormAddress(e.target.value)}
+                      placeholder="e.g. Shop 4, Galaxy Plaza, Badlapur East"
+                    />
+                  </div>
+                </div>
+
+                {/* Action Row */}
+                <div style={{ display: "flex", justifyContent: "flex-end", paddingTop: 8, borderTop: "1px solid #f1f5f9" }}>
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={savingBranding}
+                    onClick={handleSaveBranding}
+                    style={{
+                      padding: "9px 20px",
+                      fontSize: 13.5,
+                      fontWeight: 700,
+                      borderRadius: 8,
+                      background: "#2563eb",
+                      color: "#ffffff",
+                      cursor: savingBranding ? "not-allowed" : "pointer",
+                      border: "none",
+                    }}
+                  >
+                    {savingBranding ? "Saving Branding..." : "💾 Save Branding & Details"}
+                  </button>
+                </div>
+              </div>
+            </SectionCard>
           </div>
 
           {/* Two Detailed Cards */}
@@ -597,6 +839,30 @@ export default function SettingsPage() {
               </table>
             </div>
           )}
+        </div>
+      )}
+
+      {toast && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            zIndex: 9999,
+            padding: "12px 20px",
+            background: toast.type === "error" ? "#ef4444" : "#10b981",
+            color: "#ffffff",
+            borderRadius: 10,
+            fontSize: 13.5,
+            fontWeight: 600,
+            boxShadow: "0 10px 25px -5px rgba(0,0,0,0.2)",
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            animation: "fadeInUp 0.2s ease-out",
+          }}
+        >
+          <span>{toast.message}</span>
         </div>
       )}
     </AppShell>
