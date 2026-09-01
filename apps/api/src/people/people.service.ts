@@ -138,6 +138,14 @@ export class PeopleService {
     });
   }
 
+  unarchive(organisationId: string, userId: string, id: string) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const exists = await tx.person.findFirst({ where: { id, organisationId } }); if (!exists) throw new NotFoundException("Person not found.");
+      const person = await tx.person.update({ where: { id }, data: { status: "ACTIVE", archivedAt: null, activities: { create: { organisationId, actorUserId: userId, action: "person.unarchived", summary: "Person record unarchived / restored" } } } });
+      await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.unarchived", entityType: "person", entityId: id } }); return person;
+    });
+  }
+
   listTags(organisationId: string, userId: string) { return withTenant(this.database, organisationId, userId, (tx) => tx.tag.findMany({ where: { organisationId }, orderBy: { name: "asc" } })); }
   createTag(organisationId: string, userId: string, input: { name: string; colour: string }) { return withTenant(this.database, organisationId, userId, (tx) => tx.tag.upsert({ where: { organisationId_name: { organisationId, name: input.name } }, update: { colour: input.colour }, create: { organisationId, ...input } })); }
 

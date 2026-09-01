@@ -144,6 +144,8 @@ function PeopleContent() {
   const [importOpen, setImportOpen] = useState(false);
   const [archiveCandidate, setArchiveCandidate] = useState<Person | null>(null);
   const [archiveBusy, setArchiveBusy] = useState(false);
+  const [unarchiveCandidate, setUnarchiveCandidate] = useState<Person | null>(null);
+  const [unarchiveBusy, setUnarchiveBusy] = useState(false);
 
   // Segmented Modal Navigation Tab
   const [modalActiveTab, setModalActiveTab] = useState<"personal" | "address" | "more">("personal");
@@ -631,6 +633,28 @@ function PeopleContent() {
       // ignore
     } finally {
       setArchiveBusy(false);
+    }
+  }
+
+  async function confirmUnarchive() {
+    if (!unarchiveCandidate) return;
+    setUnarchiveBusy(true);
+    try {
+      const res = await authFetch(`${api}/people/${unarchiveCandidate.id}/unarchive`, {
+        method: "POST",
+        credentials: "include",
+      });
+      if (res.ok) {
+        if (detailPerson?.id === unarchiveCandidate.id) {
+          setDetailPerson((prev) => (prev ? { ...prev, status: "ACTIVE" } : null));
+        }
+        setUnarchiveCandidate(null);
+        loadPeople();
+      }
+    } catch {
+      // ignore
+    } finally {
+      setUnarchiveBusy(false);
     }
   }
 
@@ -1639,13 +1663,22 @@ function PeopleContent() {
                       >
                         <Icon name="edit" size={15} />
                       </button>
-                      {person.status === "ACTIVE" && (
+                      {person.status === "ACTIVE" ? (
                         <button
                           className="btn-icon"
                           title="Archive"
                           onClick={() => setArchiveCandidate(person)}
                         >
                           <Icon name="trash" size={15} />
+                        </button>
+                      ) : (
+                        <button
+                          className="btn-icon"
+                          title="Restore / Unarchive"
+                          onClick={() => setUnarchiveCandidate(person)}
+                          style={{ color: "#059669" }}
+                        >
+                          <Icon name="refresh" size={15} />
                         </button>
                       )}
                     </div>
@@ -1973,6 +2006,25 @@ function PeopleContent() {
                   <Icon name="edit" size={14} />
                   <span>Edit Profile</span>
                 </button>
+                {detailPerson.status === "ARCHIVED" ? (
+                  <button
+                    className="btn btn-primary btn-sm"
+                    style={{ background: "#059669", borderColor: "#059669" }}
+                    onClick={() => setUnarchiveCandidate(detailPerson)}
+                  >
+                    <Icon name="refresh" size={14} />
+                    <span>Restore Member</span>
+                  </button>
+                ) : (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    style={{ color: "#b91c1c" }}
+                    onClick={() => setArchiveCandidate(detailPerson)}
+                  >
+                    <Icon name="trash" size={14} />
+                    <span>Archive</span>
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2117,6 +2169,94 @@ function PeopleContent() {
               }}
             >
               {archiveBusy ? "Archiving…" : "Yes, Archive"}
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Custom Unarchive / Restore Confirmation Modal */}
+      <Modal
+        isOpen={Boolean(unarchiveCandidate)}
+        onClose={() => {
+          if (!unarchiveBusy) setUnarchiveCandidate(null);
+        }}
+        title="Restore Member"
+        subtitle="Move member back to active directory"
+        maxWidth={480}
+      >
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: 14,
+              padding: "16px",
+              background: "#ecfdf5",
+              borderRadius: 10,
+              border: "1px solid #a7f3d0",
+            }}
+          >
+            <div
+              style={{
+                width: 38,
+                height: 38,
+                borderRadius: "50%",
+                background: "#d1fae5",
+                color: "#059669",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                flexShrink: 0,
+              }}
+            >
+              <Icon name="refresh" size={18} />
+            </div>
+            <div>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#065f46" }}>
+                Restore &quot;{unarchiveCandidate?.displayName}&quot;?
+              </div>
+              <div style={{ fontSize: 12.5, color: "#064e3b", marginTop: 4, lineHeight: 1.5 }}>
+                This member will be reactivated and moved back to the <strong>All Directory</strong> active list.
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="modal-footer"
+            style={{
+              display: "flex",
+              justifyContent: "flex-end",
+              gap: 10,
+              paddingTop: 12,
+              marginTop: 4,
+              borderTop: "1px solid var(--line)",
+            }}
+          >
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => setUnarchiveCandidate(null)}
+              disabled={unarchiveBusy}
+              style={{ padding: "8px 18px" }}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={unarchiveBusy}
+              onClick={confirmUnarchive}
+              style={{
+                padding: "8px 22px",
+                background: "#059669",
+                color: "#ffffff",
+                fontWeight: 700,
+                border: "none",
+                borderRadius: 8,
+                cursor: unarchiveBusy ? "not-allowed" : "pointer",
+              }}
+            >
+              {unarchiveBusy ? "Restoring…" : "Yes, Restore"}
             </button>
           </div>
         </div>

@@ -77,4 +77,8 @@ export class PeopleController {
   @Post(":personId/archive")
   @RequirePermissions("people.archive")
   archive(@Req() request: AuthenticatedRequest, @Param("personId", new ParseUUIDPipe({ version: "4" })) id: string) { return this.people.archive(...this.context(request), id); }
+
+  @Post(":personId/unarchive")
+  @RequirePermissions("people.archive")
+  unarchive(@Req() request: AuthenticatedRequest, @Param("personId", new ParseUUIDPipe({ version: "4" })) id: string) { return this.people.unarchive(...this.context(request), id); }
 }
