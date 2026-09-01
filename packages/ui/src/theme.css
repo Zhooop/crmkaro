@@ -2358,6 +2358,56 @@ html, body {
   .logo-uploader-card .secondary-button {
     justify-content: center;
   }
+  .quick-collect-card {
+    padding: 14px 16px !important;
+    border-radius: 12px !important;
+  }
+  .quick-collect-search-row {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 10px !important;
+  }
+  .quick-collect-search-left {
+    width: 100% !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 8px !important;
+  }
+  .quick-collect-search-left .search-box {
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+  .quick-collect-search-right {
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+}
+
+/* Quick Collect Component Base */
+.quick-collect-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  white-space: nowrap;
+  scrollbar-width: none;
+  padding-bottom: 2px;
+}
+.quick-collect-tabs::-webkit-scrollbar {
+  display: none;
+}
+.quick-collect-search-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.quick-collect-search-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
 }
 
 @keyframes slideUpFromBottom {

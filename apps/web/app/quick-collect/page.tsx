@@ -453,6 +453,7 @@ function QuickCollectContent() {
 
         {/* CARD 1: ENTER AMOUNT (Screenshot 2) */}
         <div
+          className="quick-collect-card"
           style={{
             background: "#ffffff",
             border: "1px solid var(--line)",
@@ -543,6 +544,7 @@ function QuickCollectContent() {
 
         {/* CARD 2: ADD PAYERS (Screenshot 2) */}
         <div
+          className="quick-collect-card"
           style={{
             background: "#ffffff",
             border: "1px solid var(--line)",
@@ -563,7 +565,7 @@ function QuickCollectContent() {
           </div>
 
           {/* Tabs */}
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="quick-collect-tabs" style={{ display: "flex", gap: 8 }}>
             <button
               type="button"
               onClick={() => setActivePayerTab("list")}
@@ -576,6 +578,7 @@ function QuickCollectContent() {
                 fontSize: 12,
                 fontWeight: 700,
                 cursor: "pointer",
+                flexShrink: 0,
               }}
             >
               Add from members list
@@ -593,6 +596,7 @@ function QuickCollectContent() {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
+                flexShrink: 0,
               }}
             >
               Import file
@@ -610,6 +614,7 @@ function QuickCollectContent() {
                 fontSize: 12,
                 fontWeight: 600,
                 cursor: "pointer",
+                flexShrink: 0,
               }}
             >
               Add manually
@@ -620,10 +625,10 @@ function QuickCollectContent() {
           {activePayerTab === "list" && (
             <>
               {/* Count & Search Row */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                  <strong style={{ fontSize: 13 }}>Members {allPeople.length}</strong>
-                  <div className="search-box" style={{ width: 280, height: 34 }}>
+              <div className="quick-collect-search-row">
+                <div className="quick-collect-search-left">
+                  <strong style={{ fontSize: 13, flexShrink: 0 }}>Members {allPeople.length}</strong>
+                  <div className="search-box" style={{ flex: 1, minWidth: 0, height: 34 }}>
                     <Icon name="search" size={14} />
                     <input
                       type="text"
@@ -634,7 +639,9 @@ function QuickCollectContent() {
                   </div>
                 </div>
 
-                <Badge tone="green">Selected {selectedPersonIds.size}</Badge>
+                <div className="quick-collect-search-right">
+                  <Badge tone="green">Selected {selectedPersonIds.size}</Badge>
+                </div>
               </div>
 
               {/* Members Table */}
