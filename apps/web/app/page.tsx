@@ -173,10 +173,61 @@ function saveCachedDashboardData(d: Dashboard) {
 
 function DashboardLoading() {
   return (
-    <main className="dashboard-state" aria-live="polite">
-      <div className="state-spinner" />
-      <h1>Loading your workspace…</h1>
-      <p>Fetching the latest business overview.</p>
+    <main
+      style={{
+        minHeight: "100vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        background: "var(--surface, #f8fafc)",
+        gap: 16,
+      }}
+      aria-live="polite"
+    >
+      <div
+        style={{
+          width: 56,
+          height: 56,
+          borderRadius: 16,
+          background: "#ffffff",
+          boxShadow: "0 10px 25px -5px rgba(37,99,235,0.15)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          position: "relative",
+        }}
+      >
+        <img
+          src="/brand/crmkaro-mark.png"
+          alt="CRMKaro"
+          style={{ width: 36, height: 36, objectFit: "contain" }}
+        />
+        <div
+          style={{
+            position: "absolute",
+            inset: -4,
+            borderRadius: 20,
+            border: "2px solid #3b82f6",
+            borderTopColor: "transparent",
+            animation: "spin 1s linear infinite",
+          }}
+        />
+      </div>
+      <div style={{ textAlign: "center" }}>
+        <h2 style={{ fontSize: 16, fontWeight: 700, color: "var(--ink, #0f172a)", margin: 0 }}>
+          Loading your workspace…
+        </h2>
+        <p style={{ fontSize: 13, color: "var(--muted, #64748b)", marginTop: 4, margin: 0 }}>
+          Connecting to CRMKaro Cloud
+        </p>
+      </div>
+      <style>{`
+        @keyframes spin {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+      `}</style>
     </main>
   );
 }
@@ -682,6 +733,10 @@ export default function HomePage() {
         </button>
       </main>
     );
+
+  if (!data) {
+    return <DashboardLoading />;
+  }
 
   const orgName = isMounted && data?.organisation?.name ? data.organisation.name : (isMounted ? cachedContext.orgName : "CRMKaro Workspace");
   const displayName = isMounted && data?.user?.name && data.user.name.trim().length > 0
