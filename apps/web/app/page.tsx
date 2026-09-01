@@ -80,6 +80,10 @@ type OrganisationEntry = {
 };
 
 const icons: Record<string, IconName> = {
+  total_members: "people",
+  total_received: "finance",
+  total_due: "finance",
+  active_groups: "activity",
   students: "student",
   students_fees: "finance",
   students_attendance: "calendar",
@@ -893,7 +897,14 @@ export default function HomePage() {
       {/* 📊 Live Stat Cards */}
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         {data.cards.map((card, index) => {
-          const targetHref = SERVICE_NAV_MAP[card.key]?.href || (card.key.startsWith("students") ? "/students" : undefined);
+          const targetHref =
+            card.key === "total_members"
+              ? "/people"
+              : card.key === "total_received" || card.key === "total_due"
+              ? "/transactions"
+              : card.key === "active_groups"
+              ? "/groups"
+              : SERVICE_NAV_MAP[card.key]?.href || (card.key.startsWith("students") ? "/students" : undefined);
           return (
             <StatCard
               key={card.key}

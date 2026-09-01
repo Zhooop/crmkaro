@@ -674,7 +674,6 @@ function PeopleContent() {
 
   const tabItems = [
     { id: "ALL", label: "All Directory" },
-    { id: "MEMBER", label: "Members" },
     { id: "STUDENT", label: "Students / Learners" },
     { id: "CUSTOMER", label: "Customers / Clients" },
     { id: "EMPLOYEE", label: "Employees / Staff" },
@@ -1327,16 +1326,18 @@ function PeopleContent() {
             <Icon name="download" size={15} />
             <span>Export CSV</span>
           </a>
-          <button
-            className="btn btn-primary btn-sm"
-            onClick={() => {
-              resetForm();
-              setCreateOpen(true);
-            }}
-          >
-            <Icon name="plus" size={15} />
-            <span>Add Member</span>
-          </button>
+          {activeTab !== "ARCHIVED" && (
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => {
+                resetForm();
+                setCreateOpen(true);
+              }}
+            >
+              <Icon name="plus" size={15} />
+              <span>Add Member</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -1390,17 +1391,23 @@ function PeopleContent() {
       ) : people.length === 0 ? (
         <EmptyState
           icon="people"
-          title="No member records found"
+          title={activeTab === "ARCHIVED" ? "No archived records" : "No member records found"}
           description={
-            search || selectedTag || activeTab !== "ALL"
-              ? "Try adjusting your search or active filters."
-              : "Start by adding your first member, student, or customer to your directory."
+            activeTab === "ARCHIVED"
+              ? "Archived members and inactive contacts will appear here."
+              : search || selectedTag || activeTab !== "ALL"
+                ? "Try adjusting your search or active filters."
+                : "Start by adding your first member, student, or customer to your directory."
           }
-          actionLabel="Add Member"
-          onAction={() => {
-            resetForm();
-            setCreateOpen(true);
-          }}
+          actionLabel={activeTab === "ARCHIVED" ? undefined : "Add Member"}
+          onAction={
+            activeTab === "ARCHIVED"
+              ? undefined
+              : () => {
+                  resetForm();
+                  setCreateOpen(true);
+                }
+          }
         />
       ) : (
         <div className="table-wrap">

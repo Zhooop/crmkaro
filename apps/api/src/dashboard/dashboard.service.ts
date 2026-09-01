@@ -46,41 +46,92 @@ export class DashboardService {
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
 
-      // 1. Students & Tuition Academy Module
+      // 1. Universal Core KPI 1: Total Active Members / Directory
+      const totalMembersCount = await tx.person.count({
+        where: { organisationId, status: "ACTIVE" },
+      });
+      cards.push({
+        key: "total_members",
+        label: "Total Members",
+        value: totalMembersCount,
+        detail: "Active students, clients & contacts",
+        format: "number",
+        tone: "blue",
+      });
+
+      // 2. Universal Core KPI 2: Total Amount Received (All recorded payments)
+      const totalPayments = await tx.payment.aggregate({
+        where: { organisationId },
+        _sum: { amountMinor: true },
+        _count: true,
+      });
+      const totalReceivedMinor = totalPayments._sum.amountMinor ?? 0;
+      cards.push({
+        key: "total_received",
+        label: "Total Amount Received",
+        value: totalReceivedMinor,
+        detail: `${totalPayments._count} payment${totalPayments._count === 1 ? "" : "s"} recorded`,
+        format: "money",
+        tone: "emerald",
+      });
+
+      // 3. Universal Core KPI 3: Total Amount Due (Pending balances on all active invoices)
+      const pendingInvoices = await tx.invoice.aggregate({
+        where: {
+          organisationId,
+          status: { in: ["DRAFT", "ISSUED", "PARTIALLY_PAID"] },
+        },
+        _sum: { balanceDueMinor: true },
+        _count: true,
+      });
+      const totalDueMinor = pendingInvoices._sum.balanceDueMinor ?? 0;
+      cards.push({
+        key: "total_due",
+        label: "Total Amount Due",
+        value: totalDueMinor,
+        detail:
+          totalDueMinor > 0
+            ? `${pendingInvoices._count} invoice${pendingInvoices._count === 1 ? "" : "s"} pending`
+            : "All dues cleared",
+        format: "money",
+        tone: totalDueMinor > 0 ? "rose" : "teal",
+      });
+
+      if (totalDueMinor > 0) {
+        notifications.push({
+          id: "dues-pending-alert",
+          module: "finance",
+          title: `₹${(totalDueMinor / 100).toLocaleString("en-IN")} Dues Pending`,
+          detail: `${pendingInvoices._count} invoice(s) have unpaid or partial balances.`,
+          severity: "warning",
+          actionLabel: "Collect Payment",
+          actionHref: "/transactions",
+        });
+      }
+
+      // 4. Groups & Batches Module
+      if (services.has("groups")) {
+        const groupCount = await tx.batchGroup.count({
+          where: { organisationId, isActive: true },
+        });
+        const groupMembersCount = await tx.groupMember.count({
+          where: { organisationId, status: "ACTIVE" },
+        });
+        cards.push({
+          key: "active_groups",
+          label: "Active Groups & Batches",
+          value: groupCount,
+          detail: `${groupMembersCount} member${groupMembersCount === 1 ? "" : "s"} assigned`,
+          format: "number",
+          tone: "purple",
+        });
+      }
+
+      // 5. Students & Tuition Academy Module
       if (services.has("students")) {
         const studentCount = await tx.studentProfile.count({
           where: { organisationId, status: "ACTIVE" },
         });
-
-        const studentsWithPlan = await tx.studentProfile.findMany({
-          where: { organisationId, status: "ACTIVE" },
-          select: { id: true, personId: true, feeAmountMinor: true },
-        });
-
-        // Current month student fee cycle metrics
-        const studentInvoices = await tx.invoice.findMany({
-          where: { organisationId, notes: { contains: currentMonth } },
-          select: { personId: true, paidTotalMinor: true, grandTotalMinor: true, balanceDueMinor: true },
-        });
-
-        const invoiceMap = new Map<string, (typeof studentInvoices)[0]>();
-        for (const inv of studentInvoices) {
-          invoiceMap.set(inv.personId, inv);
-        }
-
-        let monthCollectedMinor = 0;
-        let monthPendingMinor = 0;
-        let pendingStudentsCount = 0;
-
-        for (const std of studentsWithPlan) {
-          const inv = invoiceMap.get(std.personId);
-          const feePlan = std.feeAmountMinor || 0;
-          const paid = inv?.paidTotalMinor || 0;
-          const due = inv ? Math.max(0, Math.max(feePlan, inv.grandTotalMinor) - paid) : feePlan;
-          monthCollectedMinor += paid;
-          monthPendingMinor += due;
-          if (due > 0) pendingStudentsCount++;
-        }
 
         // Today's attendance
         const todayAttendance = await tx.attendanceRecord.findMany({
@@ -88,24 +139,6 @@ export class DashboardService {
           select: { status: true },
         });
         const presentToday = todayAttendance.filter((a) => a.status === "PRESENT").length;
-
-        cards.push({
-          key: "students",
-          label: "Enrolled Students",
-          value: studentCount,
-          detail: `${studentsWithPlan.length} active in fee plan`,
-          format: "number",
-          tone: "blue",
-        });
-
-        cards.push({
-          key: "students_fees",
-          label: "Fee Collection (This Month)",
-          value: monthCollectedMinor,
-          detail: monthPendingMinor > 0 ? `₹${(monthPendingMinor / 100).toLocaleString("en-IN")} pending dues` : "All fees cleared",
-          format: "money",
-          tone: "emerald",
-        });
 
         if (todayAttendance.length > 0) {
           const attPct = studentCount > 0 ? Math.round((presentToday / studentCount) * 100) : 0;
@@ -128,36 +161,9 @@ export class DashboardService {
             actionHref: "/students",
           });
         }
-
-        if (monthPendingMinor > 0) {
-          notifications.push({
-            id: "fees-pending-month",
-            module: "students",
-            title: `₹${(monthPendingMinor / 100).toLocaleString("en-IN")} Fees Pending`,
-            detail: `${pendingStudentsCount} student(s) have unpaid or partial dues this month.`,
-            severity: "warning",
-            actionLabel: "Collect Fees",
-            actionHref: "/students",
-          });
-        }
       }
 
-      // 2. People & Directory Module
-      if (services.has("people") && permissions.has("people.read")) {
-        const count = await tx.person.count({
-          where: { organisationId, status: "ACTIVE" },
-        });
-        cards.push({
-          key: "people",
-          label: "Directory & Contacts",
-          value: count,
-          detail: "Students, customers, guardians & team",
-          format: "number",
-          tone: "purple",
-        });
-      }
-
-      // 3. CRM & Leads Module
+      // 6. CRM & Leads Module
       if (services.has("crm") && permissions.has("crm.lead.read")) {
         const open = await tx.lead.count({
           where: { organisationId, status: "OPEN" },
@@ -190,16 +196,8 @@ export class DashboardService {
         }
       }
 
-      // 4. Finance & Billing Module
+      // 7. Finance & Invoices Module Overdue Alerts
       if (services.has("finance") && permissions.has("finance.invoice.read")) {
-        const due = await tx.invoice.aggregate({
-          where: {
-            organisationId,
-            status: { in: ["ISSUED", "PARTIALLY_PAID"] },
-          },
-          _sum: { balanceDueMinor: true },
-          _count: true,
-        });
         const overdue = await tx.invoice.count({
           where: {
             organisationId,
@@ -207,16 +205,6 @@ export class DashboardService {
             dueDate: { lt: new Date() },
           },
         });
-        if (!services.has("students")) {
-          cards.push({
-            key: "finance",
-            label: "Pending Receivables",
-            value: due._sum.balanceDueMinor ?? 0,
-            detail: `${due._count} invoices pending`,
-            format: "money",
-            tone: "rose",
-          });
-        }
         if (overdue > 0) {
           notifications.push({
             id: "finance-overdue",
@@ -225,7 +213,7 @@ export class DashboardService {
             detail: "Payment follow-up required.",
             severity: "critical",
             actionLabel: "View Invoices",
-            actionHref: "/finance",
+            actionHref: "/transactions",
           });
         }
       }
