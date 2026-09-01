@@ -106,6 +106,27 @@ export class PeopleService {
         types: { create: input.types.map((type) => ({ organisationId, type })) }, tags: { create: tagIds.map((tagId) => ({ organisationId, tagId })) },
         activities: { create: { organisationId, actorUserId: userId, action: "person.created", summary: "Person record created" } },
       }, include: personInclude });
+
+      if (input.types.includes("STUDENT")) {
+        const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
+        try {
+          await tx.studentProfile.create({
+            data: {
+              organisationId,
+              personId: person.id,
+              status: "ACTIVE",
+              standard: addressJson.standard || "General",
+              batch: addressJson.batch || "Regular",
+              guardianName: addressJson.guardianName || null,
+              rollNumber: addressJson.admissionNo || null,
+              admissionDate: addressJson.admissionDate ? new Date(addressJson.admissionDate) : new Date(),
+            },
+          });
+        } catch {
+          // ignore duplicate / race
+        }
+      }
+
       await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.created", entityType: "person", entityId: person.id, metadata: { types: input.types } } });
       return { person, duplicateWarnings: duplicates };
     });
@@ -124,6 +145,38 @@ export class PeopleService {
         address: input.address ?? undefined, notes: input.notes,
         activities: { create: { organisationId, actorUserId: userId, action: "person.updated", summary: "Person profile updated" } },
       }, include: personInclude });
+
+      if (input.types && input.types.includes("STUDENT")) {
+        const studentProfile = await tx.studentProfile.findFirst({ where: { personId: id, organisationId } });
+        const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
+        if (!studentProfile) {
+          try {
+            await tx.studentProfile.create({
+              data: {
+                organisationId,
+                personId: id,
+                status: "ACTIVE",
+                standard: addressJson.standard || "General",
+                batch: addressJson.batch || "Regular",
+                guardianName: addressJson.guardianName || null,
+                rollNumber: addressJson.admissionNo || null,
+                admissionDate: addressJson.admissionDate ? new Date(addressJson.admissionDate) : new Date(),
+              },
+            });
+          } catch {}
+        } else if (addressJson.guardianName || addressJson.admissionNo || addressJson.standard || addressJson.batch) {
+          await tx.studentProfile.update({
+            where: { id: studentProfile.id },
+            data: {
+              ...(addressJson.guardianName ? { guardianName: addressJson.guardianName } : {}),
+              ...(addressJson.admissionNo ? { rollNumber: addressJson.admissionNo } : {}),
+              ...(addressJson.standard ? { standard: addressJson.standard } : {}),
+              ...(addressJson.batch ? { batch: addressJson.batch } : {}),
+            },
+          });
+        }
+      }
+
       const duplicates = await tx.person.findMany({ where: this.duplicateWhere(organisationId, input.email ?? current.email, input.primaryPhone ?? current.primaryPhone, id), take: 10, select: { id: true, displayName: true, email: true, primaryPhone: true } });
       await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.updated", entityType: "person", entityId: id } });
       return { person, duplicateWarnings: duplicates };
@@ -134,6 +187,7 @@ export class PeopleService {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       const exists = await tx.person.findFirst({ where: { id, organisationId } }); if (!exists) throw new NotFoundException("Person not found.");
       const person = await tx.person.update({ where: { id }, data: { status: "ARCHIVED", archivedAt: new Date(), activities: { create: { organisationId, actorUserId: userId, action: "person.archived", summary: "Person record archived" } } } });
+      await tx.studentProfile.updateMany({ where: { personId: id, organisationId }, data: { status: "INACTIVE", inactivatedAt: new Date() } });
       await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.archived", entityType: "person", entityId: id } }); return person;
     });
   }
@@ -142,6 +196,7 @@ export class PeopleService {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       const exists = await tx.person.findFirst({ where: { id, organisationId } }); if (!exists) throw new NotFoundException("Person not found.");
       const person = await tx.person.update({ where: { id }, data: { status: "ACTIVE", archivedAt: null, activities: { create: { organisationId, actorUserId: userId, action: "person.unarchived", summary: "Person record unarchived / restored" } } } });
+      await tx.studentProfile.updateMany({ where: { personId: id, organisationId }, data: { status: "ACTIVE", inactivatedAt: null } });
       await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.unarchived", entityType: "person", entityId: id } }); return person;
     });
   }

@@ -80,6 +80,36 @@ export class StudentsService {
     return sequence.currentValue;
   }
 
+  private async autoSyncStudents(tx: any, organisationId: string) {
+    const personStudents = await tx.person.findMany({
+      where: {
+        organisationId,
+        types: { some: { type: "STUDENT" } },
+        studentProfile: null,
+      },
+    });
+
+    for (const p of personStudents) {
+      const addressJson = (p.address && typeof p.address === "object" ? p.address : {}) as Record<string, any>;
+      try {
+        await tx.studentProfile.create({
+          data: {
+            organisationId,
+            personId: p.id,
+            status: p.status === "ACTIVE" ? "ACTIVE" : "INACTIVE",
+            standard: addressJson.standard || "General",
+            batch: addressJson.batch || "Regular",
+            guardianName: addressJson.guardianName || null,
+            rollNumber: addressJson.admissionNo || null,
+            admissionDate: addressJson.admissionDate ? new Date(addressJson.admissionDate) : (p.createdAt || new Date()),
+          },
+        });
+      } catch {
+        // ignore race
+      }
+    }
+  }
+
   async list(
     organisationId: string,
     userId: string,
@@ -93,6 +123,7 @@ export class StudentsService {
     },
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
+      await this.autoSyncStudents(tx, organisationId);
       const limit = input.limit ?? 100;
       const where: any = {
         organisationId,
@@ -383,6 +414,7 @@ export class StudentsService {
     month: string,
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
+      await this.autoSyncStudents(tx, organisationId);
       const targetMonth = month || new Date().toISOString().slice(0, 7);
       const monthLabel = formatMonthLabel(targetMonth);
 
@@ -824,6 +856,7 @@ export class StudentsService {
     input: { date: Date; standard?: string; batch?: string },
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
+      await this.autoSyncStudents(tx, organisationId);
       const dateOnly = new Date(input.date);
       dateOnly.setHours(0, 0, 0, 0);
 
@@ -972,6 +1005,7 @@ export class StudentsService {
     month: string,
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
+      await this.autoSyncStudents(tx, organisationId);
       const targetMonth = month || new Date().toISOString().slice(0, 7);
       const monthLabel = formatMonthLabel(targetMonth);
 
