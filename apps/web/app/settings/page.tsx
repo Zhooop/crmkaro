@@ -439,7 +439,7 @@ export default function SettingsPage() {
             >
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 {/* Logo Uploader Row */}
-                <div style={{ display: "flex", alignItems: "center", gap: 24, padding: "16px 20px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
+                <div className="logo-uploader-card" style={{ display: "flex", alignItems: "center", gap: 24, padding: "16px 20px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
                   <div
                     style={{
                       width: 80,

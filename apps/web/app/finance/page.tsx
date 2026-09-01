@@ -1334,7 +1334,7 @@ function FinanceContent() {
       {/* Expenses Tab */}
       {activeTab === "expenses" && (
         <div className="table-wrap">
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", marginBottom: 14 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "10px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <span style={{ fontSize: 20 }}>💸</span>
               <div>
@@ -2514,10 +2514,10 @@ function FinanceContent() {
       )}
       {/* Share Bill / Receipt Modal */}
       {shareModalOpen && shareInvoice && (
-        <div className="modal-scrim" onClick={() => setShareModalOpen(false)}>
+        <div className="modal-overlay" onClick={() => setShareModalOpen(false)}>
           <div
-            className="modal-card"
-            style={{ maxWidth: 520, borderRadius: 16 }}
+            className="modal-content"
+            style={{ maxWidth: 520 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
