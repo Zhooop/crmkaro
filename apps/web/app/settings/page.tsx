@@ -124,19 +124,68 @@ export default function SettingsPage() {
     }
   }, [orgDetails]);
 
-  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File, maxWidth = 500, maxHeight = 500, quality = 0.82): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > maxWidth) {
+              height = Math.round((height * maxWidth) / width);
+              width = maxWidth;
+            }
+          } else {
+            if (height > maxHeight) {
+              width = Math.round((width * maxHeight) / height);
+              height = maxHeight;
+            }
+          }
+
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) {
+            resolve(e.target?.result as string);
+            return;
+          }
+
+          const isPng = file.type === "image/png";
+          if (!isPng) {
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, width, height);
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+
+          const compressedDataUrl = isPng
+            ? canvas.toDataURL("image/png")
+            : canvas.toDataURL("image/jpeg", quality);
+
+          resolve(compressedDataUrl);
+        };
+        img.onerror = () => reject(new Error("Failed to load image"));
+        img.src = e.target?.result as string;
+      };
+      reader.onerror = () => reject(new Error("Failed to read file"));
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) {
-      showToast("Logo file size must be less than 2MB.", "error");
-      return;
+    try {
+      showToast("Optimizing and compressing logo...", "success");
+      const compressed = await compressImage(file, 500, 500, 0.82);
+      setFormLogoUrl(compressed);
+      showToast("✨ Logo optimized! Click Save to apply.", "success");
+    } catch {
+      showToast("Failed to process logo image.", "error");
     }
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string;
-      setFormLogoUrl(base64);
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleSaveBranding = async () => {
@@ -424,7 +473,7 @@ export default function SettingsPage() {
                       Custom Business Logo
                     </div>
                     <div style={{ fontSize: 12.5, color: "var(--muted)", marginBottom: 10 }}>
-                      PNG, JPG, or WEBP up to 2MB. This logo is automatically printed on all client & student Invoice PDFs.
+                      Upload any image (PNG, JPG, WEBP). High-resolution files are automatically compressed & optimized for crisp Invoice PDFs.
                     </div>
                     <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                       <label
