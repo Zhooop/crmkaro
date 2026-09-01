@@ -1277,6 +1277,134 @@ function PeopleContent() {
     </div>
   );
 
+  const renderModalFooter = (isEdit: boolean, onClose: () => void) => {
+    if (modalActiveTab === "personal") {
+      return (
+        <div
+          className="modal-footer"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: 16,
+            marginTop: 18,
+            borderTop: "1px solid var(--line)",
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={onClose}
+            style={{ padding: "9px 20px" }}
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => {
+              setFormNameTouched(true);
+              if (isFormValid) {
+                setModalActiveTab("address");
+              }
+            }}
+            style={{
+              padding: "9px 24px",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>Next: Address Details</span>
+            <span>→</span>
+          </button>
+        </div>
+      );
+    }
+
+    if (modalActiveTab === "address") {
+      return (
+        <div
+          className="modal-footer"
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            paddingTop: 16,
+            marginTop: 18,
+            borderTop: "1px solid var(--line)",
+          }}
+        >
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => setModalActiveTab("personal")}
+            style={{ padding: "9px 20px", display: "inline-flex", alignItems: "center", gap: 6 }}
+          >
+            <span>←</span>
+            <span>Back</span>
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => setModalActiveTab("more")}
+            style={{
+              padding: "9px 24px",
+              fontWeight: 700,
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+            }}
+          >
+            <span>Next: More Info</span>
+            <span>→</span>
+          </button>
+        </div>
+      );
+    }
+
+    // Tab 3: "more"
+    return (
+      <div
+        className="modal-footer"
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          paddingTop: 16,
+          marginTop: 18,
+          borderTop: "1px solid var(--line)",
+        }}
+      >
+        <button
+          type="button"
+          className="btn btn-secondary"
+          onClick={() => setModalActiveTab("address")}
+          style={{ padding: "9px 20px", display: "inline-flex", alignItems: "center", gap: 6 }}
+        >
+          <span>←</span>
+          <span>Back</span>
+        </button>
+        <button
+          type="submit"
+          className="btn btn-primary"
+          disabled={!isFormValid || formBusy}
+          style={{
+            padding: "9px 24px",
+            background: isFormValid ? "#059669" : undefined,
+            borderColor: isFormValid ? "#059669" : undefined,
+            opacity: !isFormValid ? 0.45 : 1,
+            cursor: !isFormValid ? "not-allowed" : "pointer",
+            fontWeight: 700,
+          }}
+        >
+          {formBusy ? "Saving…" : isEdit ? "Save Changes" : "Save Member"}
+        </button>
+      </div>
+    );
+  };
+
   const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
 
   return (
@@ -1882,42 +2010,7 @@ function PeopleContent() {
       >
         <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column" }}>
           {renderMemberForm(false)}
-
-          <div
-            className="modal-footer"
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 10,
-              paddingTop: 16,
-              marginTop: 18,
-              borderTop: "1px solid var(--line)",
-            }}
-          >
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setCreateOpen(false)}
-              style={{ padding: "9px 20px" }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={!isFormValid || formBusy}
-              style={{
-                padding: "9px 24px",
-                background: isFormValid ? "#059669" : undefined,
-                borderColor: isFormValid ? "#059669" : undefined,
-                opacity: !isFormValid ? 0.45 : 1,
-                cursor: !isFormValid ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {formBusy ? "Saving…" : "Save"}
-            </button>
-          </div>
+          {renderModalFooter(false, () => setCreateOpen(false))}
         </form>
       </Modal>
 
@@ -1931,42 +2024,7 @@ function PeopleContent() {
       >
         <form onSubmit={handleUpdate} style={{ display: "flex", flexDirection: "column" }}>
           {renderMemberForm(true)}
-
-          <div
-            className="modal-footer"
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 10,
-              paddingTop: 16,
-              marginTop: 18,
-              borderTop: "1px solid var(--line)",
-            }}
-          >
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => setEditOpen(false)}
-              style={{ padding: "9px 20px" }}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={!isFormValid || formBusy}
-              style={{
-                padding: "9px 24px",
-                background: isFormValid ? "#059669" : undefined,
-                borderColor: isFormValid ? "#059669" : undefined,
-                opacity: !isFormValid ? 0.45 : 1,
-                cursor: !isFormValid ? "not-allowed" : "pointer",
-                fontWeight: 700,
-              }}
-            >
-              {formBusy ? "Saving…" : "Save"}
-            </button>
-          </div>
+          {renderModalFooter(true, () => setEditOpen(false))}
         </form>
       </Modal>
 
