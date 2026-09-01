@@ -4,18 +4,12 @@ on:
   push:
     branches:
       - main
-    paths:
-      - 'apps/mobile/**'
-      - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
 jobs:
   build-apk:
     name: Build Standalone Android APK
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: apps/mobile
 
     steps:
       - name: ⬇️ Checkout Repository
@@ -40,16 +34,15 @@ jobs:
       - name: 🤖 Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: 📥 Install Dependencies
-        run: pnpm install --frozen-lockfile=false
-        working-directory: .
+      - name: 📥 Install Monorepo Dependencies
+        run: pnpm install --no-frozen-lockfile
 
-      - name: 🛠️ Prebuild Android Project
-        run: npx expo prebuild --platform android --no-install
+      - name: 📦 Build Shared Packages
+        run: pnpm --filter @crmkaro/contracts build && pnpm --filter @crmkaro/permissions build
 
       - name: 🏗️ Build Standalone Debug APK
+        working-directory: apps/mobile/android
         run: |
-          cd android
           chmod +x gradlew
           ./gradlew assembleDebug --no-daemon
 
