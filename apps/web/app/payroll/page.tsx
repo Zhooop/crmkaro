@@ -17,6 +17,8 @@ import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   buildNavItems,
+  useWorkspaceContext,
+  DEFAULT_SERVICE_CODES,
   getCachedWorkspaceContext,
   saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
@@ -114,12 +116,21 @@ export default function PayrollPage() {
   }
 
   // Context & AppShell info (Instant 0ms cached state)
-  const cached = getCachedWorkspaceContext();
-  const [orgName, setOrgName] = useState(cached.orgName);
-  const [userName, setUserName] = useState(cached.userName);
-  const [userRole, setUserRole] = useState(cached.userRole);
+  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
+  const [orgName, setOrgName] = useState("CRMKaro Workspace");
+  const [userName, setUserName] = useState("Workspace User");
+  const [userRole, setUserRole] = useState("Owner");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
+
+  useEffect(() => {
+    if (isMounted) {
+      setOrgName(cached.orgName);
+      setUserName(cached.userName);
+      setUserRole(cached.userRole);
+      setActiveServiceCodes(cached.activeServices);
+    }
+  }, [isMounted, cached]);
 
   // Modals & Drawers
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
@@ -526,17 +537,17 @@ export default function PayrollPage() {
     { id: "runs", label: "Monthly Salary Runs", count: runs.length },
   ];
 
-  const nav: NavItem[] = buildNavItems(activeServiceCodes);
+  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
 
   return (
     <AppShell
       product="CRMKaro"
-      organisation={orgName}
+      organisation={isMounted ? orgName : "CRMKaro Workspace"}
       organisations={organisations}
       currentPath="/payroll"
-      nav={nav}
-      userName={userName}
-      userRole={userRole}
+      nav={navItems}
+      userName={isMounted ? userName : "Workspace User"}
+      userRole={isMounted ? userRole : "Owner"}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}

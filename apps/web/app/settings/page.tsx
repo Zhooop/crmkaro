@@ -17,6 +17,8 @@ import { authFetch, getApiUrl } from "@/lib/api";
 import {
   ALL_AVAILABLE_SERVICES,
   buildNavItems,
+  useWorkspaceContext,
+  DEFAULT_SERVICE_CODES,
   getCachedWorkspaceContext,
   saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
@@ -73,18 +75,27 @@ export default function SettingsPage() {
 
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const cached = getCachedWorkspaceContext();
+  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(cached.activeServices);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
   const [auditLogs, setAuditLogs] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
   // Context & AppShell info (Instant 0ms cached state)
-  const [orgName, setOrgName] = useState(cached.orgName);
-  const [userName, setUserName] = useState(cached.userName);
-  const [userRole, setUserRole] = useState(cached.userRole);
+  const [orgName, setOrgName] = useState("CRMKaro Workspace");
+  const [userName, setUserName] = useState("Workspace User");
+  const [userRole, setUserRole] = useState("Owner");
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+
+  useEffect(() => {
+    if (isMounted) {
+      setOrgName(cached.orgName);
+      setUserName(cached.userName);
+      setUserRole(cached.userRole);
+      setActiveServiceCodes(cached.activeServices);
+    }
+  }, [isMounted, cached]);
 
   // Load session context
   const loadContext = useCallback(async () => {
@@ -214,17 +225,17 @@ export default function SettingsPage() {
     .slice(0, 2)
     .toUpperCase();
 
-  const nav: NavItem[] = buildNavItems(activeServiceCodes);
+  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
 
   return (
     <AppShell
       currentPath="/settings"
-      nav={nav}
-      organisation={orgName}
+      nav={navItems}
+      organisation={isMounted ? orgName : "CRMKaro Workspace"}
       organisations={organisations}
       product="CRMKaro"
-      userName={userName}
-      userRole={userRole}
+      userName={isMounted ? userName : "Workspace User"}
+      userRole={isMounted ? userRole : "Owner"}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}

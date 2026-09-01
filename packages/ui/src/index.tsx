@@ -1321,14 +1321,17 @@ export function AuthPanel({
       ? "https://api.crmkaro.com/api/v1"
       : "http://localhost:4000/api/v1");
 
-  const returnUrl =
-    typeof window !== "undefined"
-      ? window.location.origin
-      : admin
-        ? "https://admin.crmkaro.com"
-        : "https://crmkaro.com";
+  const [googleStartUrl, setGoogleStartUrl] = useState(
+    `${resolvedApiUrl}/auth/google/start`,
+  );
 
-  const googleStartUrl = `${resolvedApiUrl}/auth/google/start?returnTo=${encodeURIComponent(returnUrl)}`;
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setGoogleStartUrl(
+        `${resolvedApiUrl}/auth/google/start?returnTo=${encodeURIComponent(window.location.origin)}`,
+      );
+    }
+  }, [resolvedApiUrl]);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -1433,15 +1436,9 @@ export function AuthPanel({
 
         <div className="auth-story-visual" aria-hidden="true">
           <img
-            src={admin ? "/brand/crmkaro-admin-hero.jpg" : "/brand/crmkaro-admin-hero.jpg"}
+            src={admin ? "/brand/crmkaro-admin-hero.png" : "/brand/crmkaro-admin-hero.png"}
             alt="CRMKaro Workspace Console"
           />
-          <span className="auth-visual-pill pill-one">
-            {admin ? "⚡ Live Platform Metrics" : "🚀 All Modules Active"}
-          </span>
-          <span className="auth-visual-pill pill-two">
-            {admin ? "🔒 256-Bit Encrypted Session" : "💼 GST & Receipts Ready"}
-          </span>
         </div>
 
         <small className="auth-story-footer">
@@ -1532,7 +1529,7 @@ export function AuthPanel({
                   : "Start managing leads, student fees, and staff payroll in 30 seconds."}
             </p>
 
-            <a className="google-button" href={googleStartUrl}>
+            <a className="google-button" href={googleStartUrl} suppressHydrationWarning>
               <svg width="18" height="18" viewBox="0 0 18 18">
                 <path
                   fill="#4285F4"

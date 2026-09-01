@@ -1,4 +1,5 @@
 import type { NavItem } from "@crmkaro/ui";
+import { useEffect, useState, useMemo } from "react";
 
 export const SERVICE_NAV_MAP: Record<string, NavItem> = {
   people: { label: "Members", icon: "people", href: "/people" },
@@ -122,15 +123,17 @@ export type WorkspaceContext = {
   activeServices: string[];
 };
 
+export const DEFAULT_WORKSPACE_CONTEXT: WorkspaceContext = {
+  orgName: "CRMKaro Workspace",
+  userName: "Workspace User",
+  userRole: "Owner",
+  currency: "INR",
+  activeServices: DEFAULT_SERVICE_CODES,
+};
+
 export function getCachedWorkspaceContext(): WorkspaceContext {
   if (typeof window === "undefined") {
-    return {
-      orgName: "CRMKaro Workspace",
-      userName: "Workspace User",
-      userRole: "Owner",
-      currency: "INR",
-      activeServices: DEFAULT_SERVICE_CODES,
-    };
+    return DEFAULT_WORKSPACE_CONTEXT;
   }
   try {
     const raw = localStorage.getItem("crmkaro_workspace_context");
@@ -191,4 +194,27 @@ export function buildNavItems(activeServices: string[]): NavItem[] {
     ...serviceNavItems,
     { label: "Settings", icon: "settings", href: "/settings" },
   ];
+}
+
+export function useWorkspaceContext(): {
+  context: WorkspaceContext;
+  isMounted: boolean;
+  nav: NavItem[];
+  setContext: React.Dispatch<React.SetStateAction<WorkspaceContext>>;
+} {
+  const [mounted, setMounted] = useState(false);
+  const [context, setContext] = useState<WorkspaceContext>(DEFAULT_WORKSPACE_CONTEXT);
+
+  useEffect(() => {
+    setMounted(true);
+    const cached = getCachedWorkspaceContext();
+    setContext(cached);
+  }, []);
+
+  const nav = useMemo(
+    () => buildNavItems(mounted ? context.activeServices : DEFAULT_SERVICE_CODES),
+    [mounted, context.activeServices],
+  );
+
+  return { context, isMounted: mounted, nav, setContext };
 }

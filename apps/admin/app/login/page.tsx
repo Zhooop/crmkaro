@@ -99,9 +99,7 @@ export default function AdminLoginPage() {
         </div>
 
         <div className="auth-story-visual" aria-hidden="true">
-          <img src="/brand/crmkaro-admin-hero.jpg" alt="CRMKaro Admin Console" />
-          <span className="auth-visual-pill pill-one">⚡ Live Platform Metrics</span>
-          <span className="auth-visual-pill pill-two">🔒 256-Bit Encrypted Session</span>
+          <img src="/brand/crmkaro-admin-hero.png" alt="CRMKaro Admin Console" />
         </div>
 
         <small className="auth-story-footer">

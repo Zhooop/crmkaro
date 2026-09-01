@@ -19,6 +19,7 @@ import {
   ALL_AVAILABLE_SERVICES,
   SERVICE_NAV_MAP,
   buildNavItems,
+  useWorkspaceContext,
   getCachedWorkspaceContext,
   saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
@@ -235,6 +236,7 @@ const SOLUTION_PRESETS = [
 
 export default function HomePage() {
   const router = useRouter();
+  const { context: cachedContext, isMounted, nav: defaultNav } = useWorkspaceContext();
   const [data, setData] = useState<Dashboard | null>(null);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
   const [error, setError] = useState("");
@@ -606,14 +608,12 @@ export default function HomePage() {
       </main>
     );
 
-  const cachedContext = getCachedWorkspaceContext();
-  const orgName = data?.organisation?.name || cachedContext.orgName;
-  const displayName =
-    data?.user?.name && data.user.name.trim().length > 0
-      ? data.user.name
-      : (data?.user?.email?.split("@")[0] ?? cachedContext.userName ?? "Team Member");
+  const orgName = isMounted && data?.organisation?.name ? data.organisation.name : (isMounted ? cachedContext.orgName : "CRMKaro Workspace");
+  const displayName = isMounted && data?.user?.name && data.user.name.trim().length > 0
+    ? data.user.name
+    : (isMounted ? (data?.user?.email?.split("@")[0] ?? cachedContext.userName ?? "Team Member") : "Workspace User");
 
-  const nav: NavItem[] = buildNavItems(data?.services || cachedContext.activeServices || []);
+  const nav: NavItem[] = isMounted && data?.services ? buildNavItems(data.services) : defaultNav;
   const todayFormatted = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
