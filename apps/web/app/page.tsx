@@ -1073,7 +1073,7 @@ export default function HomePage() {
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, width: "100%", maxWidth: "100%", overflowX: "auto" }}>
           {/* Preset Pill Buttons */}
           <div
             style={{
@@ -1083,6 +1083,11 @@ export default function HomePage() {
               padding: 3,
               gap: 2,
               border: "1px solid #e2e8f0",
+              maxWidth: "100%",
+              overflowX: "auto",
+              WebkitOverflowScrolling: "touch",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
             }}
           >
             {[
@@ -1098,7 +1103,7 @@ export default function HomePage() {
                 type="button"
                 onClick={() => handlePresetChange(p.id)}
                 style={{
-                  padding: "5px 12px",
+                  padding: "6px 12px",
                   fontSize: 12,
                   fontWeight: datePreset === p.id ? 750 : 550,
                   color: datePreset === p.id ? "#0f172a" : "#64748b",
@@ -1108,6 +1113,8 @@ export default function HomePage() {
                   boxShadow: datePreset === p.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 {p.label}

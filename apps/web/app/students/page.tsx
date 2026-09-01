@@ -920,7 +920,7 @@ function StudentsContent() {
       </div>
 
       {/* Modern Segmented Navigation Tabs */}
-      <div style={{ marginBottom: 20 }}>
+      <div style={{ marginBottom: 20, width: "100%", overflowX: "auto" }}>
         <div
           style={{
             display: "inline-flex",
@@ -929,7 +929,10 @@ function StudentsContent() {
             borderRadius: "12px",
             border: "1px solid #e2e8f0",
             gap: "4px",
-            flexWrap: "wrap",
+            maxWidth: "100%",
+            overflowX: "auto",
+            WebkitOverflowScrolling: "touch",
+            whiteSpace: "nowrap",
             boxShadow: "inset 0 1px 2px rgba(0,0,0,0.03)",
           }}
         >
@@ -941,19 +944,21 @@ function StudentsContent() {
                 type="button"
                 onClick={() => setActiveTab(tab.id)}
                 style={{
-                  padding: "9px 18px",
+                  padding: "8px 16px",
                   borderRadius: "8px",
                   fontSize: 13,
                   fontWeight: isActive ? 750 : 550,
                   border: isActive ? "1px solid rgba(0,0,0,0.06)" : "1px solid transparent",
                   background: isActive ? "#ffffff" : "transparent",
                   color: isActive ? "var(--ink)" : "#64748b",
+                  boxShadow: isActive ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
                   cursor: "pointer",
-                  display: "flex",
+                  display: "inline-flex",
                   alignItems: "center",
                   gap: 8,
-                  boxShadow: isActive ? "0 2px 5px rgba(0,0,0,0.07)" : "none",
                   transition: "all 0.15s ease",
+                  whiteSpace: "nowrap",
+                  flexShrink: 0,
                 }}
               >
                 <Icon name={tab.icon} size={15} />
