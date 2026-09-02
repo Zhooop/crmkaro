@@ -139,6 +139,9 @@ importers:
 
   apps/mobile:
     dependencies:
+      '@babel/runtime':
+        specifier: ^7.26.0
+        version: 7.29.7
       '@crmkaro/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
