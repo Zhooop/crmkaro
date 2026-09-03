@@ -40,10 +40,6 @@ jobs:
       - name: 📦 Build Shared Packages
         run: pnpm --filter @crmkaro/contracts build && pnpm --filter @crmkaro/permissions build
 
-      - name: 🛠️ Clean Prebuild Native Android
-        working-directory: apps/mobile
-        run: npx expo prebuild --platform android --clean --no-install
-
       - name: 🏗️ Build Standalone Debug APK
         working-directory: apps/mobile/android
         run: |
