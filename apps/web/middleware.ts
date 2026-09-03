@@ -17,6 +17,8 @@ const PROTECTED_ROUTES = [
 
 const AUTH_ROUTES = ["/login", "/register"];
 
+const KNOWN_MARKETING_PAGES = ["/", "/landing", "/about", "/blog", "/features"];
+
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const sessionToken = request.cookies.get("crm_session")?.value;
@@ -53,7 +55,16 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`https://web.crmkaro.com${pathname}${search}`));
     }
 
-    return NextResponse.next();
+    // Known static / marketing pages
+    const isKnownPublicPage = KNOWN_MARKETING_PAGES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    );
+    if (isKnownPublicPage) {
+      return NextResponse.next();
+    }
+
+    // Any other broken / unknown links on crmkaro.com -> redirect to root landing page
+    return NextResponse.redirect(new URL("https://crmkaro.com/"));
   }
 
   // =========================================================================
@@ -127,13 +138,6 @@ export function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for:
-     * - api
-     * - _next/static
-     * - _next/image
-     * - brand, landing, favicon.ico, favicon.png, icon.png
-     */
     "/((?!api|_next/static|_next/image|brand|landing/|favicon.ico|favicon.png|icon.png).*)",
   ],
 };

@@ -386,17 +386,17 @@ export function LandingPage({
 
   const handleLogin = () => {
     if (onLoginClick) onLoginClick();
-    else if (typeof window !== "undefined") window.location.href = "/login";
+    else if (typeof window !== "undefined") window.open("/login", "_blank", "noopener,noreferrer");
   };
 
   const handleRegister = () => {
     if (onRegisterClick) onRegisterClick();
-    else if (typeof window !== "undefined") window.location.href = "/login?mode=register";
+    else if (typeof window !== "undefined") window.open("/login?mode=register", "_blank", "noopener,noreferrer");
   };
 
   const handleDashboard = () => {
     if (onDashboardClick) onDashboardClick();
-    else if (typeof window !== "undefined") window.location.href = "/";
+    else if (typeof window !== "undefined") window.open("/", "_blank", "noopener,noreferrer");
   };
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -1494,10 +1494,15 @@ export function LandingPage({
                 <IconCheck size={14} />
                 <span>99.9% Uptime Guarantee</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <a
+                href="https://wa.me/919004520400?text=Hello%20CRMKaro%20Team%2C%20I%20have%20an%20inquiry%20regarding%20CRMKaro."
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: "inherit", textDecoration: "none", display: "inline-flex", alignItems: "center", gap: 8 }}
+              >
                 <IconWhatsApp size={16} />
                 <span>WhatsApp Support</span>
-              </div>
+              </a>
               <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                 <IconCheck size={14} />
                 <span>Made for Indian Businesses</span>

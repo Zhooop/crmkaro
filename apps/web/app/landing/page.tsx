@@ -1,22 +1,20 @@
 "use client";
 
 import { LandingPage } from "@crmkaro/ui";
-import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authFetch, getApiUrl } from "@/lib/api";
 
-function navigateToWebPortal(path: string, router: ReturnType<typeof useRouter>) {
+function openInNewTab(path: string) {
   if (typeof window === "undefined") return;
-  const host = window.location.hostname;
-  if (host === "crmkaro.com" || host === "www.crmkaro.com") {
-    window.location.href = `https://web.crmkaro.com${path}`;
-    return;
-  }
-  router.push(path);
+  const host = window.location.hostname.toLowerCase();
+  const url =
+    host === "crmkaro.com" || host === "www.crmkaro.com"
+      ? `https://web.crmkaro.com${path}`
+      : path;
+  window.open(url, "_blank", "noopener,noreferrer");
 }
 
 export default function PublicLandingPage() {
-  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
@@ -37,9 +35,9 @@ export default function PublicLandingPage() {
   return (
     <LandingPage
       isAuthenticated={isAuthenticated}
-      onLoginClick={() => navigateToWebPortal("/login", router)}
-      onRegisterClick={() => navigateToWebPortal("/login?mode=register", router)}
-      onDashboardClick={() => navigateToWebPortal("/", router)}
+      onLoginClick={() => openInNewTab("/login")}
+      onRegisterClick={() => openInNewTab("/login?mode=register")}
+      onDashboardClick={() => openInNewTab("/")}
     />
   );
 }
