@@ -11,6 +11,7 @@ import {
   type IconName,
   type NavItem,
   type OrganisationSummary,
+  LandingPage,
 } from "@crmkaro/ui";
 import { type FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -327,6 +328,7 @@ export default function HomePage() {
   const [data, setData] = useState<Dashboard | null>(null);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
   const [error, setError] = useState("");
+  const [isUnauthenticated, setIsUnauthenticated] = useState<boolean>(false);
   const [needsSetup, setNeedsSetup] = useState(false);
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
@@ -369,13 +371,13 @@ export default function HomePage() {
 
       const response = await authFetch(url);
       if (response.status === 401) {
-        router.replace("/login");
+        setIsUnauthenticated(true);
         return;
       }
       if (response.status === 403) {
         const organisationsResponse = await authFetch(`${api}/organisations`);
         if (organisationsResponse.status === 401) {
-          router.replace("/login");
+          setIsUnauthenticated(true);
           return;
         }
         if (!organisationsResponse.ok)
@@ -529,6 +531,17 @@ export default function HomePage() {
     } finally {
       setSetupBusy(false);
     }
+  }
+
+  if (isUnauthenticated) {
+    return (
+      <LandingPage
+        isAuthenticated={false}
+        onLoginClick={() => router.push("/login")}
+        onRegisterClick={() => router.push("/login?mode=register")}
+        onDashboardClick={() => setIsUnauthenticated(false)}
+      />
+    );
   }
 
   if (needsSetup)
