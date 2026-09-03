@@ -1779,3 +1779,5 @@ export function AuthPanel({
     </main>
   );
 }
+
+export { LandingPage, type LandingPageProps } from "./LandingPage";

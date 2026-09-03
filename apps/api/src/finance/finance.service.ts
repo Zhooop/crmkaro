@@ -603,11 +603,12 @@ export class FinanceService {
       const startY = 36;
       let hasCustomLogo = false;
 
-      if (organisation.logoUrl) {
+      const orgLogo = (organisation as any).logoUrl;
+      if (orgLogo) {
         try {
           let imgBuffer: Buffer | null = null;
-          if (organisation.logoUrl.startsWith("data:image")) {
-            const base64Data = organisation.logoUrl.split(",")[1];
+          if (typeof orgLogo === "string" && orgLogo.startsWith("data:image")) {
+            const base64Data = orgLogo.split(",")[1];
             if (base64Data) imgBuffer = Buffer.from(base64Data, "base64");
           }
           if (imgBuffer) {
