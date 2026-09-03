@@ -5,6 +5,16 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { authFetch, getApiUrl } from "@/lib/api";
 
+function navigateToWebPortal(path: string, router: ReturnType<typeof useRouter>) {
+  if (typeof window === "undefined") return;
+  const host = window.location.hostname;
+  if (host === "crmkaro.com" || host === "www.crmkaro.com") {
+    window.location.href = `https://web.crmkaro.com${path}`;
+    return;
+  }
+  router.push(path);
+}
+
 export default function PublicLandingPage() {
   const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
@@ -27,9 +37,9 @@ export default function PublicLandingPage() {
   return (
     <LandingPage
       isAuthenticated={isAuthenticated}
-      onLoginClick={() => router.push("/login")}
-      onRegisterClick={() => router.push("/login?mode=register")}
-      onDashboardClick={() => router.push("/")}
+      onLoginClick={() => navigateToWebPortal("/login", router)}
+      onRegisterClick={() => navigateToWebPortal("/login?mode=register", router)}
+      onDashboardClick={() => navigateToWebPortal("/", router)}
     />
   );
 }

@@ -534,11 +534,30 @@ export default function HomePage() {
   }
 
   if (isUnauthenticated) {
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
+        router.push("/login");
+        return <DashboardLoading />;
+      }
+    }
     return (
       <LandingPage
         isAuthenticated={false}
-        onLoginClick={() => router.push("/login")}
-        onRegisterClick={() => router.push("/login?mode=register")}
+        onLoginClick={() => {
+          if (typeof window !== "undefined" && (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com")) {
+            window.location.href = "https://web.crmkaro.com/login";
+          } else {
+            router.push("/login");
+          }
+        }}
+        onRegisterClick={() => {
+          if (typeof window !== "undefined" && (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com")) {
+            window.location.href = "https://web.crmkaro.com/login?mode=register";
+          } else {
+            router.push("/login?mode=register");
+          }
+        }}
         onDashboardClick={() => setIsUnauthenticated(false)}
       />
     );

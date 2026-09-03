@@ -18,30 +18,106 @@ const PROTECTED_ROUTES = [
 const AUTH_ROUTES = ["/login", "/register"];
 
 export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
   const sessionToken = request.cookies.get("crm_session")?.value;
 
-  // Check if current path is a protected route
-  const isProtected =
-    pathname === "/" ||
-    PROTECTED_ROUTES.some(
+  // Extract host without port (e.g. 'crmkaro.com', 'web.crmkaro.com', 'localhost')
+  const rawHost = request.headers.get("host") || "";
+  const host = (rawHost.toLowerCase().split(":")[0] || "").trim();
+  const isMarketingDomain = host === "crmkaro.com" || host === "www.crmkaro.com";
+  const isWebPortalDomain =
+    host === "web.crmkaro.com" ||
+    host === "app.crmkaro.com" ||
+    host.startsWith("web.") ||
+    host.startsWith("app.");
+
+  // =========================================================================
+  // 1. MARKETING DOMAIN (crmkaro.com & www.crmkaro.com)
+  // =========================================================================
+  if (isMarketingDomain) {
+    // Root URL on marketing domain -> cleanly serve the Landing Page
+    if (pathname === "/") {
+      return NextResponse.rewrite(new URL("/landing", request.url));
+    }
+
+    // Auth routes on marketing domain -> redirect to web portal login
+    if (pathname === "/login" || pathname === "/register") {
+      return NextResponse.redirect(new URL(`https://web.crmkaro.com${pathname}${search}`));
+    }
+
+    // Protected app routes on marketing domain -> redirect to web portal
+    const isAppRoute = PROTECTED_ROUTES.some(
       (route) => route !== "/" && (pathname === route || pathname.startsWith(`${route}/`)),
     );
+    if (isAppRoute) {
+      return NextResponse.redirect(new URL(`https://web.crmkaro.com${pathname}${search}`));
+    }
 
-  const isAuthRoute = AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
+    return NextResponse.next();
+  }
+
+  // =========================================================================
+  // 2. WEB PORTAL DOMAIN (web.crmkaro.com / app.crmkaro.com)
+  // =========================================================================
+  if (isWebPortalDomain) {
+    // Landing page route accessed on web portal -> redirect to marketing domain
+    if (pathname === "/landing") {
+      return NextResponse.redirect(new URL("https://crmkaro.com/"));
+    }
+
+    // Unauthenticated access to root dashboard or protected routes
+    const isProtected =
+      pathname === "/" ||
+      PROTECTED_ROUTES.some(
+        (route) => route !== "/" && (pathname === route || pathname.startsWith(`${route}/`)),
+      );
+
+    if (isProtected && !sessionToken) {
+      const loginUrl = new URL("/login", request.url);
+      if (pathname !== "/") {
+        loginUrl.searchParams.set("redirect", `${pathname}${search}`);
+      }
+      return NextResponse.redirect(loginUrl);
+    }
+
+    // Authenticated user visits login/register -> redirect to dashboard
+    const isAuthRoute = AUTH_ROUTES.some(
+      (route) => pathname === route || pathname.startsWith(`${route}/`),
+    );
+    if (isAuthRoute && sessionToken) {
+      return NextResponse.redirect(new URL("/", request.url));
+    }
+
+    return NextResponse.next();
+  }
+
+  // =========================================================================
+  // 3. LOCAL DEVELOPMENT / DIRECT IP ACCESS (e.g. localhost:3200)
+  // =========================================================================
+  // If at root and unauthenticated -> rewrite to Landing Page
+  if (pathname === "/" && !sessionToken) {
+    return NextResponse.rewrite(new URL("/landing", request.url));
+  }
+
+  // If at root and authenticated -> proceed to Dashboard
+  if (pathname === "/" && sessionToken) {
+    return NextResponse.next();
+  }
+
+  // Protected routes require authentication
+  const isProtected = PROTECTED_ROUTES.some(
+    (route) => route !== "/" && (pathname === route || pathname.startsWith(`${route}/`)),
   );
-
-  // If unauthenticated user tries to access protected route -> instant 0ms server redirect to /login
   if (isProtected && !sessionToken) {
     const loginUrl = new URL("/login", request.url);
-    if (pathname !== "/") {
-      loginUrl.searchParams.set("redirect", pathname);
-    }
+    loginUrl.searchParams.set("redirect", `${pathname}${search}`);
     return NextResponse.redirect(loginUrl);
   }
 
-  // If authenticated user visits login or register -> redirect to dashboard
+  // Auth routes when already authenticated
+  const isAuthRoute = AUTH_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`),
+  );
   if (isAuthRoute && sessionToken) {
     return NextResponse.redirect(new URL("/", request.url));
   }
@@ -56,8 +132,8 @@ export const config = {
      * - api
      * - _next/static
      * - _next/image
-     * - brand, favicon.ico, icon.png, favicon.png
+     * - brand, landing, favicon.ico, favicon.png, icon.png
      */
-    "/((?!api|_next/static|_next/image|brand|favicon.ico|favicon.png|icon.png).*)",
+    "/((?!api|_next/static|_next/image|brand|landing/|favicon.ico|favicon.png|icon.png).*)",
   ],
 };
