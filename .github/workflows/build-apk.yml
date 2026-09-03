@@ -48,7 +48,7 @@ jobs:
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace --info
 
       - name: 📤 Upload CRMKaro APK Artifact
         uses: actions/upload-artifact@v4
