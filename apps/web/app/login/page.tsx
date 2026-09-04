@@ -2,22 +2,37 @@
 
 import { AuthPanel } from "@crmkaro/ui";
 import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { Suspense, useEffect, useState } from "react";
 
 function LoginContent() {
   const searchParams = useSearchParams();
   const mode = searchParams.get("mode") === "register" ? "register" : "login";
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <main className="auth-page" style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}>
+        <div className="state-spinner" />
+      </main>
+    );
+  }
 
   return (
-    <AuthPanel
-      apiUrl={process.env.NEXT_PUBLIC_API_URL}
-      initialMode={mode}
-      onAuthenticated={() => {
-        if (typeof window !== "undefined") {
-          window.location.href = "/";
-        }
-      }}
-    />
+    <div suppressHydrationWarning>
+      <AuthPanel
+        apiUrl={process.env.NEXT_PUBLIC_API_URL}
+        initialMode={mode}
+        onAuthenticated={() => {
+          if (typeof window !== "undefined") {
+            window.location.href = "/";
+          }
+        }}
+      />
+    </div>
   );
 }
 

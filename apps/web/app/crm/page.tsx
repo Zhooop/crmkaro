@@ -1535,16 +1535,41 @@ function CrmContent() {
 }
 
 export default function CrmPage() {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return (
+      <div
+        className="empty-state"
+        style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
+        suppressHydrationWarning
+      >
+        <div className="state-spinner" />
+        <p>Loading sales pipeline…</p>
+      </div>
+    );
+  }
+
   return (
     <Suspense
       fallback={
-        <div className="empty-state">
+        <div
+          className="empty-state"
+          style={{ minHeight: "100vh", display: "grid", placeItems: "center" }}
+          suppressHydrationWarning
+        >
           <div className="state-spinner" />
           <p>Loading sales pipeline…</p>
         </div>
       }
     >
-      <CrmContent />
+      <div suppressHydrationWarning>
+        <CrmContent />
+      </div>
     </Suspense>
   );
 }

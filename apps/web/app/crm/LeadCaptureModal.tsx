@@ -111,12 +111,20 @@ export function LeadCaptureModal({ isOpen, onClose, orgName }: LeadCaptureModalP
 
       if (res.ok) {
         const result = await res.json();
-        setStatusMessage({
-          text: result.message || `Test lead alert sent to ${emailToTest}! Check your inbox.`,
-          type: "success",
-        });
+        if (result.status === "failed") {
+          setStatusMessage({
+            text: result.message || "Failed to send test email. Check your SMTP settings.",
+            type: "error",
+          });
+        } else {
+          setStatusMessage({
+            text: result.message || `Test lead alert sent to ${emailToTest}! Check your inbox.`,
+            type: "success",
+          });
+        }
       } else {
-        setStatusMessage({ text: "Failed to send test email.", type: "error" });
+        const errData = await res.json().catch(() => ({}));
+        setStatusMessage({ text: errData.message || "Failed to send test email.", type: "error" });
       }
     } catch {
       setStatusMessage({ text: "Error triggering test email.", type: "error" });

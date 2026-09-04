@@ -1517,11 +1517,32 @@ export function LandingPage({
         </div>
 
         <div className="lp-footer-bottom">
-          <div>© {new Date().getFullYear()} CRMKaro Inc. All rights reserved.</div>
+          <div>
+            © {new Date().getFullYear()} CRMKaro Inc. · A Product by{" "}
+            <a
+              href="https://zhoop.in/"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                color: "#38bdf8",
+                fontWeight: 700,
+                textDecoration: "none",
+              }}
+            >
+              Zhoop
+            </a>
+            . All rights reserved.
+          </div>
           <div style={{ display: "flex", gap: 20 }}>
-            <span>Privacy Policy</span>
-            <span>Terms of Service</span>
-            <span>Refund Policy</span>
+            <a href="/privacy" style={{ color: "inherit", textDecoration: "none", transition: "color 0.2s" }}>
+              Privacy Policy
+            </a>
+            <a href="/terms" style={{ color: "inherit", textDecoration: "none", transition: "color 0.2s" }}>
+              Terms of Service
+            </a>
+            <a href="/refund" style={{ color: "inherit", textDecoration: "none", transition: "color 0.2s" }}>
+              Refund Policy
+            </a>
           </div>
         </div>
       </footer>

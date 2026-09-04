@@ -211,8 +211,17 @@ export class LeadNotificationService {
   }
 
   async sendTestEmail(organisationId: string, testEmail: string, orgName: string) {
-    const from = this.config.get("AUTH_EMAIL_FROM", { infer: true }) || "CRMKaro <leads@crmkaro.com>";
+    const from = this.config.get("AUTH_EMAIL_FROM", { infer: true }) || "CRMKaro <onboarding@resend.dev>";
     const subject = `✅ CRMKaro Lead Alert Test — Connected Successfully for ${orgName}`;
+
+    const recipients = (testEmail || "")
+      .split(",")
+      .map((e) => e.trim())
+      .filter((e) => e.length > 0 && e.includes("@"));
+
+    if (recipients.length === 0) {
+      return { status: "failed", message: "Please provide a valid email address." };
+    }
 
     const html = `
 <!DOCTYPE html>
@@ -224,7 +233,7 @@ export class LeadNotificationService {
     </div>
     <h2 style="margin: 0 0 12px; color: #0f172a;">Your Email Alert System is Live!</h2>
     <p style="color: #475569; font-size: 14px; line-height: 1.5; margin-bottom: 16px;">
-      This test confirms that <strong>${orgName}</strong> is configured to receive instant real-time lead alerts at <strong>${testEmail}</strong> whenever a new lead is captured via Facebook Ads, Google Forms, or your website.
+      This test confirms that <strong>${orgName}</strong> is configured to receive instant real-time lead alerts at <strong>${recipients.join(", ")}</strong> whenever a new lead is captured via Facebook Ads, Google Forms, or your website.
     </p>
     <div style="padding: 12px; background: #eff6ff; border-radius: 8px; border: 1px solid #bfdbfe; font-size: 12px; color: #1d4ed8;">
       ⚡ Average response time under 5 minutes increases conversion rates by up to 391%.
@@ -236,17 +245,26 @@ export class LeadNotificationService {
 
     const transporter = this.getTransporter();
     if (!transporter) {
-      this.logger.log(`[SIMULATED TEST EMAIL] To: ${testEmail} | Subject: ${subject}`);
-      return { status: "simulated", message: `Test email logged to server console for ${testEmail}` };
+      this.logger.log(`[SIMULATED TEST EMAIL] To: ${recipients.join(", ")} | Subject: ${subject}`);
+      return { status: "simulated", message: `Test email simulated for ${recipients.join(", ")} (SMTP not configured)` };
     }
 
-    await transporter.sendMail({
-      from,
-      to: testEmail,
-      subject,
-      html,
-    });
+    try {
+      await transporter.sendMail({
+        from,
+        to: recipients,
+        subject,
+        html,
+      });
 
-    return { status: "delivered", message: `Test email sent to ${testEmail}` };
+      this.logger.log(`✅ Test email delivered to ${recipients.join(", ")} for org ${orgName}`);
+      return { status: "delivered", message: `Test alert email sent to ${recipients.join(", ")}! Check your inbox.` };
+    } catch (err: any) {
+      this.logger.error(`Failed to send test email: ${err.message}`, err.stack);
+      return {
+        status: "failed",
+        message: `Delivery failed: ${err.message}. If using trial Resend/SMTP, ensure your recipient or domain is authorized.`,
+      };
+    }
   }
 }

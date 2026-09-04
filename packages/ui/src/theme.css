@@ -1291,23 +1291,24 @@ html, body {
   display: grid;
   place-items: center;
   min-height: 100vh;
-  padding: 24px 16px;
+  padding: 16px;
   background:
     radial-gradient(circle at 12% 10%, rgba(36, 87, 214, 0.1), transparent 32%),
     var(--canvas);
 }
 .onboarding-card {
   display: grid;
-  grid-template-columns: 290px 1fr;
-  width: min(1140px, 96vw);
+  grid-template-columns: 280px 1fr;
+  width: min(1100px, 96vw);
   overflow: hidden;
   border: 1px solid var(--line);
-  border-radius: 16px;
+  border-radius: 14px;
   background: var(--panel);
   box-shadow: 0 20px 60px rgba(22, 40, 74, 0.1);
+  margin: auto;
 }
 .onboarding-intro {
-  padding: 32px 26px;
+  padding: 22px 20px;
   background: linear-gradient(145deg, #eef4ff, #f7faff);
   display: flex;
   flex-direction: column;
@@ -1316,10 +1317,10 @@ html, body {
 .onboarding-mark {
   display: grid;
   place-items: center;
-  width: 36px;
-  height: 36px;
-  margin-bottom: 20px;
-  border-radius: 10px;
+  width: 32px;
+  height: 32px;
+  margin-bottom: 12px;
+  border-radius: 8px;
   background: transparent;
   background-image: url("/brand/crmkaro-mark.png");
   background-position: center;
@@ -1328,24 +1329,24 @@ html, body {
 }
 .onboarding-intro h1 {
   margin: 0;
-  font-size: clamp(22px, 2.6vw, 28px);
-  line-height: 1.15;
-  letter-spacing: -0.035em;
+  font-size: clamp(20px, 2.2vw, 24px);
+  line-height: 1.18;
+  letter-spacing: -0.03em;
 }
 .onboarding-intro > p:last-child {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   color: var(--muted);
-  font-size: 12.5px;
-  line-height: 1.55;
+  font-size: 12px;
+  line-height: 1.45;
 }
 .onboarding-form {
   display: flex;
   flex-direction: column;
-  padding: 30px 36px;
+  padding: 18px 24px;
 }
 .onboarding-form > label,
 .onboarding-form legend {
-  margin-bottom: 4px;
+  margin-bottom: 3px;
   color: var(--ink);
   font-size: 11px;
   font-weight: 750;
@@ -1354,14 +1355,14 @@ html, body {
 .onboarding-form > select,
 .onboarding-custom-field input {
   width: 100%;
-  margin-bottom: 12px;
-  padding: 9px 12px;
+  margin-bottom: 8px;
+  padding: 7px 10px;
   border: 1px solid var(--line);
-  border-radius: 8px;
+  border-radius: 7px;
   background: white;
   color: var(--ink);
   font: inherit;
-  font-size: 12.5px;
+  font-size: 12px;
 }
 .onboarding-form > select {
   cursor: pointer;
@@ -3744,252 +3745,202 @@ html, body {
   justify-content: center;
 }
 
-/* Solution Presets on Onboarding */
+/* Solution Presets on Onboarding - Tall Premium Vertical Card Layout */
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 8px;
-  margin-top: 6px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+
+@media (max-width: 600px) {
+  .preset-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
 }
 
 .preset-card {
-  border: 1.5px solid var(--line);
-  border-radius: 11px;
-  padding: 12px 14px;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 18px 16px 16px;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  background: #ffffff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.04);
+  text-align: left;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   position: relative;
-  text-align: left;
-  gap: 8px;
+  overflow: hidden;
 }
 
 .preset-card:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 14px rgba(0, 0, 0, 0.06);
-}
-
-/* Preset 1: Academy (Mint / Emerald Light) */
-.preset-card-academy {
-  background: #f0fdf4;
-  border-color: #bbf7d0;
-}
-.preset-card-academy .preset-desc-box {
   background: #ffffff;
-  border-color: #dcfce7;
-}
-.preset-card-academy .preset-desc-label {
-  color: #15803d;
-}
-.preset-card-academy .preset-badge {
-  border-color: #bbf7d0;
-  color: #14532d;
-}
-.preset-card-academy .preset-badge-dot {
-  background: #16a34a;
-}
-.preset-card-academy.active {
-  background: #dcfce7;
-  border-color: #059669;
-  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.3);
-}
-.preset-card-academy.active .preset-radio-mark {
-  background: #059669;
-  border-color: #059669;
+  border-color: #93c5fd;
+  box-shadow: 0 6px 20px rgba(37, 99, 235, 0.1);
+  transform: translateY(-2px);
 }
 
-/* Preset 2: School (Sky / Blue Light) */
-.preset-card-school {
-  background: #f0f9ff;
-  border-color: #bae6fd;
-}
-.preset-card-school .preset-desc-box {
-  background: #ffffff;
-  border-color: #e0f2fe;
-}
-.preset-card-school .preset-desc-label {
-  color: #0284c7;
-}
-.preset-card-school .preset-badge {
-  border-color: #bae6fd;
-  color: #075985;
-}
-.preset-card-school .preset-badge-dot {
-  background: #0284c7;
-}
-.preset-card-school.active {
-  background: #e0f2fe;
-  border-color: #0284c7;
-  box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.3);
-}
-.preset-card-school.active .preset-radio-mark {
-  background: #0284c7;
-  border-color: #0284c7;
+.preset-card:focus-visible {
+  outline: 2px solid #2563eb;
+  outline-offset: 2px;
 }
 
-/* Preset 3: CRM (Warm Honey / Amber Light) */
-.preset-card-crm {
-  background: #fffbeb;
-  border-color: #fde68a;
-}
-.preset-card-crm .preset-desc-box {
-  background: #ffffff;
-  border-color: #fef3c7;
-}
-.preset-card-crm .preset-desc-label {
-  color: #d97706;
-}
-.preset-card-crm .preset-badge {
-  border-color: #fde68a;
-  color: #92400e;
-}
-.preset-card-crm .preset-badge-dot {
-  background: #d97706;
-}
-.preset-card-crm.active {
-  background: #fef3c7;
-  border-color: #d97706;
-  box-shadow: 0 0 0 2px rgba(217, 119, 6, 0.3);
-}
-.preset-card-crm.active .preset-radio-mark {
-  background: #d97706;
-  border-color: #d97706;
+.preset-card-main {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  position: relative;
+  flex: 1;
 }
 
-/* Preset 4: Retail (Lavender / Violet Light) */
-.preset-card-retail {
-  background: #faf5ff;
-  border-color: #e9d5ff;
-}
-.preset-card-retail .preset-desc-box {
-  background: #ffffff;
-  border-color: #f3e8ff;
-}
-.preset-card-retail .preset-desc-label {
-  color: #7c3aed;
-}
-.preset-card-retail .preset-badge {
-  border-color: #e9d5ff;
-  color: #581c87;
-}
-.preset-card-retail .preset-badge-dot {
-  background: #7c3aed;
-}
-.preset-card-retail.active {
-  background: #f3e8ff;
-  border-color: #7c3aed;
-  box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.3);
-}
-.preset-card-retail.active .preset-radio-mark {
-  background: #7c3aed;
-  border-color: #7c3aed;
+.preset-card-main > .preset-select-indicator {
+  position: absolute;
+  top: 0;
+  right: 0;
 }
 
-.preset-header {
+.preset-icon-badge {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
+  flex-shrink: 0;
+  background: #f1f5f9;
+  transition: all 0.22s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.preset-icon-badge svg {
+  width: 26px;
+  height: 26px;
+}
+
+.preset-text-col {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.preset-title-line {
+  display: flex;
+  align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
+  flex-wrap: wrap;
 }
 
 .preset-title {
-  font-size: 13.5px;
-  font-weight: 750;
-  color: var(--ink);
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.preset-desc-box {
-  border: 1px solid #e2e8f0;
-  border-radius: 6px;
-  padding: 5px 8px;
-  margin-bottom: 4px;
-}
-
-.preset-desc-label {
-  font-size: 9.5px;
+  font-size: 14.5px;
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  display: block;
-  margin-bottom: 1px;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  transition: color 0.18s ease;
+}
+
+.preset-popular-tag {
+  font-size: 10px;
+  font-weight: 800;
+  color: #2563eb;
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  padding: 2px 7px;
+  border-radius: 20px;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
 }
 
 .preset-desc {
-  font-size: 11.5px;
-  font-weight: 600;
-  color: #1e293b;
-  line-height: 1.35;
+  font-size: 12px;
+  color: #64748b;
   margin: 0;
+  line-height: 1.4;
+  font-weight: 500;
+  transition: color 0.18s ease;
 }
 
-.preset-modules-section {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.preset-modules-label {
-  font-size: 9.5px;
-  font-weight: 750;
-  color: #475569;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.preset-badges {
+.preset-chips-line {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: 5px;
+  margin-top: 2px;
 }
 
-.preset-badge {
-  font-size: 10.5px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 14px;
-  background: #ffffff;
-  border: 1px solid #cbd5e1;
+.preset-chip {
+  font-size: 11px;
+  font-weight: 650;
+  color: #334155;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  padding: 3px 9px;
+  border-radius: 20px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  transition: all 0.18s ease;
+  line-height: 1.2;
 }
 
-.preset-badge-dot {
-  width: 5px;
-  height: 5px;
+/* Radio / Check indicator */
+.preset-select-indicator {
+  width: 22px;
+  height: 22px;
   border-radius: 50%;
-}
-
-.preset-radio-mark {
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1.5px solid #cbd5e1;
+  border: 2px solid #cbd5e1;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
   background: #ffffff;
+  transition: all 0.18s ease;
 }
 
-.preset-radio-mark::after {
-  content: "";
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: transparent;
+/* Active Card: Clean White Card with crisp Royal Blue selection border */
+.preset-card.active {
+  border-color: #2563eb !important;
+  background: #ffffff !important;
+  box-shadow: 0 0 0 1.5px #2563eb, 0 8px 24px -4px rgba(37, 99, 235, 0.16) !important;
+  transform: translateY(-2px);
 }
 
-.preset-card.active .preset-radio-mark::after {
-  background: #ffffff;
+.preset-card.active .preset-title {
+  color: #0f172a !important;
+}
+
+.preset-card.active .preset-desc {
+  color: #475569 !important;
+}
+
+.preset-card.active .preset-chip {
+  background: #eff6ff !important;
+  color: #1e40af !important;
+  border-color: #bfdbfe !important;
+}
+
+.preset-card.active .preset-chip span {
+  color: #16a34a !important;
+}
+
+.preset-card.active .preset-popular-tag {
+  background: #eff6ff !important;
+  color: #2563eb !important;
+  border-color: #bfdbfe !important;
+}
+
+.preset-card.active .preset-select-indicator.selected {
+  background: #2563eb !important;
+  border-color: #2563eb !important;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2) !important;
+}
+
+.preset-card.active .preset-select-indicator.selected svg {
+  stroke: #ffffff !important;
 }
 
 /* Today's Batches & Schedule Widget */

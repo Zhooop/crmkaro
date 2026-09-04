@@ -253,40 +253,81 @@ const BUSINESS_TYPE_OPTIONS = [
   "Other",
 ];
 
+function PresetIcon({ id, color }: { id: string; color: string }) {
+  if (id === "academy") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M22 10v6M2 10l10-5 10 5-10 5z" />
+        <path d="M6 12v5c3 3 9 3 12 0v-5" />
+      </svg>
+    );
+  }
+  if (id === "school") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v4M12 14v4M16 14v4" />
+      </svg>
+    );
+  }
+  if (id === "crm") {
+    return (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+        <circle cx="9" cy="7" r="4" />
+        <polyline points="16 11 18 13 22 9" />
+      </svg>
+    );
+  }
+  // retail
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z" />
+      <line x1="3" y1="6" x2="21" y2="6" />
+      <path d="M16 10a4 4 0 0 1-8 0" />
+    </svg>
+  );
+}
+
 const SOLUTION_PRESETS = [
   {
     id: "academy",
     name: "Academy, Classes & Studios",
-    subtitle: "Dance Studios, Fitness & Gym, Yoga, Music, Martial Arts, Tuition Batches",
-    tags: "Dance Studios, Fitness & Gym, Yoga, Music, Martial Arts, Tuition Batches",
-    detail: "Members directory, batches, 1-click WhatsApp fees collect, transaction receipts & staff salary.",
+    subtitle: "Tuition, Gym, Dance, Music & Sports Batches",
+    highlights: ["WhatsApp Fee Collect", "Batch Attendance", "Staff Salary"],
     modules: ["people", "groups", "quick-collect", "transactions", "payroll", "finance"],
-    badges: ["Members", "Groups & Batches", "Quick Collect", "Transactions", "Staff & Salary"],
     isPopular: true,
+    color: "#2563eb",
+    bgColor: "#eff6ff",
   },
   {
     id: "school",
-    name: "Schools, Colleges & Formal Institutes",
-    subtitle: "Schools, Junior Colleges, Degree Institutes, Formal Academies",
-    detail: "Formal student admissions, standard & division, daily attendance register, fees & salary.",
+    name: "Schools & Formal Institutes",
+    subtitle: "K-12 Schools, Colleges & Academies",
+    highlights: ["Student Admissions", "Daily Attendance", "Term Fees"],
     modules: ["students", "people", "groups", "finance", "payroll"],
-    badges: ["Students Admission", "Members", "Groups", "Attendance", "Finance & Fees", "Staff & Salary"],
+    isPopular: false,
+    color: "#0891b2",
+    bgColor: "#ecfeff",
   },
   {
     id: "crm",
     name: "Sales, Leads & Real Estate CRM",
-    subtitle: "Real Estate Brokers, Agencies, Consultants, Deal Pipelines",
-    detail: "Visual deal pipelines, stage management, client follow-up reminders, and invoicing.",
+    subtitle: "Brokers, Agencies, Consultants & Deals",
+    highlights: ["Visual Lead Pipeline", "Follow-up Alerts", "Invoices"],
     modules: ["people", "crm", "finance", "payroll"],
-    badges: ["Contacts", "Leads & CRM", "Follow-ups", "Invoices", "Staff & Salary"],
+    isPopular: false,
+    color: "#ea580c",
+    bgColor: "#fff7ed",
   },
   {
     id: "retail",
     name: "Retail, Trading & Inventory",
-    subtitle: "Shops, Wholesalers, Distributors, Dealerships",
-    detail: "Product catalog, inventory stock movements, ledger, invoices, and staff compensation.",
+    subtitle: "Shops, Wholesalers & Distributors",
+    highlights: ["Stock & Barcode Alerts", "POS Billing", "Customer Ledger"],
     modules: ["people", "inventory", "finance", "payroll"],
-    badges: ["Customers", "Inventory & Stock", "Invoices", "Staff & Salary"],
+    isPopular: false,
+    color: "#7c3aed",
+    bgColor: "#faf5ff",
   },
 ] as const;function getDateBoundsForPreset(
   preset: string,
@@ -570,24 +611,24 @@ export default function HomePage() {
           <div className="onboarding-intro">
             <div>
               <span className="onboarding-mark" aria-hidden="true" />
-              <p className="eyebrow" style={{ color: "#059669" }}>First Workspace Setup</p>
+              <p className="eyebrow" style={{ color: "#2563eb", fontWeight: 800, letterSpacing: "0.04em" }}>First Workspace Setup</p>
               <h1>Let’s set up your business.</h1>
               <p>
                 Choose your solution package. CRMKaro will automatically configure your navigation, rosters, and ledger workflows.
               </p>
             </div>
 
-            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 8 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
-                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 9 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
+                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
                 <span>Multi-tenant isolated & secure</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
-                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
+                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
                 <span>1-Click WhatsApp payment reminders</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155" }}>
-                <span style={{ width: 18, height: 18, borderRadius: "50%", background: "#dcfce7", color: "#166534", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 10 }}>✓</span>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
+                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
                 <span>Cloud PostgreSQL & instant sync</span>
               </div>
             </div>
@@ -655,13 +696,18 @@ export default function HomePage() {
               </div>
             )}
 
-            {/* Smart Solution Presets Selection */}
-            <fieldset className="service-selection-fieldset" style={{ marginTop: 14 }}>
-              <legend style={{ fontSize: 12.5, fontWeight: 700, marginBottom: 2, color: "var(--ink)" }}>
-                Choose Your Solution Package
-              </legend>
-              <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "0 0 6px 0" }}>
-                Select the preset that matches your workflow. All pages can also be customized later in Settings.
+            {/* Smart Solution Presets Selection - Compact Zero-Scroll */}
+            <fieldset className="service-selection-fieldset" style={{ marginTop: 8 }}>
+              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 1 }}>
+                <legend style={{ fontSize: 12.5, fontWeight: 800, color: "var(--ink)", margin: 0 }}>
+                  Choose Your Solution Package
+                </legend>
+                <span style={{ fontSize: 10.5, fontWeight: 700, color: "#2563eb" }}>
+                  ✓ Instant 1-Click Setup
+                </span>
+              </div>
+              <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px 0" }}>
+                Select your business model. CRMKaro will automatically configure your navigation, rosters, and ledger.
               </p>
 
               <div className="preset-grid">
@@ -672,28 +718,50 @@ export default function HomePage() {
                       key={preset.id}
                       className={`preset-card preset-card-${preset.id} ${isSelected ? "active" : ""}`}
                       onClick={() => handleSelectPreset(preset)}
+                      role="button"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleSelectPreset(preset);
+                        }
+                      }}
                     >
-                      <div>
-                        <div className="preset-header">
-                          <h3 className="preset-title">{preset.name}</h3>
-                          <div className="preset-radio-mark" />
+                      <div className="preset-card-main">
+                        {/* Top row: icon + radio indicator */}
+                        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
+                          <div className="preset-icon-badge" style={{ background: preset.bgColor }}>
+                            <PresetIcon id={preset.id} color={preset.color} />
+                          </div>
+                          <div
+                            className={`preset-select-indicator ${isSelected ? "selected" : ""}`}
+                            aria-label={isSelected ? "Selected" : "Select"}
+                          >
+                            {isSelected ? (
+                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            ) : null}
+                          </div>
                         </div>
 
-                        <div className="preset-desc-box">
-                          <span className="preset-desc-label">Best for</span>
+                        {/* Content */}
+                        <div className="preset-text-col">
+                          <div className="preset-title-line">
+                            <h3 className="preset-title">{preset.name}</h3>
+                            {preset.isPopular && (
+                              <span className="preset-popular-tag">★ Popular</span>
+                            )}
+                          </div>
                           <p className="preset-desc">{preset.subtitle}</p>
-                        </div>
-                      </div>
 
-                      <div className="preset-modules-section">
-                        <span className="preset-modules-label">Included Modules</span>
-                        <div className="preset-badges">
-                          {preset.badges.map((badge, idx) => (
-                            <span key={idx} className="preset-badge">
-                              <span className="preset-badge-dot" />
-                              <span>{badge}</span>
-                            </span>
-                          ))}
+                          <div className="preset-chips-line">
+                            {preset.highlights.map((h, idx) => (
+                              <span key={idx} className="preset-chip">
+                                <span style={{ color: "#16a34a", fontWeight: 800, fontSize: 11 }}>✓</span> {h}
+                              </span>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -702,22 +770,22 @@ export default function HomePage() {
               </div>
 
               {/* Talk to sales team for custom setup */}
-              <div style={{ marginTop: 16, display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 12, borderTop: "1px dashed var(--line)" }}>
-                <p style={{ margin: 0, fontSize: 12.5, color: "var(--muted)" }}>
-                  Need a custom workflow or custom modules?
+              <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 6, borderTop: "1px dashed var(--line)", flexWrap: "wrap", gap: 6 }}>
+                <p style={{ margin: 0, fontSize: 11, color: "var(--muted)" }}>
+                  Need custom modules or special workflow?
                 </p>
                 <a
                   href="https://wa.me/919004520400?text=Hello%20CRMKaro%20Team%2C%20I%20need%20a%20custom%20workflow%20setup%20for%20my%20business."
                   target="_blank"
                   rel="noreferrer"
                   style={{
-                    color: "#3572e8",
-                    fontSize: 12.5,
+                    color: "#2563eb",
+                    fontSize: 11.5,
                     fontWeight: 700,
                     textDecoration: "none",
                     display: "inline-flex",
                     alignItems: "center",
-                    gap: 4,
+                    gap: 3,
                   }}
                 >
                   <span>Talk to sales team →</span>
@@ -734,9 +802,9 @@ export default function HomePage() {
                 selectedServices.length === 0
               }
               type="submit"
-              style={{ marginTop: 14, background: "#4784f6", borderColor: "#4784f6" }}
+              style={{ marginTop: 10, background: "#2563eb", borderColor: "#2563eb", height: 40, fontSize: 13, fontWeight: 700, borderRadius: 8, boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)" }}
             >
-              {setupBusy ? "Creating workspace…" : "Complete workspace setup"}
+              {setupBusy ? "Creating workspace…" : "Complete workspace setup →"}
             </button>
             {setupError ? (
               <p className="form-error" role="alert">

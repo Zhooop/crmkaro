@@ -17,7 +17,19 @@ const PROTECTED_ROUTES = [
 
 const AUTH_ROUTES = ["/login", "/register"];
 
-const KNOWN_MARKETING_PAGES = ["/", "/landing", "/about", "/blog", "/features"];
+const KNOWN_MARKETING_PAGES = [
+  "/",
+  "/landing",
+  "/about",
+  "/blog",
+  "/features",
+  "/terms",
+  "/terms-and-conditions",
+  "/privacy",
+  "/privacy-policy",
+  "/refund",
+  "/refund-policy",
+];
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;

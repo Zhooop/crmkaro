@@ -47,7 +47,7 @@ import {
 export class CrmController {
   constructor(
     @Inject(CrmService) private readonly crm: CrmService,
-    private readonly leadNotification: LeadNotificationService,
+    @Inject(LeadNotificationService) private readonly leadNotification: LeadNotificationService,
   ) {}
   private context(request: AuthenticatedRequest) {
     return [request.auth.activeOrganisationId!, request.auth.userId] as const;

@@ -627,12 +627,13 @@ export function AppShell({
             className="organisation-switcher"
             onClick={() => setOrgSwitcherOpen(!orgSwitcherOpen)}
             aria-expanded={orgSwitcherOpen}
+            suppressHydrationWarning
           >
             <span className="organisation-avatar" suppressHydrationWarning>
               {organisation ? organisation.slice(0, 2).toUpperCase() : "CK"}
             </span>
-            <span>
-              <small>Organisation</small>
+            <span suppressHydrationWarning>
+              <small suppressHydrationWarning>Organisation</small>
               <strong suppressHydrationWarning>{organisation || "Select workspace"}</strong>
             </span>
             <Icon name="chevronDown" size={15} />
@@ -735,6 +736,7 @@ export function AppShell({
                 e.stopPropagation();
                 setUserMenuOpen(!userMenuOpen);
               }}
+              suppressHydrationWarning
             >
               <Icon name="settings" size={17} />
             </button>
@@ -761,6 +763,7 @@ export function AppShell({
               <button
                 className="user-dropdown-link danger"
                 onClick={handleLogoutClick}
+                suppressHydrationWarning
               >
                 <Icon name="logout" size={16} />
                 <span>Log out</span>
@@ -795,6 +798,7 @@ export function AppShell({
             className="global-search desktop-only-search"
             onClick={() => setSearchOpen(true)}
             aria-label="Search"
+            suppressHydrationWarning
           >
             <Icon name="search" />
             <span>Search anything…</span>
@@ -806,6 +810,7 @@ export function AppShell({
               className="icon-button mobile-only-icon-btn"
               onClick={() => setSearchOpen(true)}
               aria-label="Search"
+              suppressHydrationWarning
             >
               <Icon name="search" />
             </button>
@@ -813,6 +818,7 @@ export function AppShell({
               className="icon-button notification-button"
               aria-label={`${notificationCount} notifications`}
               onClick={() => setNotificationsOpen(true)}
+              suppressHydrationWarning
             >
               <Icon name="bell" />
               {notificationCount > 0 && <i />}
@@ -820,6 +826,7 @@ export function AppShell({
             <button
               className="primary-button topbar-quick-add"
               onClick={() => setQuickAddOpen(true)}
+              suppressHydrationWarning
             >
               <Icon name="plus" size={17} />
               <span className="quick-add-text">Quick add</span>
@@ -1474,7 +1481,7 @@ export function AuthPanel({
 
       <section className="auth-form-wrap">
         <div className="auth-form-card">
-          <form className="auth-form" onSubmit={submit}>
+          <form className="auth-form" onSubmit={submit} suppressHydrationWarning>
             {!admin && !challengeId && (
               <div
                 style={{
@@ -1487,6 +1494,7 @@ export function AuthPanel({
               >
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={() => {
                     setAuthMode("login");
                     setModePrompt("none");
@@ -1510,6 +1518,7 @@ export function AuthPanel({
                 </button>
                 <button
                   type="button"
+                  suppressHydrationWarning
                   onClick={() => {
                     setAuthMode("register");
                     setModePrompt("none");
@@ -1581,6 +1590,7 @@ export function AuthPanel({
             {challengeId ? (
               <input
                 id="code"
+                suppressHydrationWarning
                 inputMode="numeric"
                 pattern="[0-9]{6}"
                 maxLength={6}
@@ -1594,6 +1604,7 @@ export function AuthPanel({
             ) : (
               <input
                 id="email"
+                suppressHydrationWarning
                 type="email"
                 value={email}
                 onChange={(event) => setEmail(event.target.value)}
@@ -1603,7 +1614,7 @@ export function AuthPanel({
               />
             )}
 
-            <button className="primary-button auth-submit" disabled={busy}>
+            <button className="primary-button auth-submit" disabled={busy} suppressHydrationWarning>
               {busy
                 ? "Verifying…"
                 : challengeId
@@ -1619,6 +1630,7 @@ export function AuthPanel({
               <button
                 className="auth-back"
                 type="button"
+                suppressHydrationWarning
                 onClick={() => {
                   setChallengeId("");
                   setCode("");
@@ -1724,6 +1736,7 @@ export function AuthPanel({
                     Don&apos;t have an account?{" "}
                     <button
                       type="button"
+                      suppressHydrationWarning
                       onClick={() => {
                         setAuthMode("register");
                         setModePrompt("none");
@@ -1747,6 +1760,7 @@ export function AuthPanel({
                     Already have an account?{" "}
                     <button
                       type="button"
+                      suppressHydrationWarning
                       onClick={() => {
                         setAuthMode("login");
                         setModePrompt("none");
