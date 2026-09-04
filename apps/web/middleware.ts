@@ -17,7 +17,7 @@ const PROTECTED_ROUTES = [
 
 const AUTH_ROUTES = ["/login", "/register"];
 
-const KNOWN_MARKETING_PAGES = [
+const KNOWN_PUBLIC_PAGES = [
   "/",
   "/landing",
   "/about",
@@ -29,6 +29,7 @@ const KNOWN_MARKETING_PAGES = [
   "/privacy-policy",
   "/refund",
   "/refund-policy",
+  "/pay",
 ];
 
 export function middleware(request: NextRequest) {
@@ -67,8 +68,8 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(new URL(`https://web.crmkaro.com${pathname}${search}`));
     }
 
-    // Known static / marketing pages
-    const isKnownPublicPage = KNOWN_MARKETING_PAGES.some(
+    // Known static / public marketing pages (including legal & payment checkout)
+    const isKnownPublicPage = KNOWN_PUBLIC_PAGES.some(
       (route) => pathname === route || pathname.startsWith(`${route}/`),
     );
     if (isKnownPublicPage) {
@@ -86,6 +87,14 @@ export function middleware(request: NextRequest) {
     // Landing page route accessed on web portal -> redirect to marketing domain
     if (pathname === "/landing") {
       return NextResponse.redirect(new URL("https://crmkaro.com/"));
+    }
+
+    // Public payment links or legal pages accessed on web portal
+    const isPublicPage = KNOWN_PUBLIC_PAGES.some(
+      (route) => route !== "/" && (pathname === route || pathname.startsWith(`${route}/`)),
+    );
+    if (isPublicPage) {
+      return NextResponse.next();
     }
 
     // Unauthenticated access to root dashboard or protected routes
@@ -117,6 +126,14 @@ export function middleware(request: NextRequest) {
   // =========================================================================
   // 3. LOCAL DEVELOPMENT / DIRECT IP ACCESS (e.g. localhost:3200)
   // =========================================================================
+  // Public pages (payment, legal, etc.)
+  const isPublicPage = KNOWN_PUBLIC_PAGES.some(
+    (route) => route !== "/" && (pathname === route || pathname.startsWith(`${route}/`)),
+  );
+  if (isPublicPage) {
+    return NextResponse.next();
+  }
+
   // If at root and unauthenticated -> rewrite to Landing Page
   if (pathname === "/" && !sessionToken) {
     return NextResponse.rewrite(new URL("/landing", request.url));
