@@ -1501,6 +1501,30 @@ function StudentsContent() {
                               <Icon name="rupee" size={13} />
                               <span>Collect Due ({formatMoney(item.balanceMinor, currency)})</span>
                             </button>
+                            {item.invoiceId && (
+                              <a
+                                href={`/pay/${item.invoiceId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 9px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  color: "#2563eb",
+                                  borderColor: "#bfdbfe",
+                                  background: "#eff6ff",
+                                  fontWeight: 650,
+                                }}
+                                title="Open Online Checkout (Razorpay UPI/Cards)"
+                              >
+                                <Icon name="rupee" size={12} />
+                                <span>Pay Link</span>
+                              </a>
+                            )}
                             {item.whatsappUrl && (
                               <a
                                 href={item.whatsappUrl}
@@ -1523,22 +1547,68 @@ function StudentsContent() {
                             )}
                           </div>
                         ) : (
-                          <button
-                            className="primary-button"
-                            style={{
-                              padding: "6px 14px",
-                              fontSize: 12.5,
-                              fontWeight: 700,
-                              borderRadius: 7,
-                              display: "inline-flex",
-                              alignItems: "center",
-                              gap: 6,
-                            }}
-                            onClick={() => openCollectFeeModal(item)}
-                          >
-                            <Icon name="rupee" size={14} />
-                            <span>Collect Fee</span>
-                          </button>
+                          <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
+                            <button
+                              className="primary-button"
+                              style={{
+                                padding: "6px 14px",
+                                fontSize: 12.5,
+                                fontWeight: 700,
+                                borderRadius: 7,
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                              }}
+                              onClick={() => openCollectFeeModal(item)}
+                            >
+                              <Icon name="rupee" size={14} />
+                              <span>Collect Fee</span>
+                            </button>
+                            {item.invoiceId && (
+                              <a
+                                href={`/pay/${item.invoiceId}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 9px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  color: "#2563eb",
+                                  borderColor: "#bfdbfe",
+                                  background: "#eff6ff",
+                                  fontWeight: 650,
+                                }}
+                                title="Open Online Checkout (Razorpay UPI/Cards)"
+                              >
+                                <Icon name="rupee" size={12} />
+                                <span>Pay Link</span>
+                              </a>
+                            )}
+                            {item.whatsappUrl && (
+                              <a
+                                href={item.whatsappUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 9px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                  color: "#16a34a",
+                                }}
+                                title="Send WhatsApp Fee Reminder"
+                              >
+                                <Icon name="whatsapp" size={14} />
+                              </a>
+                            )}
+                          </div>
                         )}
                       </td>
                     </tr>

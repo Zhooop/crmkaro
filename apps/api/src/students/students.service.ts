@@ -520,7 +520,7 @@ export class StudentsService {
             lastPaymentDate: inv?.payments[0]?.receivedAt || null,
             whatsappUrl: waPhone
               ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(
-                  `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n💰 *Total Fee Plan:* ₹${(feePlanAmount / 100).toLocaleString("en-IN")}\n💵 *Paid Amount:* ₹${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `⚠️ *Remaining Balance Due:* ₹${(balanceMinor / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid` : `✅ *Fee Status:* Fully Paid (Cleared)`}`
+                  `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n💰 *Total Fee Plan:* ₹${(feePlanAmount / 100).toLocaleString("en-IN")}\n💵 *Paid Amount:* ₹${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `⚠️ *Remaining Balance Due:* ₹${(balanceMinor / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid` : `✅ *Fee Status:* Fully Paid (Cleared)`}${inv?.id && balanceMinor > 0 ? `\n\n💳 *Pay Online (UPI / Card / NetBanking):*\n${(this.config.get("WEB_URL", { infer: true }) || "http://localhost:3000")}/pay/${inv.id}` : ""}`
                 )}`
               : null,
           };

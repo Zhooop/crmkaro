@@ -19,6 +19,8 @@ const environmentSchema = z.object({
   PLATFORM_ADMIN_EMAIL: z.string().email().default("admin@crmkaro.com"),
   PLATFORM_ADMIN_PASSWORD: z.string().min(6).default("CRMKaro@Admin2026!"),
   PLATFORM_ADMIN_EMAILS: z.string().optional(),
+  RAZORPAY_KEY_ID: z.string().optional(),
+  RAZORPAY_KEY_SECRET: z.string().optional(),
 });
 
 export type Environment = z.infer<typeof environmentSchema>;

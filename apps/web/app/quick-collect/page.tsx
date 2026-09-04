@@ -33,6 +33,7 @@ type GeneratedPayerLink = {
   amountMinor: number;
   notes: string;
   invoiceNumber?: string;
+  invoiceId?: string;
 };
 
 function QuickCollectContent() {
@@ -259,9 +260,11 @@ function QuickCollectContent() {
           });
 
           let invoiceNumber = "";
+          let invoiceId = "";
           if (invRes.ok) {
             const invData = await invRes.json();
             invoiceNumber = invData.invoiceNumber || "";
+            invoiceId = invData.id || "";
             // Also automatically issue the invoice
             if (invData.id) {
               await authFetch(`${api}/finance/invoices/${invData.id}/issue`, {
@@ -278,6 +281,7 @@ function QuickCollectContent() {
             amountMinor,
             notes: notes.trim(),
             invoiceNumber,
+            invoiceId,
           });
         } catch {
           // ignore single fail
@@ -407,7 +411,12 @@ function QuickCollectContent() {
                 <tbody>
                   {successList.map((item, idx) => {
                     const amountFormatted = `₹ ${(item.amountMinor / 100).toLocaleString("en-IN")}`;
-                    const whatsappMsg = `Hello ${item.name}, your fee payment of ${amountFormatted} for "${item.notes}" is requested. Reference: ${item.invoiceNumber || "INV"}. Please make the payment at your earliest convenience. Thank you! - ${orgName}`;
+                    const payUrl = item.invoiceId && typeof window !== "undefined"
+                      ? `${window.location.origin}/pay/${item.invoiceId}`
+                      : "";
+                    const whatsappMsg = `Hello ${item.name}, your fee payment of ${amountFormatted} for "${item.notes}" is requested. Reference: ${item.invoiceNumber || "INV"}.${
+                      payUrl ? `\n\n💳 Pay Online Instantly (UPI, Cards, NetBanking):\n${payUrl}` : ""
+                    }\n\nPlease make the payment at your earliest convenience. Thank you! - ${orgName}`;
                     const whatsappUrl = item.phone
                       ? `https://wa.me/${item.phone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
                       : null;
@@ -419,28 +428,52 @@ function QuickCollectContent() {
                         <td><strong style={{ color: "#059669" }}>{amountFormatted}</strong></td>
                         <td><Badge tone="blue">{item.invoiceNumber || "Recorded"}</Badge></td>
                         <td style={{ textAlign: "right" }}>
-                          {whatsappUrl ? (
-                            <a
-                              href={whatsappUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn btn-secondary btn-sm"
-                              style={{
-                                background: "#25d366",
-                                color: "#ffffff",
-                                borderColor: "#25d366",
-                                fontWeight: 700,
-                                display: "inline-flex",
-                                alignItems: "center",
-                                gap: 6,
-                              }}
-                            >
-                              <Icon name="whatsapp" size={14} />
-                              <span>Share Link</span>
-                            </a>
-                          ) : (
-                            <span style={{ fontSize: 11, color: "var(--muted)" }}>No Phone</span>
-                          )}
+                          <div style={{ display: "inline-flex", alignItems: "center", gap: 8, justifyContent: "flex-end" }}>
+                            {payUrl && (
+                              <a
+                                href={payUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-secondary btn-sm"
+                                style={{
+                                  fontSize: 12,
+                                  fontWeight: 650,
+                                  color: "#2563eb",
+                                  borderColor: "#bfdbfe",
+                                  background: "#eff6ff",
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                }}
+                                title="Open Online Checkout (Razorpay UPI/Cards)"
+                              >
+                                <Icon name="rupee" size={13} />
+                                <span>Pay Online</span>
+                              </a>
+                            )}
+                            {whatsappUrl ? (
+                              <a
+                                href={whatsappUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="btn btn-secondary btn-sm"
+                                style={{
+                                  background: "#25d366",
+                                  color: "#ffffff",
+                                  borderColor: "#25d366",
+                                  fontWeight: 700,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 6,
+                                }}
+                              >
+                                <Icon name="whatsapp" size={14} />
+                                <span>Share Link</span>
+                              </a>
+                            ) : (
+                              <span style={{ fontSize: 11, color: "var(--muted)" }}>No Phone</span>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
