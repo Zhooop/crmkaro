@@ -23,6 +23,7 @@ import type { AuthenticatedRequest } from "../auth/auth.types.js";
 import { SessionGuard } from "../auth/session.guard.js";
 import { parseBody } from "../common/http/parse-body.js";
 import { CrmService } from "./crm.service.js";
+import { LeadNotificationService } from "./lead-notification.service.js";
 import {
   conversionSchema,
   followUpSchema,
@@ -44,7 +45,10 @@ import {
 )
 @RequireService("crm")
 export class CrmController {
-  constructor(@Inject(CrmService) private readonly crm: CrmService) {}
+  constructor(
+    @Inject(CrmService) private readonly crm: CrmService,
+    private readonly leadNotification: LeadNotificationService,
+  ) {}
   private context(request: AuthenticatedRequest) {
     return [request.auth.activeOrganisationId!, request.auth.userId] as const;
   }
@@ -193,6 +197,46 @@ export class CrmController {
       ...this.context(request),
       id,
       parseBody(conversionSchema, body).personId,
+    );
+  }
+
+  @Get("lead-settings")
+  @RequirePermissions("crm.lead.read")
+  getLeadSettings(@Req() request: AuthenticatedRequest) {
+    return this.crm.getLeadSettings(
+      request.auth.activeOrganisationId!,
+      request.auth.userId,
+    );
+  }
+
+  @Patch("lead-settings")
+  @RequirePermissions("organisation.settings.update")
+  updateLeadSettings(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: unknown,
+  ) {
+    return this.crm.updateLeadSettings(
+      request.auth.activeOrganisationId!,
+      request.auth.userId,
+      body as any,
+    );
+  }
+
+  @Post("lead-settings/test-email")
+  @RequirePermissions("organisation.settings.update")
+  async testLeadEmail(
+    @Req() request: AuthenticatedRequest,
+    @Body() body: any,
+  ) {
+    const org = await this.crm.getOrganisation(
+      request.auth.activeOrganisationId!,
+      request.auth.userId,
+    );
+    const targetEmail = body?.email || request.auth.email;
+    return this.leadNotification.sendTestEmail(
+      request.auth.activeOrganisationId!,
+      targetEmail,
+      org?.name || "CRMKaro Workspace",
     );
   }
 }

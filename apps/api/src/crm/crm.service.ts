@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import {
   BadRequestException,
   ConflictException,
@@ -777,5 +778,60 @@ export class CrmService {
       errors,
       imported: !input.preview && !errors.length ? valid.length : 0,
     };
+  }
+
+  async getLeadSettings(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx: Tx) => {
+      let setting = await tx.organisationLeadSetting.findUnique({
+        where: { organisationId },
+      });
+      if (!setting) {
+        setting = await tx.organisationLeadSetting.create({
+          data: {
+            organisationId,
+            sendLeadEmailAlert: true,
+          },
+        });
+      }
+      return setting;
+    });
+  }
+
+  async updateLeadSettings(
+    organisationId: string,
+    userId: string,
+    data: {
+      notifyEmails?: string | null;
+      sendLeadEmailAlert?: boolean;
+      sendCustomerWelcomeEmail?: boolean;
+      welcomeEmailSubject?: string | null;
+      welcomeEmailBody?: string | null;
+      regenerateKey?: boolean;
+    },
+  ) {
+    return withTenant(this.database, organisationId, userId, async (tx: Tx) => {
+      const updateData: any = {};
+      if (data.notifyEmails !== undefined) updateData.notifyEmails = data.notifyEmails;
+      if (data.sendLeadEmailAlert !== undefined) updateData.sendLeadEmailAlert = data.sendLeadEmailAlert;
+      if (data.sendCustomerWelcomeEmail !== undefined) updateData.sendCustomerWelcomeEmail = data.sendCustomerWelcomeEmail;
+      if (data.welcomeEmailSubject !== undefined) updateData.welcomeEmailSubject = data.welcomeEmailSubject;
+      if (data.welcomeEmailBody !== undefined) updateData.welcomeEmailBody = data.welcomeEmailBody;
+      if (data.regenerateKey) updateData.webhookApiKey = randomUUID();
+
+      return tx.organisationLeadSetting.upsert({
+        where: { organisationId },
+        create: {
+          organisationId,
+          ...updateData,
+        },
+        update: updateData,
+      });
+    });
+  }
+
+  async getOrganisation(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx: Tx) => {
+      return tx.organisation.findUnique({ where: { id: organisationId } });
+    });
   }
 }

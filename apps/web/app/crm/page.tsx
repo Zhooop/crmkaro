@@ -22,6 +22,7 @@ import {
   saveCachedWorkspaceContext,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
+import { LeadCaptureModal } from "./LeadCaptureModal";
 
 type Stage = {
   id: string;
@@ -129,6 +130,7 @@ function CrmContent() {
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
+  const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
@@ -534,6 +536,22 @@ function CrmContent() {
           </p>
         </div>
         <div className="toolbar-actions">
+          <button
+            className="btn btn-secondary btn-sm"
+            onClick={() => setLeadCaptureOpen(true)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              background: "#eef2ff",
+              color: "#4338ca",
+              borderColor: "#c7d2fe",
+              fontWeight: 600,
+            }}
+          >
+            <Icon name="zap" size={15} />
+            <span>Lead Capture & Alerts</span>
+          </button>
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setImportOpen(true)}
@@ -1506,6 +1524,12 @@ function CrmContent() {
           </div>
         </form>
       </Modal>
+
+      <LeadCaptureModal
+        isOpen={leadCaptureOpen}
+        onClose={() => setLeadCaptureOpen(false)}
+        orgName={isMounted ? orgName : "CRMKaro Workspace"}
+      />
     </AppShell>
   );
 }

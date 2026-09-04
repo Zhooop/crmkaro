@@ -267,6 +267,7 @@ model Organisation {
   attendances       AttendanceRecord[]
   batchGroups       BatchGroup[]
   groupMembers      GroupMember[]
+  leadSetting       OrganisationLeadSetting?
 
   @@map("organisations")
 }
@@ -601,6 +602,25 @@ model Lead {
   @@index([organisationId, phoneNormalised])
   @@index([organisationId, emailNormalised])
   @@map("leads")
+}
+
+model OrganisationLeadSetting {
+  id                       String   @id @default(uuid()) @db.Uuid
+  organisationId           String   @unique @map("organisation_id") @db.Uuid
+  webhookApiKey            String   @unique @default(uuid()) @map("webhook_api_key")
+  notifyEmails             String?  @map("notify_emails") @db.VarChar(500)
+  sendLeadEmailAlert       Boolean  @default(true) @map("send_lead_email_alert")
+  sendCustomerWelcomeEmail Boolean  @default(false) @map("send_customer_welcome_email")
+  welcomeEmailSubject      String?  @map("welcome_email_subject") @db.VarChar(200)
+  welcomeEmailBody         String?  @map("welcome_email_body") @db.Text
+  defaultPipelineId        String?  @map("default_pipeline_id") @db.Uuid
+  defaultStageId           String?  @map("default_stage_id") @db.Uuid
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation Organisation @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+
+  @@map("organisation_lead_settings")
 }
 
 model FollowUp {
