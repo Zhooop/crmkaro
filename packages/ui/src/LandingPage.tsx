@@ -828,30 +828,32 @@ export function LandingPage({
               </svg>
             </div>
 
-            {/* Brand Nodes on Orbit Rings */}
-            <div className="lp-orbit-brand-node lp-node-meta">
-              <IconMeta size={18} />
-              <span>Meta Ads</span>
-            </div>
-            <div className="lp-orbit-brand-node lp-node-google">
-              <IconGoogle size={18} />
-              <span>Google</span>
-            </div>
-            <div className="lp-orbit-brand-node lp-node-whatsapp">
-              <IconWhatsApp size={18} />
-              <span>WhatsApp</span>
-            </div>
-            <div className="lp-orbit-brand-node lp-node-razorpay">
-              <IconRazorpay size={18} />
-              <span>Razorpay</span>
-            </div>
-            <div className="lp-orbit-brand-node lp-node-email">
-              <IconMail size={18} />
-              <span>Gmail & SMS</span>
-            </div>
-            <div className="lp-orbit-brand-node lp-node-phonepe">
-              <IconPhonePe size={18} />
-              <span>UPI Pay</span>
+            {/* Brand Nodes on Orbit Rings (Absolute on Desktop, Flex Pills on Mobile) */}
+            <div className="lp-orbit-nodes-wrap">
+              <div className="lp-orbit-brand-node lp-node-meta">
+                <IconMeta size={18} />
+                <span>Meta Ads</span>
+              </div>
+              <div className="lp-orbit-brand-node lp-node-google">
+                <IconGoogle size={18} />
+                <span>Google</span>
+              </div>
+              <div className="lp-orbit-brand-node lp-node-whatsapp">
+                <IconWhatsApp size={18} />
+                <span>WhatsApp</span>
+              </div>
+              <div className="lp-orbit-brand-node lp-node-razorpay">
+                <IconRazorpay size={18} />
+                <span>Razorpay</span>
+              </div>
+              <div className="lp-orbit-brand-node lp-node-email">
+                <IconMail size={18} />
+                <span>Gmail & SMS</span>
+              </div>
+              <div className="lp-orbit-brand-node lp-node-phonepe">
+                <IconPhonePe size={18} />
+                <span>UPI Pay</span>
+              </div>
             </div>
 
             {/* Center Content Inside the Orbit */}
@@ -1341,6 +1343,9 @@ export function LandingPage({
           <p>See why Indian tuition centres, gyms, and SMBs are migrating away from Excel and foreign software.</p>
         </div>
 
+        <div className="lp-table-scroll-hint">
+          <span>← Swipe horizontally to compare →</span>
+        </div>
         <div className="lp-comparison-box">
           <table className="lp-comparison-table">
             <thead>

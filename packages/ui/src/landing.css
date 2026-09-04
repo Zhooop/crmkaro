@@ -823,6 +823,10 @@ div[id] {
   margin: 0 auto 28px;
 }
 
+.lp-orbit-nodes-wrap {
+  display: contents;
+}
+
 .lp-orbit-brand-node {
   position: absolute;
   z-index: 5;
@@ -2011,6 +2015,10 @@ div[id] {
 /* -------------------------------------------------------------------------
    COMPARISON TABLE: RESTORED FROSTED CARD
    ------------------------------------------------------------------------- */
+.lp-table-scroll-hint {
+  display: none;
+}
+
 .lp-comparison-box {
   background: var(--lp-card-bg);
   backdrop-filter: blur(28px);
@@ -2251,30 +2259,580 @@ div[id] {
 }
 
 /* -------------------------------------------------------------------------
-   RESPONSIVE QUERIES
+   COMPREHENSIVE RESPONSIVE DESIGN SYSTEM (TABLET & MOBILE)
    ------------------------------------------------------------------------- */
 @media (max-width: 1024px) {
-  .lp-hero-grid { grid-template-columns: 1fr; }
-  .lp-workflow-strip { grid-template-columns: repeat(2, 1fr); }
-  .lp-blue-features-grid { grid-template-columns: 1fr; }
-  .lp-tab-preview-box { grid-template-columns: 1fr; }
-  .lp-bento-grid { grid-template-columns: 1fr; }
-  .lp-pricing-grid { grid-template-columns: 1fr; }
-  .lp-pricing-card.featured { transform: scale(1); }
-  .lp-nav-menu { display: none; }
+  :root {
+    --lp-container-max: 100%;
+  }
+
+  .lp-hero-grid {
+    grid-template-columns: 1fr;
+    gap: 40px;
+  }
+
+  .lp-workflow-strip {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lp-blue-features-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .lp-tab-preview-box {
+    grid-template-columns: 1fr;
+    gap: 32px;
+  }
+
+  .lp-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 24px;
+  }
+
+  .lp-pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 440px;
+    margin: 0 auto;
+  }
+
+  .lp-pricing-card.featured {
+    transform: none;
+  }
+
+  .lp-nav-menu {
+    display: none;
+  }
+
   .lp-node-razorpay { right: 10px; }
   .lp-node-whatsapp { left: 10px; }
+
+  .lp-circuit-row {
+    justify-content: center;
+  }
+
+  .lp-circuit-card {
+    max-width: 580px;
+    width: 100%;
+  }
+
+  .seg-1-to-2,
+  .seg-2-to-3 {
+    display: none;
+  }
 }
 
-@media (max-width: 600px) {
-  .lp-hero-card { padding: 36px 20px; border-radius: 28px; }
-  .lp-hero-left h1 { font-size: 36px; }
-  .lp-hero-left p { font-size: 15.5px; }
-  .lp-workflow-strip { grid-template-columns: 1fr; }
-  .lp-blue-banner-card { padding: 40px 20px; }
-  .lp-blue-banner-card h2 { font-size: 28px; }
-  .lp-orbit-title { font-size: 30px; }
-  .lp-glass-float { display: none; }
-  .lp-footer-inner { grid-template-columns: 1fr; }
-  .lp-orbit-brand-node { display: none; }
+@media (max-width: 768px) {
+  /* Layout & Root spacing */
+  .lp-wrap {
+    padding-bottom: 40px;
+    overflow-x: hidden;
+  }
+
+  .lp-nav-outer {
+    padding: 0 14px;
+    top: 10px;
+  }
+
+  .lp-nav-capsule {
+    padding: 8px 16px;
+  }
+
+  .lp-brand-name {
+    font-size: 17px;
+  }
+
+  .lp-brand-logo {
+    width: 32px;
+    height: 32px;
+  }
+
+  .lp-brand-logo img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .lp-btn-capsule-login {
+    font-size: 13px;
+    padding: 5px 8px;
+  }
+
+  .lp-btn-capsule-primary {
+    font-size: 12.5px;
+    padding: 7px 14px;
+  }
+
+  /* Marquee */
+  .lp-marquee-outer {
+    margin-top: 24px;
+    margin-bottom: 28px;
+    padding: 10px 0;
+  }
+
+  .lp-marquee-item {
+    font-size: 12px;
+    gap: 14px;
+  }
+
+  /* Sections Spacing */
+  .lp-hero-section,
+  .lp-pricing-section,
+  .lp-orbit-section,
+  .lp-circuit-timeline-section,
+  .lp-solution-section {
+    padding: 0 14px;
+    margin-bottom: 48px;
+  }
+
+  /* Section Headings */
+  .lp-section-center-head {
+    margin-bottom: 32px;
+    padding: 0 8px;
+  }
+
+  .lp-section-center-head h2 {
+    font-size: clamp(24px, 6.5vw, 34px);
+    line-height: 1.22;
+    white-space: normal !important;
+  }
+
+  .lp-section-center-head p {
+    font-size: 14.5px;
+    line-height: 1.55;
+  }
+
+  /* Hero Section */
+  .lp-hero-card {
+    padding: 32px 18px;
+    border-radius: 26px;
+  }
+
+  .lp-hero-left h1 {
+    font-size: clamp(28px, 7vw, 38px);
+    line-height: 1.2;
+    margin-bottom: 14px;
+    letter-spacing: -0.025em;
+  }
+
+  .lp-hero-left p {
+    font-size: 14.5px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+  }
+
+  .lp-hero-feature-points {
+    grid-template-columns: 1fr;
+    gap: 10px;
+    margin: 0 0 20px;
+  }
+
+  .lp-hero-actions {
+    flex-direction: column;
+    width: 100%;
+    gap: 10px;
+  }
+
+  .lp-btn-hero-solid,
+  .lp-btn-hero-ghost {
+    width: 100%;
+    justify-content: center;
+    text-align: center;
+    padding: 13px 20px;
+    font-size: 14px;
+  }
+
+  .lp-mockup-wrapper {
+    padding: 6px;
+    border-radius: 18px;
+    width: 100%;
+  }
+
+  .lp-glass-float {
+    display: none;
+  }
+
+  /* Pricing Section */
+  .lp-pricing-grid {
+    grid-template-columns: 1fr;
+    max-width: 400px;
+    margin: 0 auto;
+    gap: 24px;
+    width: 100%;
+  }
+
+  .lp-pricing-card {
+    padding: 28px 20px;
+    border-radius: 24px;
+  }
+
+  .lp-price-val-zero {
+    font-size: 38px;
+  }
+
+  .lp-price-struck {
+    font-size: 20px;
+  }
+
+  .lp-btn-pricing {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* Trust Bar */
+  .lp-trust-bar {
+    padding: 28px 16px;
+    margin: 36px auto;
+  }
+
+  .lp-trust-logos {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .lp-trust-pill {
+    font-size: 12px;
+    padding: 7px 12px;
+  }
+
+  /* Orbit Workflow Section */
+  .lp-orbit-card {
+    padding: 32px 16px;
+    border-radius: 26px;
+  }
+
+  .lp-orbit-arena {
+    min-height: auto;
+    padding: 24px 8px;
+  }
+
+  .lp-orbit-svg-wrap {
+    display: none;
+  }
+
+  .lp-orbit-center-box {
+    padding: 0;
+  }
+
+  .lp-orbit-title {
+    font-size: clamp(24px, 6.5vw, 32px);
+    line-height: 1.2;
+    white-space: normal !important;
+  }
+
+  .lp-orbit-desc {
+    font-size: 14px;
+    line-height: 1.55;
+    margin-bottom: 22px;
+  }
+
+  /* Transform brand nodes into a sleek pill container on mobile */
+  .lp-orbit-nodes-wrap {
+    display: flex !important;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+    margin-top: 24px;
+    width: 100%;
+  }
+
+  .lp-orbit-brand-node {
+    position: static !important;
+    transform: none !important;
+    margin: 0 !important;
+    font-size: 11.5px;
+    padding: 6px 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .lp-workflow-strip {
+    grid-template-columns: 1fr;
+    gap: 14px;
+    margin-top: 28px;
+  }
+
+  .lp-flow-card {
+    min-height: auto;
+    padding: 20px 16px;
+  }
+
+  /* Circuit Timeline Section */
+  .lp-circuit-progress-wrap {
+    max-width: 100%;
+    margin: 18px auto 28px;
+  }
+
+  .lp-circuit-progress-labels {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 6px 12px;
+    font-size: 11.5px;
+    text-align: center;
+  }
+
+  .lp-circuit-line-connector {
+    display: none !important;
+  }
+
+  .lp-circuit-arena {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 20px;
+    width: 100%;
+  }
+
+  .lp-circuit-row {
+    width: 100%;
+    margin-bottom: 0;
+  }
+
+  .lp-circuit-card {
+    max-width: 100%;
+    width: 100%;
+    padding: 24px 18px;
+    border-radius: 24px;
+  }
+
+  .lp-circuit-step-num {
+    width: 34px;
+    height: 34px;
+    font-size: 13px;
+    top: -12px;
+    right: 18px;
+  }
+
+  .lp-circuit-box-wrapper {
+    padding: 24px 16px;
+    border-radius: 24px;
+    max-width: 100%;
+    width: 100%;
+  }
+
+  .lp-circuit-box-border-left,
+  .lp-circuit-box-border-right {
+    display: none;
+  }
+
+  .lp-circuit-box-border-top,
+  .lp-circuit-box-border-bottom {
+    left: 18px;
+    right: 18px;
+  }
+
+  .lp-circuit-categories-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .lp-circuit-cat-cell {
+    padding: 16px 14px;
+  }
+
+  .lp-circuit-bridge-connector {
+    margin: 6px auto;
+    height: 46px;
+  }
+
+  .lp-circuit-engine-head h3 {
+    font-size: 22px;
+  }
+
+  .lp-engine-item {
+    padding: 10px 14px;
+    border-radius: 14px;
+  }
+
+  /* Solution Tabs & Preview */
+  .lp-blue-banner-card {
+    padding: 32px 18px;
+    border-radius: 26px;
+  }
+
+  .lp-blue-banner-card h2 {
+    font-size: clamp(24px, 6.5vw, 34px);
+    white-space: normal !important;
+    line-height: 1.2;
+  }
+
+  .lp-tabs-capsule-bar {
+    border-radius: 20px;
+    padding: 6px;
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+
+  .lp-tab-capsule-btn {
+    font-size: 12.5px;
+    padding: 7px 14px;
+  }
+
+  .lp-tab-preview-box {
+    padding: 24px 16px;
+    border-radius: 24px;
+    gap: 20px;
+  }
+
+  .lp-preview-text h3 {
+    font-size: 22px;
+    margin-bottom: 10px;
+  }
+
+  .lp-preview-text p {
+    font-size: 14px;
+    margin-bottom: 18px;
+  }
+
+  .lp-preview-bullets {
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  .lp-bullet-row {
+    font-size: 13px;
+  }
+
+  /* Bento Grid */
+  .lp-bento-section {
+    padding: 0 14px;
+    margin: 44px auto;
+  }
+
+  .lp-bento-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .lp-bento-card {
+    padding: 24px 18px;
+    border-radius: 24px;
+  }
+
+  .lp-bento-content h4 {
+    font-size: 18px;
+  }
+
+  .lp-bento-content p {
+    font-size: 13.5px;
+  }
+
+  /* Comparison Table (Horizontally Scrollable) */
+  .lp-table-scroll-hint {
+    display: block;
+    text-align: center;
+    font-size: 11.5px;
+    font-weight: 750;
+    color: #38bdf8;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+
+  .lp-comparison-box {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 10px;
+    border-radius: 22px;
+  }
+
+  .lp-comparison-table {
+    min-width: 540px;
+  }
+
+  .lp-comparison-table th,
+  .lp-comparison-table td {
+    padding: 12px 14px;
+    font-size: 13px;
+  }
+
+  /* FAQ */
+  .lp-faq-container {
+    padding: 0 4px;
+    gap: 10px;
+  }
+
+  .lp-faq-q-btn {
+    padding: 16px 18px;
+    font-size: 14.5px;
+  }
+
+  .lp-faq-ans {
+    padding: 0 18px 16px;
+    font-size: 13.5px;
+  }
+
+  /* Footer */
+  .lp-footer {
+    padding: 44px 16px 28px;
+  }
+
+  .lp-footer-inner {
+    grid-template-columns: 1fr;
+    gap: 32px;
+    margin-bottom: 32px;
+  }
+
+  .lp-footer-bottom {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 520px) {
+  .lp-blue-features-grid {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .lp-feature-item {
+    padding: 12px 14px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .lp-pipeline-stage-pills {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .lp-tabs-capsule-bar {
+    flex-direction: column;
+    border-radius: 18px;
+    width: 100%;
+  }
+
+  .lp-tab-capsule-btn {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+@media (max-width: 380px) {
+  .lp-nav-capsule {
+    padding: 6px 12px;
+  }
+
+  .lp-brand-name {
+    font-size: 15px;
+  }
+
+  .lp-btn-capsule-login {
+    font-size: 12px;
+    padding: 4px 6px;
+  }
+
+  .lp-btn-capsule-primary {
+    font-size: 11.5px;
+    padding: 6px 10px;
+  }
+
+  .lp-hero-card {
+    padding: 24px 14px;
+  }
+
+  .lp-hero-left h1 {
+    font-size: 26px;
+  }
 }
