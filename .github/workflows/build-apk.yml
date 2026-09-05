@@ -44,15 +44,14 @@ jobs:
         working-directory: apps/mobile
         run: |
           npx expo prebuild --platform android --clean --no-install
-          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
-          echo "kotlin.compiler.execution.strategy=in-process" >> android/gradle.properties
-          echo "kotlin.incremental=false" >> android/gradle.properties
 
       - name: 🏗️ Build Standalone Debug APK
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
+          echo "--- Kotlin errors (if any) ---"
+          grep "^e:" build.log || echo "No Kotlin errors found"
 
       - name: 📤 Upload CRMKaro APK Artifact
         uses: actions/upload-artifact@v4
@@ -62,9 +61,12 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: 📋 Dump Logs on Failure
+      - name: 📋 Dump Kotlin Errors on Failure
         if: failure()
         working-directory: apps/mobile/android
         run: |
-          echo "=== FAILURE LOG DUMP ==="
-          ./gradlew assembleDebug --no-daemon --info || true
+          echo "=== KOTLIN COMPILER ERRORS ==="
+          grep "^e:" build.log || echo "No Kotlin errors in build.log"
+          echo ""
+          echo "=== LAST 100 LINES OF BUILD LOG ==="
+          tail -100 build.log || true
