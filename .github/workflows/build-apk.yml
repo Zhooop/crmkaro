@@ -52,7 +52,7 @@ jobs:
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace --info
+          ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: 📤 Upload CRMKaro APK Artifact
         uses: actions/upload-artifact@v4
@@ -61,3 +61,10 @@ jobs:
           path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 30
+
+      - name: 📋 Dump Logs on Failure
+        if: failure()
+        working-directory: apps/mobile/android
+        run: |
+          echo "=== FAILURE LOG DUMP ==="
+          ./gradlew assembleDebug --no-daemon --info || true
