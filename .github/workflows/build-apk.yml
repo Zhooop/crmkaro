@@ -49,24 +49,24 @@ jobs:
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace 2>&1 | tee build.log
-          echo "--- Kotlin errors (if any) ---"
-          grep "^e:" build.log || echo "No Kotlin errors found"
+          ./gradlew assembleDebug --no-daemon --stacktrace
+
+      - name: 🔍 List Generated APKs
+        run: |
+          echo "=== FOUND APKS ==="
+          find apps/mobile/android/app/build/outputs -name "*.apk" || true
 
       - name: 📤 Upload CRMKaro APK Artifact
         uses: actions/upload-artifact@v4
         with:
           name: CRMKaro-Android-App-APK
-          path: apps/mobile/android/app/build/outputs/apk/debug/app-debug.apk
+          path: apps/mobile/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 30
 
-      - name: 📋 Dump Kotlin Errors on Failure
+      - name: 📋 Dump Logs on Failure
         if: failure()
         working-directory: apps/mobile/android
         run: |
-          echo "=== KOTLIN COMPILER ERRORS ==="
-          grep "^e:" build.log || echo "No Kotlin errors in build.log"
-          echo ""
-          echo "=== LAST 100 LINES OF BUILD LOG ==="
-          tail -100 build.log || true
+          echo "=== BUILD LOG DUMP ==="
+          ./gradlew assembleDebug --no-daemon --info || true
