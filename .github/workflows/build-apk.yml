@@ -42,7 +42,11 @@ jobs:
 
       - name: 🛠️ Prebuild Native Android
         working-directory: apps/mobile
-        run: npx expo prebuild --platform android --clean --no-install
+        run: |
+          npx expo prebuild --platform android --clean --no-install
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
+          echo "kotlin.compiler.execution.strategy=in-process" >> android/gradle.properties
+          echo "kotlin.incremental=false" >> android/gradle.properties
 
       - name: 🏗️ Build Standalone Debug APK
         working-directory: apps/mobile/android
