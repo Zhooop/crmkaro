@@ -22,12 +22,32 @@ type AuthContextType = {
   activeOrg: Organisation | null;
   loading: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  requestEmailOtp: (email: string, mode: "login" | "register") => Promise<{ success: boolean; challengeId?: string; error?: string; message?: string }>;
+  verifyEmailOtp: (challengeId: string, code: string) => Promise<{ success: boolean; error?: string }>;
+  adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  loginWithToken: (token: string) => Promise<boolean>;
+  loginAsDemo: () => void;
   logout: () => Promise<void>;
   switchOrganisation: (org: Organisation) => Promise<void>;
   refreshContext: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
+const DEMO_USER: User = {
+  id: "demo-user-001",
+  email: "demo@crmkaro.com",
+  name: "Nitesh Sharma",
+  role: "OWNER",
+};
+
+const DEMO_ORG: Organisation = {
+  id: "demo-org-001",
+  name: "CRMKaro Academy & Studio",
+  slug: "crmkaro-academy",
+  businessType: "COACHING_ACADEMY",
+  role: "OWNER",
+};
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -46,7 +66,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      // Fetch user profile
+      // If in demo mode
+      if (token === "DEMO_SESSION_TOKEN") {
+        setUser(DEMO_USER);
+        setActiveOrg(DEMO_ORG);
+        setOrganisations([DEMO_ORG]);
+        setLoading(false);
+        return;
+      }
+
+      // Fetch user profile from API
       const meRes = await apiFetch<User>("/auth/me");
       if (meRes.error || !meRes.data) {
         await removeAuthToken();
@@ -88,8 +117,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     loadUserSession();
   }, []);
 
-  async function login(email: string, password: string) {
-    const res = await apiFetch<{ token?: string; user?: User; accessToken?: string }>("/auth/login", {
+  async function requestEmailOtp(email: string, mode: "login" | "register") {
+    const res = await apiFetch<{ challengeId?: string; message?: string }>("/auth/email/request-otp", {
+      method: "POST",
+      body: JSON.stringify({ email, mode }),
+    });
+
+    if (res.error || !res.data) {
+      return {
+        success: false,
+        error: res.error || "Failed to send verification code.",
+      };
+    }
+
+    return {
+      success: true,
+      challengeId: res.data.challengeId,
+      message: res.data.message || "A 6-digit verification code was sent to your email.",
+    };
+  }
+
+  async function verifyEmailOtp(challengeId: string, code: string) {
+    const res = await apiFetch<{ token?: string; userId?: string }>("/auth/email/verify-otp", {
+      method: "POST",
+      body: JSON.stringify({ challengeId, code }),
+    });
+
+    if (res.error || !res.data?.token) {
+      return {
+        success: false,
+        error: res.error || "Invalid verification code. Please check and try again.",
+      };
+    }
+
+    await setAuthToken(res.data.token);
+    await loadUserSession();
+    return { success: true };
+  }
+
+  async function adminLogin(email: string, password: string) {
+    const res = await apiFetch<{ token?: string; user?: User }>("/auth/admin/login", {
       method: "POST",
       body: JSON.stringify({ email, password }),
     });
@@ -98,7 +165,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return { success: false, error: res.error || "Login failed. Invalid credentials." };
     }
 
-    const token = res.data.token || res.data.accessToken;
+    const token = res.data.token;
     if (token) {
       await setAuthToken(token);
       await loadUserSession();
@@ -108,6 +175,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return { success: false, error: "Authentication token missing." };
   }
 
+  async function login(email: string, password: string) {
+    return adminLogin(email, password);
+  }
+
+  async function loginWithToken(token: string) {
+    await setAuthToken(token);
+    await loadUserSession();
+    return true;
+  }
+
+  function loginAsDemo() {
+    setUser(DEMO_USER);
+    setActiveOrg(DEMO_ORG);
+    setOrganisations([DEMO_ORG]);
+    setAuthToken("DEMO_SESSION_TOKEN").catch(() => {});
+  }
+
   async function logout() {
     try {
       await apiFetch("/auth/logout", { method: "POST" });
@@ -115,6 +199,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await removeAuthToken();
     setUser(null);
     setActiveOrg(null);
+    setOrganisations([]);
   }
 
   async function switchOrganisation(org: Organisation) {
@@ -130,6 +215,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         activeOrg,
         loading,
         login,
+        requestEmailOtp,
+        verifyEmailOtp,
+        adminLogin,
+        loginWithToken,
+        loginAsDemo,
         logout,
         switchOrganisation,
         refreshContext: loadUserSession,
