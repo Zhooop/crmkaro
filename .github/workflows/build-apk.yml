@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-apk:
-    name: Build Standalone Android APK
+    name: Build Standalone Android Release APK
     runs-on: ubuntu-latest
 
     steps:
@@ -45,21 +45,21 @@ jobs:
         run: |
           npx expo prebuild --platform android --clean --no-install
 
-      - name: 🏗️ Build Standalone Debug APK
+      - name: 🏗️ Build Standalone Release APK
         working-directory: apps/mobile/android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace
 
       - name: 🔍 List Generated APKs
         run: |
           echo "=== FOUND APKS ==="
-          find apps/mobile/android/app/build/outputs -name "*.apk" || true
+          find apps/mobile/android/app/build/outputs -name "*.apk" -ls || true
 
-      - name: 📤 Upload CRMKaro APK Artifact
+      - name: 📤 Upload CRMKaro Release APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: CRMKaro-Android-App-APK
+          name: CRMKaro-Android-App-Release-APK
           path: apps/mobile/android/app/build/outputs/apk/**/*.apk
           if-no-files-found: error
           retention-days: 30
@@ -69,4 +69,4 @@ jobs:
         working-directory: apps/mobile/android
         run: |
           echo "=== BUILD LOG DUMP ==="
-          ./gradlew assembleDebug --no-daemon --info || true
+          ./gradlew assembleRelease --no-daemon --info || true

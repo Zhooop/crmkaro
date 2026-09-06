@@ -15,3 +15,4 @@ packages/database/src/generated/
 pnpm-debug.log*
 askpass.bat
 scratch/
+build-output/
