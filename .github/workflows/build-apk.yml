@@ -44,12 +44,15 @@ jobs:
         working-directory: apps/mobile
         run: |
           npx expo prebuild --platform android --clean --no-install
+          echo "org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m" >> android/gradle.properties
 
       - name: 🏗️ Build Standalone Release APK
         working-directory: apps/mobile/android
+        env:
+          GRADLE_OPTS: "-Xmx4096m -XX:MaxMetaspaceSize=1024m"
         run: |
           chmod +x gradlew
-          ./gradlew assembleRelease --no-daemon --stacktrace
+          ./gradlew assembleRelease --no-daemon --stacktrace -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m"
 
       - name: 🔍 List Generated APKs
         run: |
