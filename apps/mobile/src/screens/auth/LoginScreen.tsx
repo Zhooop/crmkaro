@@ -10,12 +10,40 @@ import {
   TouchableOpacity,
   Linking,
   ActivityIndicator,
+  Image,
 } from "react-native";
+import Svg, { Path } from "react-native-svg";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../../context/AuthContext";
 import { colors, radius, spacing } from "../../theme/colors";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Icon } from "../../components/Icon";
+
+const SvgComp = Svg as any;
+const PathComp = Path as any;
+
+function GoogleLogo({ size = 20 }: { size?: number }) {
+  return (
+    <SvgComp width={size} height={size} viewBox="0 0 24 24">
+      <PathComp
+        fill="#4285F4"
+        d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.66-5.17 3.66-9.17z"
+      />
+      <PathComp
+        fill="#34A853"
+        d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.33 24 12 24z"
+      />
+      <PathComp
+        fill="#FBBC05"
+        d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.14-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+      />
+      <PathComp
+        fill="#EA4335"
+        d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.33 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+      />
+    </SvgComp>
+  );
+}
 
 type AuthTab = "login" | "register";
 type AuthMethod = "otp" | "password";
@@ -38,7 +66,8 @@ export function LoginScreen() {
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
 
   // Send OTP
-  async function handleSendOtp() {
+  async function handleSendOtp(targetTab?: any) {
+    const activeTab: AuthTab = (targetTab === "login" || targetTab === "register") ? targetTab : tab;
     if (!email.trim() || !email.includes("@")) {
       setError("Please enter a valid work email address.");
       return;
@@ -47,10 +76,13 @@ export function LoginScreen() {
     setError(null);
     setInfoMessage(null);
     setLoading(true);
-    const res = await requestEmailOtp(email.trim(), tab);
+    const res = await requestEmailOtp(email.trim(), activeTab);
     setLoading(false);
 
     if (res.success && res.challengeId) {
+      if (activeTab !== tab) {
+        setTab(activeTab);
+      }
       setChallengeId(res.challengeId);
       setInfoMessage(`A 6-digit verification code has been sent to ${email.trim()}`);
     } else {
@@ -95,7 +127,7 @@ export function LoginScreen() {
   // Google Sign-In
   async function handleGoogleSignIn() {
     try {
-      const googleOAuthUrl = `https://api.crmkaro.com/auth/google/start?returnTo=${encodeURIComponent("com.crmkaro.app://oauth")}`;
+      const googleOAuthUrl = `https://api.crmkaro.com/api/v1/auth/google/start?returnTo=${encodeURIComponent("com.crmkaro.app://oauth")}`;
       await Linking.openURL(googleOAuthUrl);
     } catch {
       setError("Could not open Google sign-in. Please use email verification.");
@@ -124,9 +156,11 @@ export function LoginScreen() {
       >
         {/* Brand Header */}
         <View style={styles.brandHeader}>
-          <View style={styles.logoBadge}>
-            <Icon name="Zap" size={32} color="#ffffff" />
-          </View>
+          <Image
+            source={require("../../../assets/crmkaro-mark.png")}
+            style={styles.brandLogoImage}
+            resizeMode="contain"
+          />
           <Text style={styles.brandTitle}>CRMKaro</Text>
           <Text style={styles.brandSubtitle}>
             Business Operating System for Indian Academies & MSMEs
@@ -181,7 +215,7 @@ export function LoginScreen() {
             activeOpacity={0.8}
           >
             <View style={styles.googleIconContainer}>
-              <Text style={styles.googleG}>G</Text>
+              <GoogleLogo size={20} />
             </View>
             <Text style={styles.googleButtonText}>
               {tab === "login" ? "Continue with Google" : "Sign up with Google"}
@@ -199,6 +233,17 @@ export function LoginScreen() {
           {Boolean(error) && (
             <View style={styles.errorBox}>
               <Text style={styles.errorText}>⚠️ {error}</Text>
+              {tab === "login" && error && (error.toLowerCase().includes("no account found") || error.toLowerCase().includes("register")) ? (
+                <TouchableOpacity
+                  style={styles.inlineActionBtn}
+                  onPress={() => {
+                    switchTab("register");
+                    handleSendOtp("register");
+                  }}
+                >
+                  <Text style={styles.inlineActionText}>Tap here to Create Account ➔</Text>
+                </TouchableOpacity>
+              ) : null}
             </View>
           )}
 
@@ -234,7 +279,7 @@ export function LoginScreen() {
               />
 
               <View style={styles.otpActionsRow}>
-                <TouchableOpacity onPress={handleSendOtp} disabled={loading}>
+                <TouchableOpacity onPress={() => handleSendOtp()} disabled={loading}>
                   <Text style={styles.textLink}>Resend Code</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={() => setChallengeId(null)}>
@@ -264,7 +309,7 @@ export function LoginScreen() {
 
               <PrimaryButton
                 title={tab === "login" ? "Send Login Code" : "Send Verification Code"}
-                onPress={handleSendOtp}
+                onPress={() => handleSendOtp()}
                 loading={loading}
                 style={styles.actionBtn}
               />
@@ -356,19 +401,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: spacing.md,
   },
-  logoBadge: {
-    width: 60,
-    height: 60,
+  brandLogoImage: {
+    width: 64,
+    height: 64,
     borderRadius: radius.lg,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: spacing.sm,
-    shadowColor: colors.brand,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
+    marginBottom: spacing.xs,
   },
   brandTitle: {
     fontSize: 28,
@@ -477,23 +514,26 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   googleIconContainer: {
-    width: 22,
-    height: 22,
-    borderRadius: 11,
-    backgroundColor: "#ea4335",
+    width: 24,
+    height: 24,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.sm,
-  },
-  googleG: {
-    color: "#ffffff",
-    fontWeight: "900",
-    fontSize: 13,
   },
   googleButtonText: {
     fontSize: 14,
     fontWeight: "700",
     color: colors.ink,
+  },
+  inlineActionBtn: {
+    marginTop: spacing.xs,
+    paddingVertical: 2,
+  },
+  inlineActionText: {
+    color: colors.brand,
+    fontWeight: "700",
+    fontSize: 12.5,
+    textDecorationLine: "underline",
   },
   dividerRow: {
     flexDirection: "row",

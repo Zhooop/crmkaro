@@ -1,7 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // Default to production API if not configured, or localhost for local testing
-export const API_BASE_URL = "https://api.crmkaro.com";
+export const API_BASE_URL = "https://api.crmkaro.com/api/v1";
 
 const AUTH_TOKEN_KEY = "@crmkaro_token";
 const ACTIVE_ORG_KEY = "@crmkaro_active_org";

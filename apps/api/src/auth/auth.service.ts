@@ -151,15 +151,19 @@ export class AuthService {
     const defaultUrl = this.config.get("WEB_URL", { infer: true });
     let safeRedirectUri = defaultUrl;
     if (returnTo) {
-      try {
-        const parsed = new URL(returnTo);
-        const webUrl = new URL(defaultUrl);
-        const adminUrl = new URL(this.config.get("ADMIN_URL", { infer: true }));
-        if (parsed.origin === webUrl.origin || parsed.origin === adminUrl.origin) {
-          safeRedirectUri = returnTo;
+      if (returnTo.startsWith("com.crmkaro.app://") || returnTo.startsWith("crmkaro://")) {
+        safeRedirectUri = returnTo;
+      } else {
+        try {
+          const parsed = new URL(returnTo);
+          const webUrl = new URL(defaultUrl);
+          const adminUrl = new URL(this.config.get("ADMIN_URL", { infer: true }));
+          if (parsed.origin === webUrl.origin || parsed.origin === adminUrl.origin) {
+            safeRedirectUri = returnTo;
+          }
+        } catch {
+          // fallback to default
         }
-      } catch {
-        // fallback to default
       }
     }
 
@@ -255,7 +259,12 @@ export class AuthService {
     });
 
     const session = await this.sessions.create(user.id, metadata);
-    return { ...session, redirectUri: oauthState.redirectUri };
+    let targetRedirectUri = oauthState.redirectUri;
+    if (targetRedirectUri.startsWith("com.crmkaro.app://") || targetRedirectUri.startsWith("crmkaro://")) {
+      const sep = targetRedirectUri.includes("?") ? "&" : "?";
+      targetRedirectUri = `${targetRedirectUri}${sep}token=${encodeURIComponent(session.token)}`;
+    }
+    return { ...session, redirectUri: targetRedirectUri };
   }
 
   async adminLogin(

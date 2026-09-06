@@ -1,5 +1,5 @@
 import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Image } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useAuth } from "../context/AuthContext";
 import { colors, radius, spacing } from "../theme/colors";
@@ -26,9 +26,11 @@ export function AppHeader({ title, subtitle, rightAction, onTenantPress }: AppHe
           onPress={onTenantPress}
           style={styles.tenantPill}
         >
-          <View style={styles.brandIcon}>
-            <Text style={styles.brandIconText}>⚡</Text>
-          </View>
+          <Image
+            source={require("../../assets/crmkaro-mark.png")}
+            style={styles.brandIcon}
+            resizeMode="contain"
+          />
           <View style={styles.tenantMeta}>
             <Text style={styles.brandName}>CRMKaro</Text>
             <Text numberOfLines={1} style={styles.orgName}>
@@ -77,15 +79,7 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: radius.md,
-    backgroundColor: colors.brand,
-    alignItems: "center",
-    justifyContent: "center",
     marginRight: spacing.sm,
-  },
-  brandIconText: {
-    color: "#ffffff",
-    fontSize: 16,
-    fontWeight: "800",
   },
   tenantMeta: {
     flexShrink: 1,

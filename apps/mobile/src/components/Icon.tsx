@@ -29,6 +29,8 @@ export type IconName =
   | "Activity"
   | "Calendar"
   | "Clock"
+  | "Compass"
+  | "Key"
   | "Lock";
 
 type IconProps = {

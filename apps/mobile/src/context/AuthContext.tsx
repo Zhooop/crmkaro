@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { Linking } from "react-native";
 import { apiFetch, getAuthToken, removeAuthToken, setAuthToken, setActiveOrgId, getActiveOrgId } from "../api/client";
 
 export type User = {
@@ -115,6 +116,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     loadUserSession();
+
+    const handleDeepLink = async (event: { url: string } | null) => {
+      if (!event?.url) return;
+      try {
+        const url = event.url;
+        if (url.startsWith("com.crmkaro.app://") || url.startsWith("crmkaro://")) {
+          const match = url.match(/[?&]token=([^&#]+)/);
+          if (match && match[1]) {
+            const token = decodeURIComponent(match[1]);
+            await setAuthToken(token);
+            await loadUserSession();
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to process deep link:", e);
+      }
+    };
+
+    Linking.getInitialURL().then((url) => {
+      if (url) handleDeepLink({ url });
+    });
+
+    const sub = Linking.addEventListener("url", handleDeepLink);
+    return () => sub.remove();
   }, []);
 
   async function requestEmailOtp(email: string, mode: "login" | "register") {
