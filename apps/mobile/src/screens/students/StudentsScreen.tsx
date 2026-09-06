@@ -8,6 +8,7 @@ import {
   RefreshControl,
 } from "react-native";
 import { AppHeader } from "../../components/AppHeader";
+import { Icon } from "../../components/Icon";
 import { apiFetch } from "../../api/client";
 import { colors, radius, spacing } from "../../theme/colors";
 
@@ -40,15 +41,10 @@ export function StudentsScreen() {
           }))
         );
       } else {
-        // Fallback sample
-        setStudents([
-          { id: "s1", displayName: "Aarav Sharma", primaryPhone: "+91 9820123456", rollNumber: "R-01", standard: "Batch A", status: "PRESENT" },
-          { id: "s2", displayName: "Diya Patel", primaryPhone: "+91 9876543210", rollNumber: "R-02", standard: "Batch A", status: "UNMARKED" },
-          { id: "s3", displayName: "Kabir Khan", primaryPhone: "+91 9988776655", rollNumber: "R-03", standard: "Batch B", status: "ABSENT" },
-        ]);
+        setStudents([]);
       }
     } catch {
-      // Fallback
+      setStudents([]);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -85,6 +81,19 @@ export function StudentsScreen() {
           />
         }
         contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          !loading ? (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconWrap}>
+                <Icon name="GraduationCap" size={32} color={colors.muted} />
+              </View>
+              <Text style={styles.emptyTitle}>No students enrolled yet</Text>
+              <Text style={styles.emptySubtitle}>
+                Add students from the Directory tab or enroll them into batches.
+              </Text>
+            </View>
+          ) : null
+        }
         renderItem={({ item }) => (
           <View style={styles.studentCard}>
             <View style={styles.studentMeta}>
@@ -242,5 +251,32 @@ const styles = StyleSheet.create({
   },
   textWhite: {
     color: "#ffffff",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: spacing.xxxl,
+    paddingHorizontal: spacing.lg,
+  },
+  emptyIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: colors.ink,
+    marginBottom: spacing.xs,
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    color: colors.muted,
+    textAlign: "center",
+    lineHeight: 18,
   },
 });

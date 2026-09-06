@@ -12,6 +12,7 @@ import { Icon } from "./src/components/Icon";
 
 // Screens
 import { LoginScreen } from "./src/screens/auth/LoginScreen";
+import { OnboardingScreen } from "./src/screens/auth/OnboardingScreen";
 import { DashboardScreen } from "./src/screens/dashboard/DashboardScreen";
 import { QuickCollectScreen } from "./src/screens/quickCollect/QuickCollectScreen";
 import { PeopleListScreen } from "./src/screens/people/PeopleListScreen";
@@ -97,7 +98,7 @@ function MainTabs() {
 }
 
 function RootNavigator() {
-  const { user, loading } = useAuth();
+  const { user, loading, needsSetup } = useAuth();
 
   if (loading) {
     return (
@@ -112,6 +113,8 @@ function RootNavigator() {
       <StackNavigator screenOptions={{ headerShown: false }}>
         {!user ? (
           <StackScreen name="Login" component={LoginScreen} />
+        ) : needsSetup ? (
+          <StackScreen name="Onboarding" component={OnboardingScreen} />
         ) : (
           <>
             <StackScreen name="MainTabs" component={MainTabs} />

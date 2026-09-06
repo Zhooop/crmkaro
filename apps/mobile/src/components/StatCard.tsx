@@ -1,16 +1,17 @@
 import React from "react";
-import { View, Text, StyleSheet } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity } from "react-native";
 import { colors, radius, spacing } from "../theme/colors";
 
 type StatCardProps = {
   label: string;
   value: string | number;
   change?: string;
-  tone?: "blue" | "emerald" | "amber" | "rose" | "purple";
+  tone?: "blue" | "emerald" | "amber" | "rose" | "purple" | "teal";
   icon?: string;
+  onPress?: () => void;
 };
 
-export function StatCard({ label, value, change, tone = "blue" }: StatCardProps) {
+export function StatCard({ label, value, change, tone = "blue", onPress }: StatCardProps) {
   const getBorderColor = () => {
     switch (tone) {
       case "emerald":
@@ -21,18 +22,30 @@ export function StatCard({ label, value, change, tone = "blue" }: StatCardProps)
         return "#f43f5e";
       case "purple":
         return "#8b5cf6";
+      case "teal":
+        return "#0d9488";
       default:
         return colors.brand;
     }
   };
 
-  return (
+  const content = (
     <View style={[styles.card, { borderLeftColor: getBorderColor(), borderLeftWidth: 4 }]}>
       <Text style={styles.label}>{label}</Text>
       <Text style={styles.value}>{value}</Text>
       {Boolean(change) && <Text style={styles.change}>{change}</Text>}
     </View>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+        {content}
+      </TouchableOpacity>
+    );
+  }
+
+  return content;
 }
 
 const styles = StyleSheet.create({

@@ -31,7 +31,9 @@ export type IconName =
   | "Clock"
   | "Compass"
   | "Key"
-  | "Lock";
+  | "Lock"
+  | "AlertCircle"
+  | "Info";
 
 type IconProps = {
   name: IconName;

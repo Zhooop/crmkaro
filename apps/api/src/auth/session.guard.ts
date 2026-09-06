@@ -15,6 +15,10 @@ export class SessionGuard implements CanActivate {
     const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7).trim() : undefined;
     const token = cookies?.[SESSION_COOKIE] || bearerToken;
     request.auth = await this.sessions.authenticate(token);
+    const xOrgId = (request as Request).headers?.["x-organisation-id"] as string | undefined;
+    if (xOrgId && typeof xOrgId === "string" && xOrgId.length === 36) {
+      request.auth.activeOrganisationId = xOrgId;
+    }
     return true;
   }
 }

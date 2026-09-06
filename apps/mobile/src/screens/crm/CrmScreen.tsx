@@ -49,42 +49,10 @@ export function CrmScreen() {
       if (res.data?.items) {
         setLeads(res.data.items);
       } else {
-        // Fallback sample data if empty
-        setLeads([
-          {
-            id: "l1",
-            name: "Ananya Deshmukh",
-            phone: "+91 9820123456",
-            email: "ananya@example.com",
-            source: "Instagram Ad",
-            expectedValueMinor: 1500000,
-            status: "OPEN",
-            stageId: "1",
-          },
-          {
-            id: "l2",
-            name: "Rohan Varma",
-            phone: "+91 9876543210",
-            email: "rohan@example.com",
-            source: "Referral",
-            expectedValueMinor: 2500000,
-            status: "OPEN",
-            stageId: "2",
-          },
-          {
-            id: "l3",
-            name: "Pooja Patil",
-            phone: "+91 9988776655",
-            email: null,
-            source: "Walk-in",
-            expectedValueMinor: 1200000,
-            status: "OPEN",
-            stageId: "3",
-          },
-        ]);
+        setLeads([]);
       }
     } catch {
-      // Fallback
+      setLeads([]);
     } finally {
       setLoading(false);
     }
@@ -128,47 +96,53 @@ export function CrmScreen() {
               </View>
 
               <ScrollView style={styles.cardList} showsVerticalScrollIndicator={false}>
-                {stageLeads.map((lead) => (
-                  <View key={lead.id} style={styles.card}>
-                    <Text style={styles.cardName}>{lead.name}</Text>
-                    <Text style={styles.cardValue}>
-                      {formatRupees(lead.expectedValueMinor || 0)}
-                    </Text>
-
-                    {Boolean(lead.source) && (
-                      <View style={styles.sourcePill}>
-                        <Text style={styles.sourceText}>{lead.source}</Text>
-                      </View>
-                    )}
-
-                    {/* Quick Call / WhatsApp Bar */}
-                    {Boolean(lead.phone) && (
-                      <View style={styles.actionsRow}>
-                        <TouchableOpacity
-                          onPress={() => Linking.openURL(`tel:${lead.phone}`)}
-                          style={[styles.actionBtn, { backgroundColor: colors.surfaceMuted }]}
-                        >
-                          <Icon name="Phone" size={13} color={colors.ink} />
-                          <Text style={styles.actionBtnText}>Call</Text>
-                        </TouchableOpacity>
-
-                        <TouchableOpacity
-                          onPress={() =>
-                            Linking.openURL(
-                              `https://wa.me/${lead.phone?.replace(/\D/g, "")}`
-                            )
-                          }
-                          style={[styles.actionBtn, { backgroundColor: colors.emeraldLight }]}
-                        >
-                          <Icon name="MessageSquare" size={13} color={colors.emerald} />
-                          <Text style={[styles.actionBtnText, { color: colors.emerald }]}>
-                            WhatsApp
-                          </Text>
-                        </TouchableOpacity>
-                      </View>
-                    )}
+                {stageLeads.length === 0 ? (
+                  <View style={styles.emptyColumn}>
+                    <Text style={styles.emptyColumnText}>No leads in this stage</Text>
                   </View>
-                ))}
+                ) : (
+                  stageLeads.map((lead) => (
+                    <View key={lead.id} style={styles.card}>
+                      <Text style={styles.cardName}>{lead.name}</Text>
+                      <Text style={styles.cardValue}>
+                        {formatRupees(lead.expectedValueMinor || 0)}
+                      </Text>
+
+                      {Boolean(lead.source) && (
+                        <View style={styles.sourcePill}>
+                          <Text style={styles.sourceText}>{lead.source}</Text>
+                        </View>
+                      )}
+
+                      {/* Quick Call / WhatsApp Bar */}
+                      {Boolean(lead.phone) && (
+                        <View style={styles.actionsRow}>
+                          <TouchableOpacity
+                            onPress={() => Linking.openURL(`tel:${lead.phone}`)}
+                            style={[styles.actionBtn, { backgroundColor: colors.surfaceMuted }]}
+                          >
+                            <Icon name="Phone" size={13} color={colors.ink} />
+                            <Text style={styles.actionBtnText}>Call</Text>
+                          </TouchableOpacity>
+
+                          <TouchableOpacity
+                            onPress={() =>
+                              Linking.openURL(
+                                `https://wa.me/${lead.phone?.replace(/\D/g, "")}`
+                              )
+                            }
+                            style={[styles.actionBtn, { backgroundColor: colors.emeraldLight }]}
+                          >
+                            <Icon name="MessageSquare" size={13} color={colors.emerald} />
+                            <Text style={[styles.actionBtnText, { color: colors.emerald }]}>
+                              WhatsApp
+                            </Text>
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                  ))
+                )}
               </ScrollView>
             </View>
           );
@@ -290,5 +264,22 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     fontWeight: "700",
     color: colors.ink,
+  },
+  emptyColumn: {
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.sm,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderStyle: "dashed",
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+  },
+  emptyColumnText: {
+    fontSize: 12,
+    color: colors.muted,
+    fontWeight: "600",
+    textAlign: "center",
   },
 });

@@ -15,65 +15,108 @@ import { Icon } from "../../components/Icon";
 import { apiFetch } from "../../api/client";
 import { colors, radius, spacing } from "../../theme/colors";
 
-type DashboardMetrics = {
-  totalRevenueMinor?: number;
-  totalMembers?: number;
-  pendingDuesMinor?: number;
-  openLeads?: number;
+type DashboardData = {
+  organisation: {
+    id: string;
+    name: string;
+    currency: string;
+    businessType?: string;
+  };
+  cards: Array<{
+    key: string;
+    label: string;
+    value: number;
+    detail: string;
+    format: "number" | "money";
+    tone?: "blue" | "emerald" | "amber" | "rose" | "purple" | "teal";
+  }>;
+  notifications?: Array<{
+    id: string;
+    module: string;
+    title: string;
+    detail: string;
+    severity: "info" | "warning" | "critical";
+    actionLabel?: string;
+    actionHref?: string;
+  }>;
+  transactions?: Array<{
+    id: string;
+    receiptNumber: string;
+    personName: string;
+    invoiceNumber: string;
+    amountMinor: number;
+    method: string;
+    receivedAt: string;
+  }>;
   activity?: Array<{
     id: string;
     action: string;
-    summary: string;
-    entityType?: string;
+    entityType: string;
     createdAt: string;
+    metadata?: any;
   }>;
 };
 
+function humanizeAction(action: string): string {
+  switch (action) {
+    case "student.admitted":
+      return "Student Admitted";
+    case "student.fee_paid":
+      return "Fee Payment Collected";
+    case "student.updated":
+      return "Student Profile Updated";
+    case "attendance.batch_recorded":
+      return "Daily Attendance Marked";
+    case "person.created":
+      return "New Contact Added";
+    case "person.archived":
+      return "Contact Archived";
+    case "lead.created":
+      return "New Lead Created";
+    case "invoice.created":
+      return "Invoice Issued";
+    case "payment.created":
+    case "payment.recorded":
+      return "Payment Recorded";
+    case "inventory.product_created":
+      return "Product Added to Catalog";
+    case "payroll.run_created":
+      return "Monthly Payroll Created";
+    case "organisation.created":
+      return "Workspace Configured";
+    default:
+      return action.replace(/\./g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  }
+}
+
+function formatRelativeTime(dateString: string): string {
+  const date = new Date(dateString);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (isNaN(diffSec) || diffSec < 60) return "just now";
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours}h ago`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return date.toLocaleDateString("en-IN", { month: "short", day: "numeric" });
+}
+
 export function DashboardScreen() {
   const navigation = useNavigation<any>();
-  const [data, setData] = useState<DashboardMetrics | null>(null);
+  const [dashboard, setDashboard] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
   const fetchDashboardData = useCallback(async () => {
     try {
-      const [peopleRes, financeRes, crmRes] = await Promise.all([
-        apiFetch<any>("/people?limit=1"),
-        apiFetch<any>("/finance/summary"),
-        apiFetch<any>("/crm/metrics"),
-      ]);
-
-      setData({
-        totalRevenueMinor: financeRes.data?.totalCollectedMinor ?? 2450000,
-        totalMembers: peopleRes.data?.total ?? 142,
-        pendingDuesMinor: financeRes.data?.totalOutstandingMinor ?? 385000,
-        openLeads: crmRes.data?.openLeads ?? 18,
-        activity: [
-          {
-            id: "1",
-            action: "payment.received",
-            summary: "Fee collection of ₹2,500 received via UPI",
-            entityType: "Payment",
-            createdAt: "10 mins ago",
-          },
-          {
-            id: "2",
-            action: "member.created",
-            summary: "Aarav Sharma enrolled into Batch 10",
-            entityType: "Member",
-            createdAt: "45 mins ago",
-          },
-          {
-            id: "3",
-            action: "invoice.issued",
-            summary: "Invoice #INV-2026-089 generated",
-            entityType: "Invoice",
-            createdAt: "2 hrs ago",
-          },
-        ],
-      });
+      const res = await apiFetch<DashboardData>("/dashboard");
+      if (res.data) {
+        setDashboard(res.data);
+      }
     } catch {
-      // Fallback
+      // Empty/Error state without dummy data
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -91,6 +134,14 @@ export function DashboardScreen() {
 
   const formatRupees = (minor = 0) => {
     return `₹${(minor / 100).toLocaleString("en-IN")}`;
+  };
+
+  const handleCardPress = (cardKey: string) => {
+    if (cardKey === "total_members") navigation.navigate("People");
+    else if (cardKey === "total_received" || cardKey === "total_due") navigation.navigate("Finance");
+    else if (cardKey === "active_groups") navigation.navigate("Groups");
+    else if (cardKey.startsWith("students")) navigation.navigate("Students");
+    else if (cardKey.includes("lead") || cardKey.includes("crm")) navigation.navigate("CRM");
   };
 
   return (
@@ -113,41 +164,90 @@ export function DashboardScreen() {
           </Text>
         </View>
 
-        {/* 2x2 Stats Grid */}
-        <View style={styles.statsGrid}>
-          <View style={styles.statCol}>
-            <StatCard
-              label="Revenue"
-              value={formatRupees(data?.totalRevenueMinor)}
-              change="Collected this month"
-              tone="emerald"
-            />
+        {/* Notifications / Pending Alerts */}
+        {dashboard?.notifications && dashboard.notifications.length > 0 && (
+          <View style={styles.notificationsContainer}>
+            {dashboard.notifications.map((notif) => (
+              <View
+                key={notif.id}
+                style={[
+                  styles.notifCard,
+                  notif.severity === "warning" ? styles.notifWarning : styles.notifInfo,
+                ]}
+              >
+                <Icon
+                  name={notif.severity === "warning" ? "AlertCircle" : "Info"}
+                  size={18}
+                  color={notif.severity === "warning" ? "#d97706" : colors.brand}
+                />
+                <View style={styles.notifTextWrap}>
+                  <Text style={styles.notifTitle}>{notif.title}</Text>
+                  <Text style={styles.notifDetail}>{notif.detail}</Text>
+                </View>
+              </View>
+            ))}
           </View>
-          <View style={styles.statCol}>
-            <StatCard
-              label="Members"
-              value={data?.totalMembers?.toString() || "0"}
-              change="Active roster"
-              tone="blue"
-            />
+        )}
+
+        {/* Dynamic KPI Cards Grid */}
+        {dashboard?.cards && dashboard.cards.length > 0 ? (
+          <View style={styles.statsGrid}>
+            {dashboard.cards.map((card, index) => (
+              <View key={card.key || index} style={styles.statCol}>
+                <StatCard
+                  label={card.label}
+                  value={
+                    card.format === "money"
+                      ? formatRupees(card.value)
+                      : Number(card.value || 0).toLocaleString("en-IN")
+                  }
+                  change={card.detail}
+                  tone={card.tone || "blue"}
+                  onPress={() => handleCardPress(card.key)}
+                />
+              </View>
+            ))}
           </View>
-          <View style={styles.statCol}>
-            <StatCard
-              label="Pending Dues"
-              value={formatRupees(data?.pendingDuesMinor)}
-              change="Overdue fees"
-              tone="rose"
-            />
+        ) : (
+          <View style={styles.statsGrid}>
+            <View style={styles.statCol}>
+              <StatCard
+                label="Revenue"
+                value="₹0"
+                change="No payments recorded"
+                tone="emerald"
+                onPress={() => navigation.navigate("Finance")}
+              />
+            </View>
+            <View style={styles.statCol}>
+              <StatCard
+                label="Members"
+                value="0"
+                change="No members enrolled"
+                tone="blue"
+                onPress={() => navigation.navigate("People")}
+              />
+            </View>
+            <View style={styles.statCol}>
+              <StatCard
+                label="Pending Dues"
+                value="₹0"
+                change="All dues cleared"
+                tone="teal"
+                onPress={() => navigation.navigate("Finance")}
+              />
+            </View>
+            <View style={styles.statCol}>
+              <StatCard
+                label="Open Leads"
+                value="0"
+                change="No active inquiries"
+                tone="amber"
+                onPress={() => navigation.navigate("CRM")}
+              />
+            </View>
           </View>
-          <View style={styles.statCol}>
-            <StatCard
-              label="Open Leads"
-              value={data?.openLeads?.toString() || "0"}
-              change="Pipeline inquiries"
-              tone="amber"
-            />
-          </View>
-        </View>
+        )}
 
         {/* Fast Action Launcher */}
         <Text style={styles.sectionHeader}>Quick Actions</Text>
@@ -197,23 +297,34 @@ export function DashboardScreen() {
           </View>
 
           <View style={styles.activityList}>
-            {data?.activity?.map((act, index) => (
-              <View
-                key={act.id}
-                style={[
-                  styles.activityItem,
-                  index !== (data.activity?.length ?? 1) - 1 && styles.activityItemBorder,
-                ]}
-              >
-                <View style={styles.activityDot}>
-                  <Text style={styles.activityDotIcon}>⚡</Text>
+            {dashboard?.activity && dashboard.activity.length > 0 ? (
+              dashboard.activity.map((act, index) => (
+                <View
+                  key={act.id}
+                  style={[
+                    styles.activityItem,
+                    index !== (dashboard.activity?.length ?? 1) - 1 && styles.activityItemBorder,
+                  ]}
+                >
+                  <View style={styles.activityDot}>
+                    <Text style={styles.activityDotIcon}>⚡</Text>
+                  </View>
+                  <View style={styles.activityMeta}>
+                    <Text style={styles.activitySummary}>{humanizeAction(act.action)}</Text>
+                    <Text style={styles.activityTime}>
+                      {(act.entityType || "").replace(/_/g, " ")} • {formatRelativeTime(act.createdAt)}
+                    </Text>
+                  </View>
                 </View>
-                <View style={styles.activityMeta}>
-                  <Text style={styles.activitySummary}>{act.summary}</Text>
-                  <Text style={styles.activityTime}>{act.createdAt}</Text>
-                </View>
+              ))
+            ) : (
+              <View style={styles.emptyActivityBox}>
+                <Text style={styles.emptyActivityTitle}>No recent activity</Text>
+                <Text style={styles.emptyActivitySubtitle}>
+                  New workspace events, admissions and payments will stream here in real time.
+                </Text>
               </View>
-            ))}
+            )}
           </View>
         </View>
       </ScrollView>
@@ -379,5 +490,56 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: colors.muted,
     marginTop: 2,
+  },
+  notificationsContainer: {
+    marginBottom: spacing.md,
+    gap: spacing.sm,
+  },
+  notifCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: spacing.md,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    gap: spacing.sm,
+  },
+  notifWarning: {
+    backgroundColor: "#fffbeb",
+    borderColor: "#fde68a",
+  },
+  notifInfo: {
+    backgroundColor: colors.brandLight,
+    borderColor: "#bfdbfe",
+  },
+  notifTextWrap: {
+    flex: 1,
+  },
+  notifTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  notifDetail: {
+    fontSize: 11.5,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  emptyActivityBox: {
+    paddingVertical: spacing.xl,
+    paddingHorizontal: spacing.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyActivityTitle: {
+    fontSize: 13.5,
+    fontWeight: "700",
+    color: colors.ink,
+    marginBottom: 4,
+  },
+  emptyActivitySubtitle: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: "center",
+    lineHeight: 17,
   },
 });

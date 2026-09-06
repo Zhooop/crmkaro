@@ -22,10 +22,12 @@ type AuthContextType = {
   organisations: Organisation[];
   activeOrg: Organisation | null;
   loading: boolean;
+  needsSetup: boolean;
   login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
   requestEmailOtp: (email: string, mode: "login" | "register") => Promise<{ success: boolean; challengeId?: string; error?: string; message?: string }>;
   verifyEmailOtp: (challengeId: string, code: string) => Promise<{ success: boolean; error?: string }>;
   adminLogin: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  createOrganisation: (data: { name: string; businessType: string; serviceCodes: string[] }) => Promise<{ success: boolean; error?: string }>;
   loginWithToken: (token: string) => Promise<boolean>;
   loginAsDemo: () => void;
   logout: () => Promise<void>;
@@ -55,6 +57,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [organisations, setOrganisations] = useState<Organisation[]>([]);
   const [activeOrg, setActiveOrg] = useState<Organisation | null>(null);
   const [loading, setLoading] = useState(true);
+  const [needsSetup, setNeedsSetup] = useState(false);
 
   async function loadUserSession() {
     setLoading(true);
@@ -63,6 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!token) {
         setUser(null);
         setActiveOrg(null);
+        setOrganisations([]);
+        setNeedsSetup(false);
         setLoading(false);
         return;
       }
@@ -72,6 +77,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(DEMO_USER);
         setActiveOrg(DEMO_ORG);
         setOrganisations([DEMO_ORG]);
+        setNeedsSetup(false);
         setLoading(false);
         return;
       }
@@ -82,6 +88,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         await removeAuthToken();
         setUser(null);
         setActiveOrg(null);
+        setOrganisations([]);
+        setNeedsSetup(false);
         setLoading(false);
         return;
       }
@@ -90,25 +98,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // Fetch user organisations
       const orgsRes = await apiFetch<any[]>("/organisations");
-      if (orgsRes.data) {
-        const orgList = orgsRes.data.map((item) => ({
-          id: item.organisation?.id || item.id,
-          name: item.organisation?.name || item.name,
-          slug: item.organisation?.slug || item.slug,
-          businessType: item.organisation?.businessType || item.businessType,
-          role: item.role?.name || item.role,
-        }));
+      if (orgsRes.data && Array.isArray(orgsRes.data)) {
+        const orgList = orgsRes.data
+          .map((item) => {
+            const org = item.organisation || item;
+            if (!org?.id) return null;
+            return {
+              id: org.id,
+              name: org.name || "Workspace",
+              slug: org.slug || "workspace",
+              businessType: org.businessType || null,
+              role: item.role?.name || org.role || "Admin",
+            };
+          })
+          .filter(Boolean) as Organisation[];
+
         setOrganisations(orgList);
 
-        const savedOrgId = await getActiveOrgId();
-        const found = orgList.find((o) => o.id === savedOrgId) || orgList[0] || null;
-        setActiveOrg(found);
-        if (found) {
-          await setActiveOrgId(found.id);
+        if (orgList.length === 0) {
+          setNeedsSetup(true);
+          setActiveOrg(null);
+        } else {
+          setNeedsSetup(false);
+          const savedOrgId = await getActiveOrgId();
+          const found = orgList.find((o) => o.id === savedOrgId) || orgList[0] || null;
+          setActiveOrg(found);
+          if (found) {
+            await setActiveOrgId(found.id);
+            await apiFetch(`/organisations/${found.id}/activate`, { method: "POST" });
+          }
         }
+      } else {
+        setNeedsSetup(true);
+        setActiveOrg(null);
       }
     } catch {
       setUser(null);
+      setActiveOrg(null);
+      setOrganisations([]);
+      setNeedsSetup(false);
     } finally {
       setLoading(false);
     }
@@ -210,10 +238,45 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   }
 
+  async function createOrganisation(data: {
+    name: string;
+    businessType: string;
+    serviceCodes: string[];
+  }): Promise<{ success: boolean; error?: string }> {
+    try {
+      const res = await apiFetch<any>("/organisations", {
+        method: "POST",
+        body: JSON.stringify({
+          name: data.name.trim(),
+          businessType: data.businessType,
+          timezone: "Asia/Kolkata",
+          currency: "INR",
+          serviceCodes: data.serviceCodes,
+        }),
+      });
+
+      if (res.error || !res.data) {
+        return { success: false, error: res.error || "Failed to create workspace." };
+      }
+
+      const newOrgId = res.data.id;
+      if (newOrgId) {
+        await setActiveOrgId(newOrgId);
+        await apiFetch(`/organisations/${newOrgId}/activate`, { method: "POST" });
+      }
+
+      await loadUserSession();
+      return { success: true };
+    } catch (err: any) {
+      return { success: false, error: err?.message || "Failed to create workspace." };
+    }
+  }
+
   function loginAsDemo() {
     setUser(DEMO_USER);
     setActiveOrg(DEMO_ORG);
     setOrganisations([DEMO_ORG]);
+    setNeedsSetup(false);
     setAuthToken("DEMO_SESSION_TOKEN").catch(() => {});
   }
 
@@ -225,11 +288,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
     setActiveOrg(null);
     setOrganisations([]);
+    setNeedsSetup(false);
   }
 
   async function switchOrganisation(org: Organisation) {
     setActiveOrg(org);
     await setActiveOrgId(org.id);
+    await apiFetch(`/organisations/${org.id}/activate`, { method: "POST" });
   }
 
   return (
@@ -239,10 +304,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         organisations,
         activeOrg,
         loading,
+        needsSetup,
         login,
         requestEmailOtp,
         verifyEmailOtp,
         adminLogin,
+        createOrganisation,
         loginWithToken,
         loginAsDemo,
         logout,
