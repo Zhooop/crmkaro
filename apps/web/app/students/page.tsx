@@ -231,7 +231,7 @@ function StudentsContent() {
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
   const [formGuardianRelation, setFormGuardianRelation] = useState("Father");
   const [formFeeFrequency, setFormFeeFrequency] = useState<"MONTHLY" | "QUARTERLY" | "ANNUAL">("MONTHLY");
-  const [formFeeAmount, setFormFeeAmount] = useState("500");
+  const [formFeeAmount, setFormFeeAmount] = useState("");
   const [feePlanType, setFeePlanType] = useState<"MONTHLY" | "TERM_INSTALLMENTS">("MONTHLY");
   const [term1Amount, setTerm1Amount] = useState("15000");
   const [term1DueDate, setTerm1DueDate] = useState("2026-04-15");
@@ -496,7 +496,7 @@ function StudentsContent() {
     setFormGuardianPhone("");
     setFormGuardianRelation("Father");
     setFormFeeFrequency("MONTHLY");
-    setFormFeeAmount("500");
+    setFormFeeAmount("");
     setFormAdmissionDate(todayYyyyMmDd);
     setFormNotes("");
     setAdmissionError("");
@@ -733,6 +733,19 @@ function StudentsContent() {
     }
     setAttendanceEdits(edits);
     showToast("All students marked Present!", "success");
+  }
+
+  function handleMarkAllAbsent() {
+    if (!attendanceData?.items) return;
+    const edits: Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }> = {};
+    for (const it of attendanceData.items) {
+      edits[it.studentProfileId] = {
+        status: "ABSENT",
+        remarks: attendanceEdits[it.studentProfileId]?.remarks || "",
+      };
+    }
+    setAttendanceEdits(edits);
+    showToast("All students marked Absent!", "success");
   }
 
   // Save Attendance Batch
@@ -1693,6 +1706,22 @@ function StudentsContent() {
                 }}
               >
                 ✓ Mark All Present
+              </button>
+              <button
+                type="button"
+                className="secondary-button"
+                onClick={handleMarkAllAbsent}
+                style={{
+                  fontSize: 12.5,
+                  padding: "7px 14px",
+                  fontWeight: 700,
+                  borderRadius: 8,
+                  color: "#b91c1c",
+                  background: "#fef2f2",
+                  borderColor: "#fecaca",
+                }}
+              >
+                ✕ Mark All Absent
               </button>
               <button
                 type="button"
@@ -3328,6 +3357,76 @@ function StudentsContent() {
                 </span>
               </div>
 
+              {collectFeeStudent.invoiceId && (
+                <div
+                  style={{
+                    padding: "12px 14px",
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    borderRadius: 10,
+                    marginBottom: 14,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: 13, fontWeight: 700, color: "#166534", display: "flex", alignItems: "center", gap: 6 }}>
+                      <Icon name="zap" size={16} />
+                      <span>1-Click Razorpay Online Pay Link</span>
+                    </div>
+                    <div style={{ fontSize: 11.5, color: "#15803d", marginTop: 2 }}>
+                      Share link on WhatsApp or open online checkout directly.
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: 6, flexShrink: 0 }}>
+                    <a
+                      href={`/pay/${collectFeeStudent.invoiceId}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="primary-button"
+                      style={{
+                        padding: "6px 12px",
+                        fontSize: 12,
+                        background: "#16a34a",
+                        borderColor: "#16a34a",
+                        borderRadius: 6,
+                        fontWeight: 700,
+                        textDecoration: "none",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 4,
+                      }}
+                    >
+                      <span>Pay Online ↗</span>
+                    </a>
+                    {collectFeeStudent.whatsappUrl && (
+                      <a
+                        href={collectFeeStudent.whatsappUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="secondary-button"
+                        style={{
+                          padding: "6px 10px",
+                          fontSize: 12,
+                          color: "#166534",
+                          borderColor: "#86efac",
+                          borderRadius: 6,
+                          fontWeight: 700,
+                          textDecoration: "none",
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: 4,
+                        }}
+                      >
+                        <span>WhatsApp 💬</span>
+                      </a>
+                    )}
+                  </div>
+                </div>
+              )}
+
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>Payment Mode</label>
@@ -3343,6 +3442,7 @@ function StudentsContent() {
                       fontWeight: 600,
                     }}
                   >
+                    <option value="RAZORPAY_ONLINE">⚡ Razorpay (Online Payment / UPI / Cards)</option>
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="CASH">Cash</option>
                     <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>

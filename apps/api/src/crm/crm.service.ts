@@ -78,14 +78,38 @@ export class CrmService {
     });
   }
 
-  pipelines(organisationId: string, userId: string) {
-    return withTenant(this.database, organisationId, userId, (tx) =>
-      tx.pipeline.findMany({
+  async pipelines(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      let pipes = await tx.pipeline.findMany({
         where: { organisationId, isActive: true },
         orderBy: [{ isDefault: "desc" }, { name: "asc" }],
         include: { stages: { orderBy: { position: "asc" } } },
-      }),
-    );
+      });
+
+      if (pipes.length === 0) {
+        const defaultPipeline = await tx.pipeline.create({
+          data: {
+            organisationId,
+            name: "Standard Sales Pipeline",
+            isDefault: true,
+            stages: {
+              create: [
+                { organisationId, name: "New Lead", position: 10, colour: "#3B82F6" },
+                { organisationId, name: "Contacted", position: 20, colour: "#F59E0B" },
+                { organisationId, name: "Demo / Discussion", position: 30, colour: "#8B5CF6" },
+                { organisationId, name: "Proposal / Fee Sent", position: 40, colour: "#EC4899" },
+                { organisationId, name: "Enrolled / Won", position: 50, colour: "#10B981", isConverted: true },
+                { organisationId, name: "Lost", position: 60, colour: "#EF4444", isLost: true },
+              ],
+            },
+          },
+          include: { stages: { orderBy: { position: "asc" } } },
+        });
+        pipes = [defaultPipeline];
+      }
+
+      return pipes;
+    });
   }
   createPipeline(
     organisationId: string,

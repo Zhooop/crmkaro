@@ -156,6 +156,59 @@ function humanizeAction(action: string): string {
   }
 }
 
+function getCategoryHeroSubtitle(businessType?: string, services: string[] = []): string {
+  const bType = (businessType || "").toLowerCase();
+
+  if (
+    bType.includes("real estate") ||
+    bType.includes("crm") ||
+    bType.includes("software") ||
+    bType.includes("marketing") ||
+    bType.includes("agency") ||
+    bType.includes("consulting") ||
+    (services.includes("crm") && !services.includes("students") && !services.includes("groups"))
+  ) {
+    return "Live pulse of your active sales pipelines, deal closures, follow-up calls, and revenue.";
+  }
+
+  if (
+    bType.includes("retail") ||
+    bType.includes("trading") ||
+    bType.includes("wholesale") ||
+    bType.includes("manufacturing") ||
+    bType.includes("store") ||
+    bType.includes("inventory") ||
+    (services.includes("inventory") && !services.includes("students") && !services.includes("groups"))
+  ) {
+    return "Live pulse of product stock levels, sales billing, customer dues, and cash flow.";
+  }
+
+  if (
+    bType.includes("school") ||
+    bType.includes("formal") ||
+    bType.includes("college")
+  ) {
+    return "Live pulse of student admissions, daily attendance rosters, fee dues, and communications.";
+  }
+
+  if (
+    bType.includes("coaching") ||
+    bType.includes("academy") ||
+    bType.includes("classes") ||
+    bType.includes("gym") ||
+    bType.includes("fitness") ||
+    bType.includes("sports") ||
+    bType.includes("dance") ||
+    bType.includes("music") ||
+    services.includes("groups") ||
+    services.includes("students")
+  ) {
+    return "Live pulse of batch schedules, student admissions, fee dues, and communications.";
+  }
+
+  return "Live pulse of your active business operations, customer records, billing, and team tasks.";
+}
+
 function getCachedDashboardData(): Dashboard | null {
   if (typeof window === "undefined") return null;
   try {
@@ -878,11 +931,11 @@ export default function HomePage() {
         className="dashboard-hero"
         style={{
           background: "linear-gradient(135deg, #0f172a 0%, #1e293b 100%)",
-          borderRadius: 16,
-          padding: "24px 28px",
+          borderRadius: 10,
+          padding: "14px 18px",
           color: "#ffffff",
-          marginBottom: 24,
-          boxShadow: "0 10px 25px -5px rgba(15, 23, 42, 0.2)",
+          marginBottom: 12,
+          boxShadow: "0 4px 16px rgba(15, 23, 42, 0.15)",
           position: "relative",
           overflow: "hidden",
         }}
@@ -901,46 +954,46 @@ export default function HomePage() {
           }}
         />
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
           <div>
-            <div className="hero-badge-row" style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+            <div className="hero-badge-row" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
               <span
                 style={{
                   background: "rgba(59, 130, 246, 0.2)",
                   color: "#93c5fd",
-                  padding: "3px 10px",
-                  borderRadius: 20,
-                  fontSize: 12,
+                  padding: "2px 8px",
+                  borderRadius: 16,
+                  fontSize: 11,
                   fontWeight: 650,
                   border: "1px solid rgba(59, 130, 246, 0.3)",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 5,
+                  gap: 4,
                 }}
               >
-                <Icon name="activity" size={12} />
+                <Icon name="activity" size={11} />
                 {data.organisation.businessType || "Business Workspace"}
               </span>
-              <span style={{ fontSize: 12, color: "#94a3b8" }}>·</span>
-              <span style={{ fontSize: 12.5, color: "#cbd5e1", fontWeight: 600 }}>{data.organisation.name}</span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>·</span>
+              <span style={{ fontSize: 11.5, color: "#cbd5e1", fontWeight: 600 }}>{data.organisation.name}</span>
             </div>
 
-            <h1 className="hero-heading" style={{ fontSize: 24, fontWeight: 800, margin: "0 0 6px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
+            <h1 className="hero-heading" style={{ fontSize: 18, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
               {getGreeting(displayName)} 👋
             </h1>
-            <p className="hero-subtitle" style={{ margin: 0, fontSize: 13.5, color: "#94a3b8", maxWidth: 650 }}>
-              Live pulse of your active business operations, student admissions, fee dues, and communications.
+            <p className="hero-subtitle" style={{ margin: 0, fontSize: 11.5, color: "#94a3b8", maxWidth: 650 }}>
+              {getCategoryHeroSubtitle(data.organisation.businessType, data.services)}
             </p>
           </div>
 
-          <div className="hero-date-pill" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+          <div className="hero-date-pill" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
             <span
               suppressHydrationWarning
               style={{
                 background: "rgba(255, 255, 255, 0.08)",
-                padding: "6px 14px",
-                borderRadius: 8,
-                fontSize: 12.5,
+                padding: "4px 9px",
+                borderRadius: 6,
+                fontSize: 11,
                 fontWeight: 600,
                 color: "#f1f5f9",
                 border: "1px solid rgba(255, 255, 255, 0.12)",
@@ -955,103 +1008,167 @@ export default function HomePage() {
         <div
           className="hero-fast-launch"
           style={{
-            marginTop: 20,
-            paddingTop: 16,
+            marginTop: 10,
+            paddingTop: 10,
             borderTop: "1px solid rgba(255, 255, 255, 0.1)",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-            flexWrap: "wrap",
           }}
         >
-          <span className="hero-fast-launch-label" style={{ fontSize: 12, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span className="hero-fast-launch-label" style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
             Fast Launch:
           </span>
 
-          <button
-            onClick={() => router.push("/groups?action=new")}
-            className="hero-launch-btn"
-            style={{
-              background: "#059669",
-              color: "#ffffff",
-              border: "none",
-              padding: "7px 14px",
-              borderRadius: 7,
-              fontSize: 12.5,
-              fontWeight: 700,
-              cursor: "pointer",
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-              boxShadow: "0 2px 8px rgba(5, 150, 105, 0.35)",
-            }}
-          >
-            <Icon name="activity" size={13} />
-            <span>+ New Group</span>
-          </button>
+          {/* Category-Specific Primary Action */}
+          {(() => {
+            const bType = (data.organisation.businessType || "").toLowerCase();
+            const isCrm = bType.includes("crm") || bType.includes("real estate") || bType.includes("software") || bType.includes("marketing") || bType.includes("agency");
+            const isRetail = bType.includes("retail") || bType.includes("trading") || bType.includes("wholesale") || bType.includes("inventory");
+
+            if (isCrm && data.services.includes("crm")) {
+              return (
+                <button
+                  onClick={() => router.push("/crm")}
+                  className="hero-launch-btn"
+                  style={{
+                    background: "#ea580c",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    boxShadow: "0 2px 8px rgba(234, 88, 12, 0.35)",
+                  }}
+                >
+                  <Icon name="crm" size={12} />
+                  <span>+ New Lead</span>
+                </button>
+              );
+            }
+
+            if (isRetail && data.services.includes("inventory")) {
+              return (
+                <button
+                  onClick={() => router.push("/inventory")}
+                  className="hero-launch-btn"
+                  style={{
+                    background: "#7c3aed",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    boxShadow: "0 2px 8px rgba(124, 58, 237, 0.35)",
+                  }}
+                >
+                  <Icon name="inventory" size={12} />
+                  <span>+ New Product</span>
+                </button>
+              );
+            }
+
+            if (data.services.includes("groups")) {
+              return (
+                <button
+                  onClick={() => router.push("/groups?action=new")}
+                  className="hero-launch-btn"
+                  style={{
+                    background: "#059669",
+                    color: "#ffffff",
+                    border: "none",
+                    padding: "4px 9px",
+                    borderRadius: 6,
+                    fontSize: 11,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 5,
+                    boxShadow: "0 2px 8px rgba(5, 150, 105, 0.35)",
+                  }}
+                >
+                  <Icon name="activity" size={12} />
+                  <span>+ New Group</span>
+                </button>
+              );
+            }
+
+            return null;
+          })()}
 
           {data.services.includes("students") && (
             <>
               <button
                 onClick={() => router.push("/students")}
+                className="hero-launch-btn"
                 style={{
                   background: "#2563eb",
                   color: "#ffffff",
                   border: "none",
-                  padding: "7px 14px",
-                  borderRadius: 7,
-                  fontSize: 12.5,
+                  padding: "4px 9px",
+                  borderRadius: 6,
+                  fontSize: 11,
                   fontWeight: 700,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 5,
                   boxShadow: "0 2px 8px rgba(37, 99, 235, 0.35)",
                 }}
               >
-                <Icon name="student" size={13} />
+                <Icon name="student" size={12} />
                 <span>+ Admit Student</span>
               </button>
               <button
-                onClick={() => router.push("/students")}
+                onClick={() => router.push("/quick-collect")}
+                className="hero-launch-btn"
                 style={{
                   background: "rgba(255, 255, 255, 0.12)",
                   color: "#ffffff",
                   border: "1px solid rgba(255, 255, 255, 0.15)",
-                  padding: "7px 14px",
-                  borderRadius: 7,
-                  fontSize: 12.5,
+                  padding: "4px 9px",
+                  borderRadius: 6,
+                  fontSize: 11,
                   fontWeight: 650,
                   cursor: "pointer",
                   display: "inline-flex",
                   alignItems: "center",
-                  gap: 6,
+                  gap: 5,
                 }}
               >
-                <Icon name="finance" size={13} />
-                <span>₹ Collect Fee / Dues</span>
+                <Icon name="zap" size={12} />
+                <span>₹ Quick Collect</span>
               </button>
             </>
           )}
 
-          {data.services.includes("crm") && (
+          {data.services.includes("crm") && !((data.organisation.businessType || "").toLowerCase().includes("crm") || (data.organisation.businessType || "").toLowerCase().includes("real estate")) && (
             <button
               onClick={() => router.push("/crm")}
+              className="hero-launch-btn"
               style={{
                 background: "rgba(255, 255, 255, 0.12)",
                 color: "#ffffff",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
-                padding: "7px 14px",
-                borderRadius: 7,
-                fontSize: 12.5,
+                padding: "4px 9px",
+                borderRadius: 6,
+                fontSize: 11,
                 fontWeight: 650,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
               }}
             >
-              <Icon name="crm" size={13} />
+              <Icon name="crm" size={12} />
               <span>+ New Lead</span>
             </button>
           )}
@@ -1059,21 +1176,22 @@ export default function HomePage() {
           {data.services.includes("finance") && (
             <button
               onClick={() => router.push("/finance")}
+              className="hero-launch-btn"
               style={{
                 background: "rgba(255, 255, 255, 0.12)",
                 color: "#ffffff",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
-                padding: "7px 14px",
-                borderRadius: 7,
-                fontSize: 12.5,
+                padding: "4px 9px",
+                borderRadius: 6,
+                fontSize: 11,
                 fontWeight: 650,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
               }}
             >
-              <Icon name="finance" size={13} />
+              <Icon name="finance" size={12} />
               <span>+ New Invoice</span>
             </button>
           )}
@@ -1081,43 +1199,45 @@ export default function HomePage() {
           {data.services.includes("people") && (
             <button
               onClick={() => router.push("/people")}
+              className="hero-launch-btn"
               style={{
                 background: "rgba(255, 255, 255, 0.12)",
                 color: "#ffffff",
                 border: "1px solid rgba(255, 255, 255, 0.15)",
-                padding: "7px 14px",
-                borderRadius: 7,
-                fontSize: 12.5,
+                padding: "4px 9px",
+                borderRadius: 6,
+                fontSize: 11,
                 fontWeight: 650,
                 cursor: "pointer",
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 6,
+                gap: 5,
               }}
             >
-              <Icon name="people" size={13} />
+              <Icon name="people" size={12} />
               <span>+ Add Person</span>
             </button>
           )}
 
           <button
             onClick={() => router.push("/settings")}
+            className="hero-launch-btn"
             style={{
               background: "transparent",
               color: "#94a3b8",
               border: "1px solid rgba(255, 255, 255, 0.1)",
-              padding: "7px 12px",
-              borderRadius: 7,
-              fontSize: 12,
+              padding: "4px 8px",
+              borderRadius: 6,
+              fontSize: 11,
               fontWeight: 600,
               cursor: "pointer",
               display: "inline-flex",
               alignItems: "center",
-              gap: 5,
+              gap: 4,
               marginLeft: "auto",
             }}
           >
-            <Icon name="settings" size={13} />
+            <Icon name="settings" size={12} />
             <span>Settings</span>
           </button>
         </div>
@@ -1130,60 +1250,60 @@ export default function HomePage() {
           flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
-          padding: "11px 18px",
+          gap: 8,
+          padding: "6px 12px",
           background: "#ffffff",
-          borderRadius: 12,
+          borderRadius: 8,
           border: "1px solid var(--line, #e2e8f0)",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
-          marginBottom: 20,
+          boxShadow: "0 1px 3px rgba(0,0,0,0.02)",
+          marginBottom: 12,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <div
             style={{
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
-              width: 28,
-              height: 28,
-              borderRadius: 6,
+              width: 24,
+              height: 24,
+              borderRadius: 5,
               background: "#eff6ff",
               color: "#2563eb",
             }}
           >
-            <Icon name="calendar" size={15} />
+            <Icon name="calendar" size={13} />
           </div>
-          <span style={{ fontSize: 13.5, fontWeight: 750, color: "#1e293b" }}>
-            Payment & Analytics Period:
+          <span style={{ fontSize: 11.5, fontWeight: 750, color: "#1e293b" }}>
+            Payment &amp; Analytics Period:
           </span>
           <span
             style={{
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: 700,
               color: datePreset === "all" ? "#475569" : "#047857",
               background: datePreset === "all" ? "#f1f5f9" : "#d1fae5",
-              padding: "3px 10px",
-              borderRadius: 6,
+              padding: "2px 7px",
+              borderRadius: 4,
             }}
           >
             {getDateBoundsForPreset(datePreset, customStartDate, customEndDate).label}
           </span>
           {dashboardLoading && (
-            <span style={{ fontSize: 12, color: "#3b82f6", fontWeight: 600 }}>
+            <span style={{ fontSize: 11, color: "#3b82f6", fontWeight: 600 }}>
               Updating…
             </span>
           )}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 8, width: "100%", maxWidth: "100%", overflowX: "auto" }}>
+        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 6, width: "100%", maxWidth: "100%", overflowX: "auto" }}>
           {/* Preset Pill Buttons */}
           <div
             style={{
               display: "inline-flex",
               background: "#f1f5f9",
-              borderRadius: 8,
-              padding: 3,
+              borderRadius: 6,
+              padding: 2,
               gap: 2,
               border: "1px solid #e2e8f0",
               maxWidth: "100%",
@@ -1206,14 +1326,14 @@ export default function HomePage() {
                 type="button"
                 onClick={() => handlePresetChange(p.id)}
                 style={{
-                  padding: "6px 12px",
-                  fontSize: 12,
+                  padding: "3px 8px",
+                  fontSize: 11,
                   fontWeight: datePreset === p.id ? 750 : 550,
                   color: datePreset === p.id ? "#0f172a" : "#64748b",
                   background: datePreset === p.id ? "#ffffff" : "transparent",
                   border: "none",
-                  borderRadius: 6,
-                  boxShadow: datePreset === p.id ? "0 1px 3px rgba(0,0,0,0.1)" : "none",
+                  borderRadius: 4,
+                  boxShadow: datePreset === p.id ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
                   cursor: "pointer",
                   transition: "all 0.15s ease",
                   whiteSpace: "nowrap",
@@ -1227,30 +1347,30 @@ export default function HomePage() {
 
           {/* Custom Date Pickers (Shown when custom is selected) */}
           {datePreset === "custom" && (
-            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
               <input
                 type="date"
                 value={customStartDate}
                 onChange={(e) => setCustomStartDate(e.target.value)}
                 style={{
-                  padding: "5px 9px",
-                  fontSize: 12,
-                  borderRadius: 6,
+                  padding: "3px 6px",
+                  fontSize: 11,
+                  borderRadius: 4,
                   border: "1px solid var(--line, #cbd5e1)",
                   background: "#fff",
                   color: "#1e293b",
                   fontWeight: 600,
                 }}
               />
-              <span style={{ fontSize: 12, color: "#94a3b8", fontWeight: 600 }}>to</span>
+              <span style={{ fontSize: 11, color: "#94a3b8", fontWeight: 600 }}>to</span>
               <input
                 type="date"
                 value={customEndDate}
                 onChange={(e) => setCustomEndDate(e.target.value)}
                 style={{
-                  padding: "5px 9px",
-                  fontSize: 12,
-                  borderRadius: 6,
+                  padding: "3px 6px",
+                  fontSize: 11,
+                  borderRadius: 4,
                   border: "1px solid var(--line, #cbd5e1)",
                   background: "#fff",
                   color: "#1e293b",
@@ -1262,9 +1382,9 @@ export default function HomePage() {
                 className="btn btn-primary btn-sm"
                 onClick={handleApplyCustomDate}
                 disabled={!customStartDate || !customEndDate}
-                style={{ padding: "5px 12px", fontSize: 12, fontWeight: 700 }}
+                style={{ padding: "3px 8px", fontSize: 11, fontWeight: 700 }}
               >
-                Apply Range
+                Apply
               </button>
             </div>
           )}
@@ -1272,7 +1392,7 @@ export default function HomePage() {
       </div>
 
       {/* 📊 Live Stat Cards */}
-      <div className="stats-grid" style={{ marginBottom: 24 }}>
+      <div className="stats-grid" style={{ marginBottom: 12 }}>
         {data.cards.map((card, index) => {
           const targetHref =
             card.key === "total_members"
@@ -1300,180 +1420,328 @@ export default function HomePage() {
         })}
       </div>
 
-      {/* 📅 Today's Batches & Daily Schedule Widget */}
+      {/* 📅 Category-Specific Schedule or Operations Hub */}
       {(() => {
-        const DAY_CODES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
-        const todayDayIndex = new Date().getDay();
-        const todayDayCode = DAY_CODES[todayDayIndex];
-        const todayDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
-        const todaysBatches = groupsList.filter((g) => {
-          if (!g.workingDays || !Array.isArray(g.workingDays) || g.workingDays.length === 0) return true;
-          return g.workingDays.includes(todayDayCode);
-        });
+        const bType = (data.organisation.businessType || "").toLowerCase();
+        const showBatchSchedule =
+          data.services.includes("groups") ||
+          data.services.includes("students") ||
+          bType.includes("coaching") ||
+          bType.includes("academy") ||
+          bType.includes("school") ||
+          bType.includes("institute") ||
+          bType.includes("tuition") ||
+          bType.includes("gym") ||
+          bType.includes("fitness") ||
+          bType.includes("dance") ||
+          bType.includes("music");
 
-        return (
-          <div className="today-batches-widget">
-            <div className="today-batches-header">
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        if (showBatchSchedule) {
+          const DAY_CODES = ["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"];
+          const todayDayIndex = new Date().getDay();
+          const todayDayCode = DAY_CODES[todayDayIndex];
+          const todayDayName = new Date().toLocaleDateString("en-US", { weekday: "long" });
+          const todaysBatches = groupsList.filter((g) => {
+            if (!g.workingDays || !Array.isArray(g.workingDays) || g.workingDays.length === 0) return true;
+            return g.workingDays.includes(todayDayCode);
+          });
+
+          return (
+            <div className="today-batches-widget">
+              <div className="today-batches-header">
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#eef4ff",
+                      color: "#3572e8",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name="calendar" size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>Today&apos;s Batches &amp; Schedule</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          background: "#eef4ff",
+                          color: "#3572e8",
+                          border: "1px solid #c7dcfe",
+                        }}
+                      >
+                        {todayDayName} • {todaysBatches.length} {todaysBatches.length === 1 ? "Batch" : "Batches"}
+                      </span>
+                    </h2>
+                    <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+                      Active classes, schedules, and rapid attendance marking for today
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => router.push("/groups?action=new")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
+                  >
+                    <Icon name="plus" size={13} />
+                    <span>New Batch</span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/groups")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", color: "#3572e8" }}
+                  >
+                    <span>View All Groups →</span>
+                  </button>
+                </div>
+              </div>
+
+              {todaysBatches.length === 0 ? (
                 <div
                   style={{
-                    width: 38,
-                    height: 38,
+                    padding: "24px 20px",
+                    textAlign: "center",
+                    background: "#f8fafc",
                     borderRadius: 10,
-                    background: "#eef4ff",
-                    color: "#3572e8",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
+                    border: "1px dashed var(--line)",
                   }}
                 >
-                  <Icon name="calendar" size={18} />
-                </div>
-                <div>
-                  <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>Today&apos;s Batches &amp; Schedule</span>
-                    <span
-                      style={{
-                        fontSize: 11,
-                        fontWeight: 700,
-                        padding: "2px 8px",
-                        borderRadius: 12,
-                        background: "#eef4ff",
-                        color: "#3572e8",
-                        border: "1px solid #c7dcfe",
-                      }}
-                    >
-                      {todayDayName} • {todaysBatches.length} {todaysBatches.length === 1 ? "Batch" : "Batches"}
-                    </span>
-                  </h2>
-                  <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
-                    Active classes, schedules, and rapid attendance marking for today
+                  <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
+                    No batches scheduled for {todayDayName}.
                   </p>
+                  <button
+                    onClick={() => router.push("/groups?action=new")}
+                    className="primary-button"
+                    style={{ margin: "10px auto 0", fontSize: 12, padding: "6px 14px" }}
+                  >
+                    <span>+ Create First Batch</span>
+                  </button>
                 </div>
-              </div>
+              ) : (
+                <div className="today-batches-grid">
+                  {todaysBatches.map((batch) => {
+                    const monogram = batch.code || batch.name.substring(0, 2).toUpperCase();
+                    const memberCount = batch._count?.members ?? batch.membersCount ?? 0;
+                    const dueFormatted = ((batch.feeAmountMinor || 0) / 100).toLocaleString("en-IN");
 
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <button
-                  onClick={() => router.push("/groups?action=new")}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
-                >
-                  <Icon name="plus" size={13} />
-                  <span>New Batch</span>
-                </button>
-                <button
-                  onClick={() => router.push("/groups")}
-                  className="btn btn-secondary btn-sm"
-                  style={{ fontSize: 12, padding: "5px 11px", color: "#3572e8" }}
-                >
-                  <span>View All Groups →</span>
-                </button>
-              </div>
-            </div>
-
-            {todaysBatches.length === 0 ? (
-              <div
-                style={{
-                  padding: "24px 20px",
-                  textAlign: "center",
-                  background: "#f8fafc",
-                  borderRadius: 10,
-                  border: "1px dashed var(--line)",
-                }}
-              >
-                <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-                  No batches scheduled for {todayDayName}.
-                </p>
-                <button
-                  onClick={() => router.push("/groups?action=new")}
-                  className="primary-button"
-                  style={{ margin: "10px auto 0", fontSize: 12, padding: "6px 14px" }}
-                >
-                  <span>+ Create First Batch</span>
-                </button>
-              </div>
-            ) : (
-              <div className="today-batches-grid">
-                {todaysBatches.map((batch) => {
-                  const monogram = batch.code || batch.name.substring(0, 2).toUpperCase();
-                  const memberCount = batch._count?.members ?? batch.membersCount ?? 0;
-                  const dueFormatted = ((batch.feeAmountMinor || 0) / 100).toLocaleString("en-IN");
-
-                  return (
-                    <div key={batch.id} className="today-batch-card">
-                      <div className="today-batch-hero">
-                        <div className="today-batch-monogram" style={{ background: batch.color || "#e0f2fe" }}>
-                          {monogram}
-                        </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <strong style={{ fontSize: 14, color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                            {batch.name}
-                          </strong>
-                          <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
-                            {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => {
-                              const isToday = d === todayDayCode;
-                              const isWorking = batch.workingDays?.includes(d);
-                              return (
-                                <span
-                                  key={d}
-                                  style={{
-                                    width: 18,
-                                    height: 18,
-                                    borderRadius: "50%",
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    justifyContent: "center",
-                                    fontSize: 9,
-                                    fontWeight: 800,
-                                    background: isToday ? "#7fabfd" : isWorking ? "#f1f5f9" : "transparent",
-                                    color: isToday ? "#ffffff" : isWorking ? "#334155" : "#cbd5e1",
-                                    border: isToday ? "1px solid #548ef7" : "none",
-                                  }}
-                                >
-                                  {d[0]}
-                                </span>
-                              );
-                            })}
+                    return (
+                      <div key={batch.id} className="today-batch-card">
+                        <div className="today-batch-hero">
+                          <div className="today-batch-monogram" style={{ background: batch.color || "#e0f2fe" }}>
+                            {monogram}
+                          </div>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <strong style={{ fontSize: 14, color: "var(--ink)", display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                              {batch.name}
+                            </strong>
+                            <div style={{ display: "flex", gap: 3, marginTop: 4 }}>
+                              {["SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"].map((d) => {
+                                const isToday = d === todayDayCode;
+                                const isWorking = batch.workingDays?.includes(d);
+                                return (
+                                  <span
+                                    key={d}
+                                    style={{
+                                      width: 18,
+                                      height: 18,
+                                      borderRadius: "50%",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      justifyContent: "center",
+                                      fontSize: 9,
+                                      fontWeight: 800,
+                                      background: isToday ? "#7fabfd" : isWorking ? "#f1f5f9" : "transparent",
+                                      color: isToday ? "#ffffff" : isWorking ? "#334155" : "#cbd5e1",
+                                      border: isToday ? "1px solid #548ef7" : "none",
+                                    }}
+                                  >
+                                    {d[0]}
+                                  </span>
+                                );
+                              })}
+                            </div>
                           </div>
                         </div>
-                      </div>
 
-                      <div className="today-batch-meta">
-                        <span><strong>{memberCount}</strong> Members</span>
-                        <span>Fee: <strong>₹{dueFormatted}</strong></span>
-                      </div>
+                        <div className="today-batch-meta">
+                          <span><strong>{memberCount}</strong> Members</span>
+                          <span>Fee: <strong>₹{dueFormatted}</strong></span>
+                        </div>
 
-                      <div className="today-batch-actions">
-                        <button
-                          onClick={() => router.push(`/groups`)}
-                          className="primary-button"
-                          style={{ flex: 1, justifyContent: "center", padding: "6px 10px", fontSize: 12 }}
-                        >
-                          <Icon name="check" size={13} />
-                          <span>Mark Attendance</span>
-                        </button>
-                        <button
-                          onClick={() => router.push("/quick-collect")}
-                          className="btn btn-secondary btn-sm"
-                          style={{ padding: "6px 10px", fontSize: 12 }}
-                          title="Collect Fee"
-                        >
-                          <Icon name="zap" size={13} />
-                        </button>
+                        <div className="today-batch-actions">
+                          <button
+                            onClick={() => router.push(`/groups`)}
+                            className="primary-button"
+                            style={{ flex: 1, justifyContent: "center", padding: "6px 10px", fontSize: 12 }}
+                          >
+                            <Icon name="check" size={13} />
+                            <span>Mark Attendance</span>
+                          </button>
+                          <button
+                            onClick={() => router.push("/quick-collect")}
+                            className="btn btn-secondary btn-sm"
+                            style={{ padding: "6px 10px", fontSize: 12 }}
+                            title="Collect Fee"
+                          >
+                            <Icon name="zap" size={13} />
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        }
+
+        // If CRM / Real Estate / Agency
+        if (data.services.includes("crm") || bType.includes("crm") || bType.includes("real estate") || bType.includes("agency") || bType.includes("consulting")) {
+          return (
+            <div className="today-batches-widget" style={{ borderLeft: "4px solid #3b82f6" }}>
+              <div className="today-batches-header">
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#eff6ff",
+                      color: "#2563eb",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name="crm" size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>Pipeline &amp; Lead Management Hub</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          background: "#eff6ff",
+                          color: "#2563eb",
+                          border: "1px solid #bfdbfe",
+                        }}
+                      >
+                        Active CRM Mode
+                      </span>
+                    </h2>
+                    <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+                      Manage lead inquiries, deal stages, and customer communication pipelines
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => router.push("/crm")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
+                  >
+                    <Icon name="plus" size={13} />
+                    <span>+ New Lead</span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/crm")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", color: "#2563eb" }}
+                  >
+                    <span>Open CRM Workspace →</span>
+                  </button>
+                </div>
               </div>
-            )}
-          </div>
-        );
+            </div>
+          );
+        }
+
+        // If Retail / Inventory
+        if (data.services.includes("inventory") || bType.includes("retail") || bType.includes("store") || bType.includes("shop") || bType.includes("inventory")) {
+          return (
+            <div className="today-batches-widget" style={{ borderLeft: "4px solid #10b981" }}>
+              <div className="today-batches-header">
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div
+                    style={{
+                      width: 38,
+                      height: 38,
+                      borderRadius: 10,
+                      background: "#ecfdf5",
+                      color: "#059669",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Icon name="inventory" size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
+                      <span>Inventory &amp; Stock Management</span>
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          padding: "2px 8px",
+                          borderRadius: 12,
+                          background: "#ecfdf5",
+                          color: "#059669",
+                          border: "1px solid #a7f3d0",
+                        }}
+                      >
+                        Catalog Ready
+                      </span>
+                    </h2>
+                    <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
+                      Monitor product SKUs, stock levels, low-quantity alerts, and retail billing
+                    </p>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <button
+                    onClick={() => router.push("/inventory")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
+                  >
+                    <Icon name="plus" size={13} />
+                    <span>+ New Product</span>
+                  </button>
+                  <button
+                    onClick={() => router.push("/inventory")}
+                    className="btn btn-secondary btn-sm"
+                    style={{ fontSize: 12, padding: "5px 11px", color: "#059669" }}
+                  >
+                    <span>View Product Catalog →</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        return null;
       })()}
 
       {/* 2-Column Content Layout */}
-      <div className="content-grid-2col" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 24, alignItems: "start" }}>
+      <div className="content-grid-2col" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 14, alignItems: "start" }}>
         {/* Left Column: Alerts & Recent Transactions */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* 🚨 Priority Action Hub (Hidden on mobile if no active alerts to keep mobile clean) */}
           <div className={data.notifications.length === 0 ? "desktop-only-widget" : ""}>
             <SectionCard
@@ -1481,13 +1749,13 @@ export default function HomePage() {
               subtitle="Prioritized signals that need your team's attention"
             >
             {data.notifications.length ? (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 {data.notifications.map((item) => (
                   <div
                     key={item.id}
                     style={{
-                      padding: "14px 16px",
-                      borderRadius: 10,
+                      padding: "8px 12px",
+                      borderRadius: 8,
                       border:
                         item.severity === "critical"
                           ? "1px solid #fecaca"
@@ -1503,15 +1771,15 @@ export default function HomePage() {
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "center",
-                      gap: 12,
+                      gap: 10,
                       flexWrap: "wrap",
                     }}
                   >
-                    <div style={{ display: "flex", alignItems: "flex-start", gap: 12 }}>
+                    <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <div
                         style={{
-                          width: 32,
-                          height: 32,
+                          width: 28,
+                          height: 28,
                           borderRadius: "50%",
                           background:
                             item.severity === "critical"
@@ -1531,12 +1799,12 @@ export default function HomePage() {
                           flexShrink: 0,
                         }}
                       >
-                        <Icon name={icons[item.module] ?? "bell"} size={16} />
+                        <Icon name={icons[item.module] ?? "bell"} size={14} />
                       </div>
                       <div>
                         <strong
                           style={{
-                            fontSize: 13.5,
+                            fontSize: 12.5,
                             color:
                               item.severity === "critical"
                                 ? "#991b1b"
@@ -1548,7 +1816,7 @@ export default function HomePage() {
                         >
                           {item.title}
                         </strong>
-                        <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "#475569" }}>
+                        <p style={{ margin: "2px 0 0", fontSize: 11.5, color: "#475569" }}>
                           {item.detail}
                         </p>
                       </div>
@@ -1559,10 +1827,10 @@ export default function HomePage() {
                         onClick={() => router.push(item.actionHref!)}
                         className="primary-button"
                         style={{
-                          padding: "6px 14px",
-                          fontSize: 12,
-                          fontWeight: 700,
-                          borderRadius: 7,
+                          padding: "4px 9px",
+                          fontSize: 11,
+                          fontWeight: 650,
+                          borderRadius: 6,
                           background:
                             item.severity === "critical"
                               ? "#dc2626"
@@ -1582,33 +1850,33 @@ export default function HomePage() {
             ) : (
               <div
                 style={{
-                  padding: "24px 20px",
+                  padding: "16px 14px",
                   textAlign: "center",
                   background: "#f8fafc",
-                  borderRadius: 10,
+                  borderRadius: 8,
                   border: "1px dashed #cbd5e1",
                 }}
               >
                 <div
                   style={{
-                    width: 44,
-                    height: 44,
+                    width: 32,
+                    height: 32,
                     borderRadius: "50%",
                     background: "#dcfce7",
                     color: "#16a34a",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    margin: "0 auto 10px",
-                    fontSize: 20,
+                    margin: "0 auto 8px",
+                    fontSize: 16,
                   }}
                 >
                   ✓
                 </div>
-                <strong style={{ fontSize: 14, color: "var(--ink)", display: "block" }}>
+                <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
                   All Caught Up!
                 </strong>
-                <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "4px 0 0" }}>
+                <p style={{ fontSize: 11.5, color: "var(--muted)", margin: "3px 0 0" }}>
                   No overdue invoices, pending follow-ups, or unrecorded critical actions.
                 </p>
               </div>
@@ -1623,14 +1891,14 @@ export default function HomePage() {
           >
             {data.transactions && data.transactions.length > 0 ? (
               <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
                   <thead>
                     <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                      <th style={{ padding: "8px 10px", fontWeight: 650 }}>Receipt #</th>
-                      <th style={{ padding: "8px 10px", fontWeight: 650 }}>Payer / Student</th>
-                      <th style={{ padding: "8px 10px", fontWeight: 650 }}>Mode</th>
-                      <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Amount Paid</th>
-                      <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Date</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Receipt #</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Payer / Student</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Mode</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Amount Paid</th>
+                      <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Date</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1639,19 +1907,19 @@ export default function HomePage() {
                         key={tx.id}
                         style={{ borderBottom: "1px solid #f1f5f9" }}
                       >
-                        <td style={{ padding: "10px", fontWeight: 700, color: "var(--ink)" }}>
+                        <td style={{ padding: "6px 8px", fontWeight: 700, color: "var(--ink)" }}>
                           {tx.receiptNumber}
                         </td>
-                        <td style={{ padding: "10px", color: "var(--ink)", fontWeight: 600 }}>
+                        <td style={{ padding: "6px 8px", color: "var(--ink)", fontWeight: 600 }}>
                           {tx.personName}
                         </td>
-                        <td style={{ padding: "10px" }}>
+                        <td style={{ padding: "6px 8px" }}>
                           <Badge tone="neutral">{tx.method}</Badge>
                         </td>
-                        <td style={{ padding: "10px", textAlign: "right", fontWeight: 750, color: "#16a34a" }}>
+                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 750, color: "#16a34a" }}>
                           +{money(tx.amountMinor, data.organisation.currency)}
                         </td>
-                        <td style={{ padding: "10px", textAlign: "right", color: "var(--muted)", fontSize: 12 }}>
+                        <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)", fontSize: 11 }}>
                           {formatRelativeTime(tx.receivedAt)}
                         </td>
                       </tr>
@@ -1660,7 +1928,7 @@ export default function HomePage() {
                 </table>
               </div>
             ) : (
-              <div style={{ padding: "20px", textAlign: "center", color: "var(--muted)", fontSize: 13 }}>
+              <div style={{ padding: "14px 10px", textAlign: "center", color: "var(--muted)", fontSize: 11.5 }}>
                 No recent fee receipts or collections recorded yet.
               </div>
             )}
@@ -1668,14 +1936,14 @@ export default function HomePage() {
         </div>
 
         {/* Right Column: Active Modules & Activity Timeline */}
-        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
           {/* 🚀 Active Modules Launch Hub (Desktop Only - mobile users have the navigation menu) */}
           <div className="desktop-only-widget">
             <SectionCard
               title="Active Modules & Services"
               subtitle={`${data.services.length} active modules enabled for ${data.organisation.name}`}
             >
-              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 10 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }}>
                 {data.services.map((service) => {
                   const navItem = SERVICE_NAV_MAP[service];
                   if (!navItem || !navItem.href) return null;
@@ -1688,8 +1956,8 @@ export default function HomePage() {
                         display: "flex",
                         justifyContent: "space-between",
                         alignItems: "center",
-                        padding: "12px 14px",
-                        borderRadius: 9,
+                        padding: "8px 10px",
+                        borderRadius: 7,
                         border: "1px solid #e2e8f0",
                         background: "#ffffff",
                         cursor: "pointer",
@@ -1704,12 +1972,12 @@ export default function HomePage() {
                         e.currentTarget.style.background = "#ffffff";
                       }}
                     >
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <div
                           style={{
-                            width: 32,
-                            height: 32,
-                            borderRadius: 7,
+                            width: 26,
+                            height: 26,
+                            borderRadius: 6,
                             background: "#eff6ff",
                             color: "var(--brand)",
                             display: "flex",
@@ -1717,17 +1985,17 @@ export default function HomePage() {
                             justifyContent: "center",
                           }}
                         >
-                          <Icon name={icons[service] ?? "services"} size={16} />
+                          <Icon name={icons[service] ?? "services"} size={14} />
                         </div>
                         <div>
-                          <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
+                          <strong style={{ fontSize: 12, color: "var(--ink)", display: "block" }}>
                             {navItem.label}
                           </strong>
-                          <span style={{ fontSize: 11.5, color: "var(--muted)" }}>Click to launch</span>
+                          <span style={{ fontSize: 10.5, color: "var(--muted)" }}>Click to launch</span>
                         </div>
                       </div>
 
-                      <span style={{ fontSize: 12, fontWeight: 700, color: "var(--brand)" }}>
+                      <span style={{ fontSize: 11, fontWeight: 700, color: "var(--brand)" }}>
                         Open →
                       </span>
                     </div>
@@ -1737,12 +2005,12 @@ export default function HomePage() {
                 <div
                   onClick={() => router.push("/settings")}
                   style={{
-                    padding: "10px 14px",
-                    borderRadius: 8,
+                    padding: "8px 10px",
+                    borderRadius: 7,
                     border: "1px dashed #cbd5e1",
                     background: "#f8fafc",
                     textAlign: "center",
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: 650,
                     color: "var(--muted)",
                     cursor: "pointer",

@@ -775,14 +775,17 @@ function FinanceContent() {
     setPaymentBusy(true);
     setPaymentError("");
     try {
-      const res = await authFetch(`${api}/finance/invoices/${detailInvoice.id}/payments`, {
+      const res = await authFetch(`${api}/finance/payments`, {
         method: "POST",
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
+          invoiceId: detailInvoice.id,
+          personId: detailInvoice.personId,
           amountMinor: Math.round(amt * 100),
           method: paymentMethod,
           reference: paymentRef?.trim() || undefined,
+          receivedAt: new Date().toISOString(),
           notes: paymentNotes?.trim() || undefined,
         }),
       });

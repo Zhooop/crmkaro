@@ -288,8 +288,14 @@ export default function PayrollPage() {
   );
 
   function openAddEmployeeModal() {
-    const nextNum = employees.length + 1;
-    const seqCode = `EMP-${String(nextNum).padStart(2, "0")}`;
+    const existingNums = employees
+      .map((e) => {
+        const match = (e.employeeCode || "").match(/EMP-(\d+)/i);
+        return match && match[1] ? parseInt(match[1], 10) : 0;
+      })
+      .filter((n) => !isNaN(n));
+    const maxNum = existingNums.length > 0 ? Math.max(...existingNums, 0) : 0;
+    const seqCode = `EMP-${String(maxNum + 1).padStart(2, "0")}`;
     setFormCode(seqCode);
     setEmpMode("new");
     setFormStaffName("");

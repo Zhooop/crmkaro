@@ -1420,6 +1420,8 @@ function PeopleContent() {
             paddingTop: 16,
             marginTop: 18,
             borderTop: "1px solid var(--line)",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
           <button
@@ -1430,26 +1432,37 @@ function PeopleContent() {
           >
             Cancel
           </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => {
-              setFormNameTouched(true);
-              if (isFormValid) {
-                setModalActiveTab("address");
-              }
-            }}
-            style={{
-              padding: "9px 24px",
-              fontWeight: 700,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <span>Next: Address Details</span>
-            <span>→</span>
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              type="submit"
+              className="btn btn-secondary"
+              disabled={!isFormValid || formBusy}
+              style={{ padding: "9px 18px", fontWeight: 600 }}
+              title="Save with personal details entered so far"
+            >
+              {formBusy ? "Saving…" : "Save Member Now"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => {
+                setFormNameTouched(true);
+                if (isFormValid) {
+                  setModalActiveTab("address");
+                }
+              }}
+              style={{
+                padding: "9px 22px",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>Next: Address Details</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
       );
     }
@@ -1465,6 +1478,8 @@ function PeopleContent() {
             paddingTop: 16,
             marginTop: 18,
             borderTop: "1px solid var(--line)",
+            gap: 10,
+            flexWrap: "wrap",
           }}
         >
           <button
@@ -1476,21 +1491,32 @@ function PeopleContent() {
             <span>←</span>
             <span>Back</span>
           </button>
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => setModalActiveTab("more")}
-            style={{
-              padding: "9px 24px",
-              fontWeight: 700,
-              display: "inline-flex",
-              alignItems: "center",
-              gap: 6,
-            }}
-          >
-            <span>Next: More Info</span>
-            <span>→</span>
-          </button>
+          <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+            <button
+              type="submit"
+              className="btn btn-secondary"
+              disabled={!isFormValid || formBusy}
+              style={{ padding: "9px 18px", fontWeight: 600 }}
+              title="Save with personal and address details"
+            >
+              {formBusy ? "Saving…" : "Save Member Now"}
+            </button>
+            <button
+              type="button"
+              className="btn btn-primary"
+              onClick={() => setModalActiveTab("more")}
+              style={{
+                padding: "9px 22px",
+                fontWeight: 700,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+              }}
+            >
+              <span>Next: More Info</span>
+              <span>→</span>
+            </button>
+          </div>
         </div>
       );
     }
@@ -1506,6 +1532,8 @@ function PeopleContent() {
           paddingTop: 16,
           marginTop: 18,
           borderTop: "1px solid var(--line)",
+          gap: 10,
+          flexWrap: "wrap",
         }}
       >
         <button
@@ -1522,7 +1550,7 @@ function PeopleContent() {
           className="btn btn-primary"
           disabled={!isFormValid || formBusy}
           style={{
-            padding: "9px 24px",
+            padding: "9px 26px",
             background: isFormValid ? "#059669" : undefined,
             borderColor: isFormValid ? "#059669" : undefined,
             opacity: !isFormValid ? 0.45 : 1,

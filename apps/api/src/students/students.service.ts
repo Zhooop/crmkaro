@@ -462,7 +462,52 @@ export class StudentsService {
           const feePlanAmount = std.feeAmountMinor || 0;
           totalExpectedMinor += feePlanAmount;
 
-          const inv = invoiceByPersonId.get(std.personId);
+          let inv = invoiceByPersonId.get(std.personId);
+          if (!inv && feePlanAmount > 0) {
+            try {
+              const seq = await this.sequence(tx, organisationId, "invoice");
+              const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
+              const description = `Tuition / Course Fee — ${std.standard}${std.batch ? ` (${std.batch})` : ""} [${monthLabel}]`;
+              inv = await tx.invoice.create({
+                data: {
+                  organisationId,
+                  personId: std.personId,
+                  invoiceNumber,
+                  issueDate: new Date(),
+                  dueDate: new Date(),
+                  status: "ISSUED",
+                  currency: "INR",
+                  subtotalMinor: feePlanAmount,
+                  discountMinor: 0,
+                  taxMinor: 0,
+                  grandTotalMinor: feePlanAmount,
+                  paidTotalMinor: 0,
+                  balanceDueMinor: feePlanAmount,
+                  notes: `Fee Cycle: ${targetMonth} (${monthLabel})`,
+                  issuedAt: new Date(),
+                  items: {
+                    create: [
+                      {
+                        organisationId,
+                        description,
+                        quantity: 1,
+                        unitPriceMinor: feePlanAmount,
+                        discountMinor: 0,
+                        taxRateBps: 0,
+                        taxMinor: 0,
+                        lineTotalMinor: feePlanAmount,
+                        position: 1,
+                      },
+                    ],
+                  },
+                },
+                include: { items: true, payments: true },
+              });
+              invoiceByPersonId.set(std.personId, inv);
+            } catch (err) {
+              console.error("Failed to auto-create cycle invoice:", err);
+            }
+          }
           let status: "PAID" | "PARTIALLY_PAID" | "PENDING" = "PENDING";
           let paidMinor = 0;
           let balanceMinor = feePlanAmount;

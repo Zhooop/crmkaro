@@ -150,7 +150,7 @@ export class GroupsService {
                     select: {
                       id: true,
                       invoiceNumber: true,
-                      totalMinor: true,
+                      grandTotalMinor: true,
                       balanceDueMinor: true,
                       status: true,
                       issueDate: true,
@@ -175,7 +175,15 @@ export class GroupsService {
       let totalDueMinor = 0;
 
       const membersWithStats = group.members.map((m) => {
-        const invoices = m.person?.invoices || [];
+        const rawInvoices = m.person?.invoices || [];
+        const invoices = rawInvoices.map((inv) => ({
+          id: inv.id,
+          invoiceNumber: inv.invoiceNumber,
+          totalMinor: inv.grandTotalMinor,
+          balanceDueMinor: inv.balanceDueMinor,
+          status: inv.status,
+          issueDate: inv.issueDate,
+        }));
         const personPaid = invoices
           .filter((inv) => inv.status === "PAID")
           .reduce((sum, inv) => sum + inv.totalMinor, 0);

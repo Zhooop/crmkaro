@@ -89,11 +89,15 @@ export const ALL_AVAILABLE_SERVICES = [
 ] as const;
 
 export const DEFAULT_SERVICE_CODES = [
+  "students",
   "people",
   "groups",
   "quick-collect",
   "transactions",
+  "crm",
+  "finance",
   "payroll",
+  "inventory",
 ];
 
 export function getActiveServicesFromStorage(): string[] {

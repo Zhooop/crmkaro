@@ -149,6 +149,12 @@ function GroupsContent() {
   const [groupDetail, setGroupDetail] = useState<GroupDetail | null>(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [insightMonth, setInsightMonth] = useState("September 2026");
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const showToast = useCallback((msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 2500);
+  }, []);
 
   // New Group Wizard States
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
@@ -239,9 +245,13 @@ function GroupsContent() {
   const loadGroupDetail = useCallback(
     async (id: string) => {
       setDetailLoading(true);
+      setError("");
       try {
         const res = await authFetch(`${api}/groups/${id}`, { credentials: "include" });
-        if (!res.ok) throw new Error("Failed to load group details.");
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.message || "Failed to load group details.");
+        }
         const data = await res.json();
         setGroupDetail(data);
       } catch (err) {
@@ -300,6 +310,9 @@ function GroupsContent() {
     } else if (id) {
       setSelectedGroupId(id);
       setViewMode("detail");
+    } else {
+      setViewMode("list");
+      setSelectedGroupId(null);
     }
   }, [searchParams]);
 
@@ -443,6 +456,7 @@ function GroupsContent() {
       if (res.ok) {
         setAddMemberModalOpen(false);
         setSingleMemberPersonId("");
+        showToast("Member enrolled in group successfully!");
         loadGroupDetail(groupDetail.id);
       }
     } catch {
@@ -587,6 +601,7 @@ function GroupsContent() {
                     onClick={() => {
                       setSelectedGroupId(group.id);
                       setViewMode("detail");
+                      router.push(`/groups?id=${group.id}`);
                     }}
                   >
                     {/* Large Monogram Banner */}
@@ -1130,7 +1145,13 @@ function GroupsContent() {
           <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 13, color: "var(--muted)" }}>
             <button
               className="btn-link"
-              onClick={() => setViewMode("list")}
+              onClick={() => {
+                setViewMode("list");
+                setSelectedGroupId(null);
+                setGroupDetail(null);
+                setError("");
+                router.push("/groups");
+              }}
               style={{ background: "transparent", border: "none", cursor: "pointer", color: "var(--muted)", padding: 0 }}
             >
               Groups
@@ -1139,10 +1160,29 @@ function GroupsContent() {
             <strong style={{ color: "var(--ink)" }}>{groupDetail?.name || "Loading Group..."}</strong>
           </div>
 
-          {detailLoading || !groupDetail ? (
+          {detailLoading ? (
             <div className="empty-state">
               <div className="state-spinner" />
               <p>Loading group details…</p>
+            </div>
+          ) : !groupDetail ? (
+            <div className="empty-state">
+              <Icon name="alertCircle" size={28} />
+              <h3>Failed to load group</h3>
+              <p>{error || "Group details could not be found or loaded."}</p>
+              <button
+                className="btn btn-secondary"
+                style={{ marginTop: 12 }}
+                onClick={() => {
+                  setViewMode("list");
+                  setSelectedGroupId(null);
+                  setGroupDetail(null);
+                  setError("");
+                  router.push("/groups");
+                }}
+              >
+                Back to Groups
+              </button>
             </div>
           ) : (
             <>
@@ -1481,9 +1521,10 @@ function GroupsContent() {
                                       target="_blank"
                                       rel="noreferrer"
                                       className="btn btn-secondary btn-sm"
-                                      style={{ color: "#166534", background: "#f0fdf4", borderColor: "#86efac" }}
+                                      style={{ color: "#166534", background: "#f0fdf4", borderColor: "#86efac", display: "inline-flex", alignItems: "center", gap: 5 }}
                                     >
-                                      📲 WhatsApp
+                                      <Icon name="whatsapp" size={13} />
+                                      <span>WhatsApp</span>
                                     </a>
                                   )}
                                   <a
@@ -1632,11 +1673,13 @@ function GroupsContent() {
                   required
                 >
                   <option value="">-- Choose Member --</option>
-                  {allPeople.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.displayName} {p.primaryPhone ? `(${p.primaryPhone})` : ""}
-                    </option>
-                  ))}
+                  {allPeople
+                    .filter((p) => !groupDetail?.members.some((m) => m.personId === p.id))
+                    .map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.displayName} {p.primaryPhone ? `(${p.primaryPhone})` : ""}
+                      </option>
+                    ))}
                 </select>
               </div>
 
@@ -1670,6 +1713,31 @@ function GroupsContent() {
               </div>
             </form>
           </Modal>
+        </div>
+      )}
+
+      {/* Floating Feedback Toast */}
+      {toastMessage && (
+        <div
+          style={{
+            position: "fixed",
+            bottom: 24,
+            right: 24,
+            background: "#0f172a",
+            color: "#ffffff",
+            padding: "10px 18px",
+            borderRadius: 8,
+            fontSize: 13,
+            fontWeight: 600,
+            boxShadow: "0 10px 25px rgba(0,0,0,0.2)",
+            zIndex: 9999,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <Icon name="check" size={15} />
+          <span>{toastMessage}</span>
         </div>
       )}
     </AppShell>

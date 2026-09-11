@@ -1087,8 +1087,8 @@ export function StatCard({
   onClick,
 }: {
   label: string;
-  value: string | number;
-  change?: string;
+  value: ReactNode;
+  change?: ReactNode;
   tone?: "blue" | "teal" | "amber" | "rose" | "purple" | string;
   icon: IconName;
   onClick?: () => void;

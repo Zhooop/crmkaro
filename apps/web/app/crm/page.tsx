@@ -241,18 +241,22 @@ function CrmContent() {
       if (res.ok) {
         const data: Pipeline[] = await res.json();
         setPipelines(data);
-        if (data.length > 0 && !selectedPipelineId) {
+        if (data.length > 0) {
           const defaultPipe = data.find((p) => p.isDefault) || data[0];
-          if (defaultPipe) {
+          if (defaultPipe && !selectedPipelineId) {
             setSelectedPipelineId(defaultPipe.id);
             if (defaultPipe.stages && defaultPipe.stages.length > 0 && defaultPipe.stages[0]) {
               setFormStageId(defaultPipe.stages[0].id);
             }
           }
+        } else {
+          setLoading(false);
         }
+      } else {
+        setLoading(false);
       }
     } catch {
-      // ignore
+      setLoading(false);
     }
   }, [api, selectedPipelineId]);
 
@@ -270,7 +274,10 @@ function CrmContent() {
 
   // Load Leads list
   const loadLeads = useCallback(async () => {
-    if (!selectedPipelineId) return;
+    if (!selectedPipelineId) {
+      setLoading(false);
+      return;
+    }
     setLoading(true);
     setError("");
     try {

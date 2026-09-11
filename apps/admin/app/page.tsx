@@ -558,7 +558,12 @@ export default function AdminHomePage() {
                 />
                 <StatCard
                   label="Security Posture"
-                  value="RLS Isolated"
+                  value={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="live-pulse-dot" />
+                      <span>RLS Isolated</span>
+                    </span>
+                  }
                   change="PostgreSQL Kernel Enforced"
                   icon="shield"
                   tone="purple"
@@ -1087,14 +1092,24 @@ export default function AdminHomePage() {
               <div className="stats-grid">
                 <StatCard
                   label="PostgreSQL Status"
-                  value="Connected"
+                  value={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="live-pulse-dot" />
+                      <span>Connected</span>
+                    </span>
+                  }
                   change="RLS Zero-Trust Enforced"
                   icon="shield"
                   tone="teal"
                 />
                 <StatCard
                   label="API Server Uptime"
-                  value={health ? `${Math.floor(health.uptimeSeconds / 3600)}h ${Math.floor((health.uptimeSeconds % 3600) / 60)}m` : "Active"}
+                  value={
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                      <span className="live-pulse-dot" />
+                      <span>{health ? `${Math.floor(health.uptimeSeconds / 3600)}h ${Math.floor((health.uptimeSeconds % 3600) / 60)}m` : "Active"}</span>
+                    </span>
+                  }
                   change="PM2 Managed"
                   icon="activity"
                   tone="blue"

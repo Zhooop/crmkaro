@@ -25,10 +25,13 @@ export class AccessService {
       const standardServices = [
         { code: "students", name: "Students & Attendance", sortOrder: 5 },
         { code: "people", name: "People & Directory", sortOrder: 10 },
+        { code: "quick-collect", name: "Quick Collect", sortOrder: 15 },
         { code: "crm", name: "Leads & CRM", sortOrder: 20 },
         { code: "finance", name: "Finance & Fees", sortOrder: 30 },
+        { code: "transactions", name: "Transactions", sortOrder: 35 },
         { code: "payroll", name: "Staff & Salary", sortOrder: 40 },
         { code: "inventory", name: "Inventory & Stock", sortOrder: 50 },
+        { code: "groups", name: "Groups & Batches", sortOrder: 60 },
       ];
 
       for (const srv of standardServices) {
