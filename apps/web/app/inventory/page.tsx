@@ -15,12 +15,7 @@ import { Suspense, useCallback, useEffect, useState, type FormEvent } from "reac
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
-  buildNavItems,
-  useWorkspaceContext,
-  DEFAULT_SERVICE_CODES,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
-  saveActiveServicesToStorage,
+  useWorkspace,
 } from "@/lib/nav";
 
 type Category = {
@@ -82,22 +77,7 @@ function InventoryContent() {
   const [search, setSearch] = useState("");
   const [lowStockOnly, setLowStockOnly] = useState(false);
 
-  // Context & AppShell info (Instant 0ms cached state)
-  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Owner");
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
-
-  useEffect(() => {
-    if (isMounted) {
-      setOrgName(cached.orgName);
-      setUserName(cached.userName);
-      setUserRole(cached.userRole);
-      setActiveServiceCodes(cached.activeServices);
-    }
-  }, [isMounted, cached]);
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
 
   // Modals
   const [createProductOpen, setCreateProductOpen] = useState(false);
@@ -168,24 +148,18 @@ function InventoryContent() {
             o.organisation,
         );
         if (activeOrgEntry?.organisation) {
-          setOrgName(activeOrgEntry.organisation.name);
-          setUserRole(activeOrgEntry.role?.name || "Staff");
           const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
-          if (srvs && Array.isArray(srvs)) {
-            setActiveServiceCodes(srvs);
-            saveActiveServicesToStorage(srvs);
-          }
+          updateWorkspace({
+            orgName: activeOrgEntry.organisation.name,
+            userRole: activeOrgEntry.role?.name || "Staff",
+            ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
+          });
         }
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
       }
     } catch {
       // ignore
     }
-  }, [api, router]);
+  }, [api, router, updateWorkspace]);
 
   // Load Categories
   const loadCategories = useCallback(async () => {
@@ -388,17 +362,15 @@ function InventoryContent() {
     { id: "movements", label: "Stock Movements Ledger", count: movements.length },
   ];
 
-  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
-
   return (
     <AppShell
       product="CRMKaro"
-      organisation={isMounted ? orgName : "CRMKaro Workspace"}
+      organisation={orgName}
       organisations={organisations}
       currentPath="/inventory"
       nav={navItems}
-      userName={isMounted ? userName : "Workspace User"}
-      userRole={isMounted ? userRole : "Owner"}
+      userName={userName}
+      userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}

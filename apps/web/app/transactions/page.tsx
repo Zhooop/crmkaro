@@ -13,12 +13,7 @@ import { Suspense, useCallback, useEffect, useState, type FormEvent } from "reac
 import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
-  buildNavItems,
-  useWorkspaceContext,
-  DEFAULT_SERVICE_CODES,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
-  saveActiveServicesToStorage,
+  useWorkspace,
 } from "@/lib/nav";
 
 type InvoiceItem = {
@@ -66,26 +61,13 @@ function formatMoney(minor: number | undefined) {
   return formatCurrency(minor, "INR");
 }
 
+let inMemoryInvoices: InvoiceItem[] = [];
+
 function TransactionsContent() {
   const router = useRouter();
   const api = getApiUrl();
 
-  // Instant Cached AppShell Context (0ms delay)
-  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Owner");
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
-
-  useEffect(() => {
-    if (isMounted) {
-      setOrgName(cached.orgName);
-      setUserName(cached.userName);
-      setUserRole(cached.userRole);
-      setActiveServiceCodes(cached.activeServices);
-    }
-  }, [isMounted, cached]);
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
 
   // Tabs: "recent" | "paid" | "pending" | "partially-paid" (Screenshot 1)
   const [activeTab, setActiveTab] = useState<string>("recent");
@@ -95,8 +77,8 @@ function TransactionsContent() {
   const [searchQuery, setSearchQuery] = useState("");
 
   // Data States
-  const [invoices, setInvoices] = useState<InvoiceItem[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [invoices, setInvoices] = useState<InvoiceItem[]>(() => inMemoryInvoices);
+  const [loading, setLoading] = useState(() => inMemoryInvoices.length === 0);
   const [error, setError] = useState("");
 
   // Receipt Modal
@@ -121,8 +103,7 @@ function TransactionsContent() {
       if (meRes.ok) {
         const meData = await meRes.json();
         if (meData.user?.name) {
-          setUserName(meData.user.name);
-          saveCachedWorkspaceContext({ userName: meData.user.name });
+          updateWorkspace({ userName: meData.user.name });
         }
       }
       const orgsRes = await authFetch(`${api}/organisations`, { credentials: "include" });
@@ -136,33 +117,31 @@ function TransactionsContent() {
           const oName = activeOrgEntry.organisation.name;
           const rName = activeOrgEntry.role?.name || "Member";
           const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices || [];
-          setOrgName(oName);
-          setUserRole(rName);
-          if (srvs && Array.isArray(srvs)) {
-            setActiveServiceCodes(srvs);
-            saveCachedWorkspaceContext({ orgName: oName, userRole: rName, activeServices: srvs });
-          }
+          updateWorkspace({
+            orgName: oName,
+            userRole: rName,
+            ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
+          });
         }
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
       }
     } catch {
       // ignore
     }
-  }, [api, router]);
+  }, [api, router, updateWorkspace]);
 
   // Load Transactions / Invoices
   const loadInvoices = useCallback(async () => {
-    setLoading(true);
+    if (inMemoryInvoices.length === 0) {
+      setLoading(true);
+    }
     setError("");
     try {
       const res = await authFetch(`${api}/finance/invoices?limit=100`, { credentials: "include" });
       if (!res.ok) throw new Error("Failed to load transactions.");
       const data = await res.json();
-      setInvoices(data.items || []);
+      const list = data.items || [];
+      inMemoryInvoices = list;
+      setInvoices(list);
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -201,11 +180,10 @@ function TransactionsContent() {
         throw new Error(err.message || "Failed to record payment.");
       }
 
+      await loadInvoices();
       setPaymentModalInvoice(null);
       setPaymentAmount(0);
       setPaymentRef("");
-      setPaymentError("");
-      loadInvoices();
     } catch (err) {
       setPaymentError((err as Error).message);
     } finally {
@@ -215,12 +193,12 @@ function TransactionsContent() {
 
   // Filter invoices according to selected tab and search query
   const filteredInvoices = invoices.filter((inv) => {
-    // 1. Tab Status Filter
+    // 1. Tab filter
     if (activeTab === "paid" && inv.status !== "PAID") return false;
-    if (activeTab === "pending" && !["ISSUED", "DRAFT"].includes(inv.status)) return false;
+    if (activeTab === "pending" && (inv.status === "PAID" || inv.status === "VOID")) return false;
     if (activeTab === "partially-paid" && inv.status !== "PARTIALLY_PAID") return false;
 
-    // 2. Search Filter
+    // 2. Search filter
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase().trim();
 
@@ -236,17 +214,15 @@ function TransactionsContent() {
     return true;
   });
 
-  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
-
   return (
     <AppShell
       product="CRMKaro"
-      organisation={isMounted ? orgName : "CRMKaro Workspace"}
+      organisation={orgName}
       organisations={organisations}
       currentPath="/transactions"
       nav={navItems}
-      userName={isMounted ? userName : "Workspace User"}
-      userRole={isMounted ? userRole : "Owner"}
+      userName={userName}
+      userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}

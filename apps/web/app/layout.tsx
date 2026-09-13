@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import { WorkspaceProvider } from "../lib/nav";
 import "./globals.css";
 
 export const viewport: Viewport = {
@@ -120,7 +121,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: Readonly<{ children: ReactNode }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning data-scroll-behavior="smooth">
       <head>
         <link rel="icon" href="/brand/crmkaro-mark.png" type="image/png" />
         <link rel="apple-touch-icon" href="/brand/crmkaro-mark.png" />
@@ -129,7 +130,11 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
         />
       </head>
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <WorkspaceProvider>
+          {children}
+        </WorkspaceProvider>
+      </body>
     </html>
   );
 }

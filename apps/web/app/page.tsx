@@ -19,10 +19,7 @@ import { authFetch, getApiUrl } from "@/lib/api";
 import {
   ALL_AVAILABLE_SERVICES,
   SERVICE_NAV_MAP,
-  buildNavItems,
-  useWorkspaceContext,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
+  useWorkspace,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -418,9 +415,9 @@ const SOLUTION_PRESETS = [
 
 export default function HomePage() {
   const router = useRouter();
-  const { context: cachedContext, isMounted, nav: defaultNav } = useWorkspaceContext();
+  const { orgName: wsOrgName, userName: wsUserName, userRole: wsUserRole, organisations: wsOrgs, navItems: wsNav, updateWorkspace } = useWorkspace();
   const [data, setData] = useState<Dashboard | null>(null);
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
+  const [organisations, setOrganisations] = useState<OrganisationSummary[]>(() => wsOrgs);
   const [error, setError] = useState("");
   const [isUnauthenticated, setIsUnauthenticated] = useState<boolean>(false);
   const [needsSetup, setNeedsSetup] = useState(false);
@@ -517,10 +514,11 @@ export default function HomePage() {
       setData(dashboardData);
       if (preset === "all") saveCachedDashboardData(dashboardData);
       saveActiveServicesToStorage(dashboardData.services || []);
-      saveCachedWorkspaceContext({
+      updateWorkspace({
         orgName: dashboardData.organisation.name,
         userName: dashboardData.user?.name || undefined,
         currency: dashboardData.organisation.currency || "INR",
+        businessType: dashboardData.organisation.businessType || undefined,
         activeServices: dashboardData.services || [],
       });
 
@@ -887,16 +885,9 @@ export default function HomePage() {
       </main>
     );
 
-  if (!data) {
-    return <DashboardLoading />;
-  }
-
-  const orgName = isMounted && data?.organisation?.name ? data.organisation.name : (isMounted ? cachedContext.orgName : "CRMKaro Workspace");
-  const displayName = isMounted && data?.user?.name && data.user.name.trim().length > 0
-    ? data.user.name
-    : (isMounted ? (data?.user?.email?.split("@")[0] ?? cachedContext.userName ?? "Team Member") : "Workspace User");
-
-  const nav: NavItem[] = isMounted && data?.services ? buildNavItems(data.services) : defaultNav;
+  const orgName = data?.organisation?.name || wsOrgName;
+  const displayName = data?.user?.name || wsUserName;
+  const nav: NavItem[] = wsNav;
   const todayFormatted = new Date().toLocaleDateString("en-IN", {
     weekday: "long",
     day: "numeric",
@@ -909,10 +900,10 @@ export default function HomePage() {
       currentPath="/"
       nav={nav}
       organisation={orgName}
-      organisations={organisations}
+      organisations={organisations.length > 0 ? organisations : wsOrgs}
       product="CRMKaro"
       userName={displayName}
-      userRole={data?.role?.name ?? cachedContext.userRole ?? "Owner"}
+      userRole={data?.role?.name ?? wsUserRole ?? "Owner"}
       notifications={data?.notifications}
       apiUrl={api}
       onSwitchOrganisation={handleSwitchOrg}

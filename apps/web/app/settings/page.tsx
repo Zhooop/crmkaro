@@ -16,11 +16,7 @@ import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   ALL_AVAILABLE_SERVICES,
-  buildNavItems,
-  useWorkspaceContext,
-  DEFAULT_SERVICE_CODES,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
+  useWorkspace,
   saveActiveServicesToStorage,
 } from "@/lib/nav";
 
@@ -62,7 +58,7 @@ export default function SettingsPage() {
   const api = getApiUrl();
 
   // Data states
-  const [activeTab, setActiveTab] = useState<"profile" | "team" | "services" | "audit">("profile");
+  const [activeTab, setActiveTab] = useState<"profile" | "team" | "services" | "payouts" | "audit">("profile");
   const [orgDetails, setOrgDetails] = useState<{
     id: string;
     name: string;
@@ -90,29 +86,64 @@ export default function SettingsPage() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Payouts & Bank Account State
+  type PayoutSettings = {
+    configured: boolean;
+    id?: string;
+    payoutStatus: "NOT_CONFIGURED" | "ACTIVE" | "PENDING_VERIFICATION";
+    gatewayMode: "PLATFORM_ROUTE" | "CUSTOM_KEYS";
+    settlementCycle: string;
+    isVerified: boolean;
+    accountHolderName: string;
+    bankName: string;
+    accountNumber: string;
+    accountNumberMasked: string;
+    ifscCode: string;
+    upiId: string;
+    panNumber: string;
+    businessGstin: string;
+    customRazorpayKeyId: string;
+    hasCustomSecret: boolean;
+  };
+
+  const [payouts, setPayouts] = useState<PayoutSettings | null>(null);
+  const [loadingPayouts, setLoadingPayouts] = useState(false);
+  const [savingPayouts, setSavingPayouts] = useState(false);
+  const [payoutForm, setPayoutForm] = useState({
+    accountHolderName: "",
+    bankName: "",
+    accountNumber: "",
+    confirmAccountNumber: "",
+    ifscCode: "",
+    upiId: "",
+    panNumber: "",
+    businessGstin: "",
+    gatewayMode: "PLATFORM_ROUTE" as "PLATFORM_ROUTE" | "CUSTOM_KEYS",
+    customRazorpayKeyId: "",
+    customRazorpaySecret: "",
+  });
+
   const [members, setMembers] = useState<Member[]>([]);
   const [roles, setRoles] = useState<Role[]>([]);
-  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
+  const {
+    orgName,
+    userName,
+    userRole,
+    businessType,
+    activeServices,
+    organisations,
+    navItems,
+    updateWorkspace,
+  } = useWorkspace();
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
+  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(activeServices);
   const [auditLogs, setAuditLogs] = useState<AuditItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [togglingCode, setTogglingCode] = useState<string | null>(null);
 
-  // Context & AppShell info (Instant 0ms cached state)
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Owner");
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-
   useEffect(() => {
-    if (isMounted) {
-      setOrgName(cached.orgName);
-      setUserName(cached.userName);
-      setUserRole(cached.userRole);
-      setActiveServiceCodes(cached.activeServices);
-    }
-  }, [isMounted, cached]);
+    setActiveServiceCodes(activeServices);
+  }, [activeServices]);
 
   useEffect(() => {
     if (orgDetails) {
@@ -210,8 +241,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const updated = await res.json();
         setOrgDetails(updated);
-        setOrgName(updated.name);
-        saveCachedWorkspaceContext({ orgName: updated.name });
+        updateWorkspace({ orgName: updated.name, businessType: updated.businessType || undefined });
         showToast("✨ Organisation branding & logo saved successfully! PDFs will now include this branding.", "success");
       } else {
         const err = await res.json().catch(() => ({}));
@@ -240,25 +270,20 @@ export default function SettingsPage() {
             o.organisation,
         );
         if (activeOrgEntry?.organisation) {
-          setOrgName(activeOrgEntry.organisation.name);
           setOrgDetails(activeOrgEntry.organisation);
-          setUserRole(activeOrgEntry.role?.name || "Admin");
-          if (activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices) {
-            const list = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
-            setActiveServiceCodes(list);
-            saveActiveServicesToStorage(list);
-          }
+          const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
+          updateWorkspace({
+            orgName: activeOrgEntry.organisation.name,
+            userRole: activeOrgEntry.role?.name || "Admin",
+            businessType: activeOrgEntry.organisation.businessType || "Business",
+            ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
+          });
         }
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
       }
     } catch {
       // ignore
     }
-  }, [api, router]);
+  }, [api, router, updateWorkspace]);
 
   // Load team & roles
   const loadTeam = useCallback(async () => {
@@ -282,12 +307,12 @@ export default function SettingsPage() {
         setServices(data || []);
         const activeList = data.filter((s: ServiceItem) => s.enabled).map((s: ServiceItem) => s.code);
         setActiveServiceCodes(activeList);
-        saveActiveServicesToStorage(activeList);
+        updateWorkspace({ activeServices: activeList });
       }
     } catch {
       // ignore
     }
-  }, [api]);
+  }, [api, updateWorkspace]);
 
   // Load Audit
   const loadAudit = useCallback(async () => {
@@ -301,6 +326,99 @@ export default function SettingsPage() {
       // ignore
     }
   }, [api]);
+
+  // Load Payouts & Bank Settings
+  const loadPayouts = useCallback(async (orgId: string) => {
+    setLoadingPayouts(true);
+    try {
+      const res = await authFetch(`${api}/organisations/${orgId}/payout-settings`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPayouts(data);
+        setPayoutForm({
+          accountHolderName: data.accountHolderName || "",
+          bankName: data.bankName || "",
+          accountNumber: data.accountNumberMasked || data.accountNumber || "",
+          confirmAccountNumber: data.accountNumberMasked || data.accountNumber || "",
+          ifscCode: data.ifscCode || "",
+          upiId: data.upiId || "",
+          panNumber: data.panNumber || "",
+          businessGstin: data.businessGstin || "",
+          gatewayMode: (data.gatewayMode as "PLATFORM_ROUTE" | "CUSTOM_KEYS") || "PLATFORM_ROUTE",
+          customRazorpayKeyId: data.customRazorpayKeyId || "",
+          customRazorpaySecret: data.hasCustomSecret ? "••••••••••••••••" : "",
+        });
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingPayouts(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    if (orgDetails?.id) {
+      loadPayouts(orgDetails.id);
+    }
+  }, [orgDetails?.id, loadPayouts]);
+
+  const handleSavePayouts = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!orgDetails?.id) return;
+
+    if (
+      payoutForm.accountNumber &&
+      !payoutForm.accountNumber.includes("•") &&
+      payoutForm.accountNumber !== payoutForm.confirmAccountNumber
+    ) {
+      showToast("Account numbers do not match! Please verify.", "error");
+      return;
+    }
+
+    setSavingPayouts(true);
+    try {
+      const payload: any = {
+        accountHolderName: payoutForm.accountHolderName.trim(),
+        bankName: payoutForm.bankName.trim(),
+        ifscCode: payoutForm.ifscCode.trim().toUpperCase(),
+        upiId: payoutForm.upiId.trim().toLowerCase(),
+        panNumber: payoutForm.panNumber.trim().toUpperCase(),
+        businessGstin: payoutForm.businessGstin.trim().toUpperCase(),
+        gatewayMode: payoutForm.gatewayMode,
+        customRazorpayKeyId: payoutForm.customRazorpayKeyId.trim(),
+      };
+
+      if (payoutForm.accountNumber && !payoutForm.accountNumber.includes("•")) {
+        payload.accountNumber = payoutForm.accountNumber.trim();
+      }
+
+      if (payoutForm.customRazorpaySecret && !payoutForm.customRazorpaySecret.includes("•")) {
+        payload.customRazorpaySecret = payoutForm.customRazorpaySecret.trim();
+      }
+
+      const res = await authFetch(`${api}/organisations/${orgDetails.id}/payout-settings`, {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(payload),
+        credentials: "include",
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        setPayouts(data);
+        showToast("🏦 Bank account & payout settlement settings saved successfully!", "success");
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || "Failed to update payout settings.", "error");
+      }
+    } catch {
+      showToast("Network error while saving payout settings.", "error");
+    } finally {
+      setSavingPayouts(false);
+    }
+  };
 
   useEffect(() => {
     loadContext();
@@ -330,9 +448,10 @@ export default function SettingsPage() {
 
   const tabItems = [
     { id: "profile", label: "Workspace Profile" },
-    { id: "services", label: "Services & Modules", count: services.filter((s) => s.enabled).length },
-    { id: "team", label: "Team & Roles", count: roles.length },
-    { id: "audit", label: "Security Audit Log", count: auditLogs.length },
+    { id: "services", label: "Services & Modules", count: services.length > 0 ? services.filter((s) => s.enabled).length : activeServices.length },
+    { id: "payouts", label: "Bank & Payouts" },
+    { id: "team", label: "Team & Roles", count: roles.length > 0 ? roles.length : (loading ? undefined : 0) },
+    { id: "audit", label: "Security Audit Log", count: auditLogs.length > 0 ? auditLogs.length : (loading ? undefined : 0) },
   ];
 
   const [copiedId, setCopiedId] = useState(false);
@@ -352,17 +471,15 @@ export default function SettingsPage() {
     .slice(0, 2)
     .toUpperCase();
 
-  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
-
   return (
     <AppShell
       currentPath="/settings"
       nav={navItems}
-      organisation={isMounted ? orgName : "CRMKaro Workspace"}
+      organisation={orgName}
       organisations={organisations}
       product="CRMKaro"
-      userName={isMounted ? userName : "Workspace User"}
-      userRole={isMounted ? userRole : "Owner"}
+      userName={userName}
+      userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}
@@ -394,17 +511,17 @@ export default function SettingsPage() {
         <div>
           {/* Org Profile Header Card */}
           <div className="profile-hero-card">
-            <div className="profile-avatar-lg">{initials}</div>
+            <div className="profile-avatar-lg" suppressHydrationWarning>{initials}</div>
             <div className="profile-hero-meta">
               <div className="profile-hero-title-row">
-                <h2>{orgDetails?.name || orgName}</h2>
+                <h2 suppressHydrationWarning>{orgDetails?.name || orgName}</h2>
                 <Badge tone="blue">Production Tenant</Badge>
               </div>
               <p className="profile-hero-subtitle">
                 <span>Domain Slug:</span>
                 <code>{orgDetails?.slug || "crmkaro-primary"}</code>
                 <span>·</span>
-                <span>{orgDetails?.businessType || "Business"}</span>
+                <span>{orgDetails?.businessType || businessType || "Business"}</span>
               </p>
             </div>
           </div>
@@ -413,19 +530,19 @@ export default function SettingsPage() {
           <div className="stats-grid" style={{ marginBottom: 24 }}>
             <StatCard
               label="Active Enabled Modules"
-              value={`${services.filter((s) => s.enabled).length} of ${ALL_AVAILABLE_SERVICES.length}`}
+              value={`${services.length > 0 ? services.filter((s) => s.enabled).length : activeServices.length} of ${ALL_AVAILABLE_SERVICES.length}`}
               change="Configurable on Services tab"
               icon="services"
             />
             <StatCard
               label="Assigned Roles"
-              value={roles.length.toString()}
+              value={roles.length > 0 ? roles.length.toString() : (loading ? "..." : "6")}
               change="Strict RBAC Matrix"
               icon="shield"
             />
             <StatCard
               label="Audited Events"
-              value={auditLogs.length.toString()}
+              value={auditLogs.length > 0 ? auditLogs.length.toString() : (loading ? "..." : "0")}
               change="PostgreSQL Append-Only"
               icon="activity"
             />
@@ -808,6 +925,338 @@ export default function SettingsPage() {
               );
             })}
           </div>
+        </div>
+      )}
+
+      {/* Bank & Payouts Tab */}
+      {activeTab === "payouts" && (
+        <div style={{ maxWidth: 860, display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Header Banner */}
+          <div
+            style={{
+              padding: "18px 24px",
+              background: "#f8fafc",
+              borderRadius: 12,
+              border: "1px solid #e2e8f0",
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 16,
+            }}
+          >
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
+                <h3 style={{ margin: 0, fontSize: 16, fontWeight: 750, color: "var(--ink)" }}>
+                  🏦 Bank Account & Payment Settlements
+                </h3>
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "3px 10px",
+                    borderRadius: 12,
+                    fontSize: 11.5,
+                    fontWeight: 750,
+                    background: payouts?.configured ? "#ecfdf5" : "#fffbeb",
+                    color: payouts?.configured ? "#059669" : "#b45309",
+                    border: `1px solid ${payouts?.configured ? "#a7f3d0" : "#fde68a"}`,
+                  }}
+                >
+                  <span
+                    style={{
+                      width: 7,
+                      height: 7,
+                      borderRadius: "50%",
+                      background: payouts?.configured ? "#10b981" : "#f59e0b",
+                    }}
+                  />
+                  {payouts?.configured
+                    ? "ACTIVE — Ready to Receive Fees"
+                    : "SETUP REQUIRED — Add Bank Details"}
+                </span>
+              </div>
+              <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, maxWidth: 620 }}>
+                Configure where student fee payments and customer invoices should be deposited. Supports <strong>Instant Direct UPI QR (0% platform charge)</strong> and <strong>Automated Next-Day Bank Settlement (T+1)</strong>.
+              </p>
+            </div>
+          </div>
+
+          {/* Quick Metrics Cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 14 }}>
+            <div style={{ padding: "16px 20px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Linked Bank</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--ink)", marginTop: 4 }}>
+                {payouts?.bankName || "Not Linked Yet"}
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                {payouts?.accountNumberMasked || "Add Account Number"}
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 20px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Direct Scan UPI ID</div>
+              <div style={{ fontSize: 15, fontWeight: 800, color: payouts?.upiId ? "#059669" : "var(--muted)", marginTop: 4 }}>
+                {payouts?.upiId || "No UPI ID Configured"}
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                Instant PhonePe/GPay QR (0% Fee)
+              </div>
+            </div>
+
+            <div style={{ padding: "16px 20px", background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 10, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase" }}>Settlement Cycle</div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "var(--brand)", marginTop: 4 }}>
+                {payouts?.settlementCycle || "T+1 Daily"}
+              </div>
+              <div style={{ fontSize: 12, color: "#64748b", marginTop: 2 }}>
+                Auto-Transferred via NEFT/IMPS
+              </div>
+            </div>
+          </div>
+
+          {/* Bank Account Form */}
+          <SectionCard title="Business Bank Account Information" subtitle="Direct beneficiary details for fee settlements and invoice collections">
+            <form onSubmit={handleSavePayouts}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 20 }}>
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Account Holder Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Apex Academy Pvt Ltd or Rohit Kumar"
+                    value={payoutForm.accountHolderName}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, accountHolderName: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Bank Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. HDFC Bank, State Bank of India, ICICI"
+                    value={payoutForm.bankName}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, bankName: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Bank Account Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. 50100492817291"
+                    value={payoutForm.accountNumber}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, accountNumber: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Confirm Account Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Re-enter Account Number"
+                    value={payoutForm.confirmAccountNumber}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, confirmAccountNumber: e.target.value })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    IFSC Code *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    maxLength={11}
+                    placeholder="e.g. HDFC0001234"
+                    value={payoutForm.ifscCode}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, ifscCode: e.target.value.toUpperCase() })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5, textTransform: "uppercase", letterSpacing: "1px", fontWeight: 700 }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Institute UPI ID (VPA)
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. apexacademy@okhdfcbank"
+                    value={payoutForm.upiId}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, upiId: e.target.value.toLowerCase() })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
+                  />
+                  <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, display: "block" }}>
+                    Generated QR code on public fee links will route 100% money directly to this UPI ID.
+                  </span>
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    PAN Number
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={10}
+                    placeholder="e.g. ABCDE1234F"
+                    value={payoutForm.panNumber}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, panNumber: e.target.value.toUpperCase() })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5, textTransform: "uppercase" }}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    Business GSTIN (Optional)
+                  </label>
+                  <input
+                    type="text"
+                    maxLength={15}
+                    placeholder="e.g. 27AAAAA0000A1Z5"
+                    value={payoutForm.businessGstin}
+                    onChange={(e) => setPayoutForm({ ...payoutForm, businessGstin: e.target.value.toUpperCase() })}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5, textTransform: "uppercase" }}
+                  />
+                </div>
+              </div>
+
+              {/* Online Payment Gateway Preference */}
+              <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
+                <div style={{ fontSize: 13.5, fontWeight: 750, color: "var(--ink)", marginBottom: 12 }}>
+                  ⚡ Online Payment Gateway Preference
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "14px 18px",
+                      borderRadius: 10,
+                      border: `2px solid ${payoutForm.gatewayMode === "PLATFORM_ROUTE" ? "var(--brand)" : "#e2e8f0"}`,
+                      background: payoutForm.gatewayMode === "PLATFORM_ROUTE" ? "#eff6ff" : "#ffffff",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="gatewayMode"
+                      checked={payoutForm.gatewayMode === "PLATFORM_ROUTE"}
+                      onChange={() => setPayoutForm({ ...payoutForm, gatewayMode: "PLATFORM_ROUTE" })}
+                      style={{ marginTop: 3 }}
+                    />
+                    <div>
+                      <strong style={{ fontSize: 13.5, color: "var(--ink)", display: "block" }}>
+                        CRMKaro Auto-Route (Recommended)
+                      </strong>
+                      <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0", lineHeight: 1.4 }}>
+                        Zero technical setup. Online payments made by students are automatically routed & settled into your bank account (T+1).
+                      </p>
+                    </div>
+                  </label>
+
+                  <label
+                    style={{
+                      display: "flex",
+                      alignItems: "flex-start",
+                      gap: 12,
+                      padding: "14px 18px",
+                      borderRadius: 10,
+                      border: `2px solid ${payoutForm.gatewayMode === "CUSTOM_KEYS" ? "var(--brand)" : "#e2e8f0"}`,
+                      background: payoutForm.gatewayMode === "CUSTOM_KEYS" ? "#eff6ff" : "#ffffff",
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    <input
+                      type="radio"
+                      name="gatewayMode"
+                      checked={payoutForm.gatewayMode === "CUSTOM_KEYS"}
+                      onChange={() => setPayoutForm({ ...payoutForm, gatewayMode: "CUSTOM_KEYS" })}
+                      style={{ marginTop: 3 }}
+                    />
+                    <div>
+                      <strong style={{ fontSize: 13.5, color: "var(--ink)", display: "block" }}>
+                        Own Razorpay Gateway Account
+                      </strong>
+                      <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0", lineHeight: 1.4 }}>
+                        Use your own Razorpay Merchant API Key & Secret. Money deposits directly to your merchant account.
+                      </p>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Custom Razorpay Keys fields */}
+                {payoutForm.gatewayMode === "CUSTOM_KEYS" && (
+                  <div style={{ marginTop: 16, padding: "16px 18px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                        Razorpay Key ID *
+                      </label>
+                      <input
+                        type="text"
+                        placeholder="rzp_live_..."
+                        value={payoutForm.customRazorpayKeyId}
+                        onChange={(e) => setPayoutForm({ ...payoutForm, customRazorpayKeyId: e.target.value })}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
+                      />
+                    </div>
+                    <div>
+                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                        Razorpay Key Secret *
+                      </label>
+                      <input
+                        type="password"
+                        placeholder="Enter API Key Secret"
+                        value={payoutForm.customRazorpaySecret}
+                        onChange={(e) => setPayoutForm({ ...payoutForm, customRazorpaySecret: e.target.value })}
+                        style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Submit Button */}
+              <div style={{ marginTop: 24, display: "flex", justifyContent: "flex-end" }}>
+                <button
+                  type="submit"
+                  disabled={savingPayouts}
+                  style={{
+                    padding: "10px 24px",
+                    fontSize: 14,
+                    fontWeight: 700,
+                    borderRadius: 8,
+                    background: "var(--brand)",
+                    color: "#ffffff",
+                    border: "none",
+                    cursor: savingPayouts ? "not-allowed" : "pointer",
+                    boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
+                  }}
+                >
+                  {savingPayouts ? "Saving Bank Settings…" : "💾 Save Bank & Payout Settings"}
+                </button>
+              </div>
+            </form>
+          </SectionCard>
         </div>
       )}
 

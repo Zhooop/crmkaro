@@ -82,6 +82,47 @@ export class PublicPaymentController {
       throw new NotFoundException("Invoice not found or expired.");
     }
 
+    let payoutDetails: {
+      upiId: string | null;
+      bankName: string | null;
+      accountHolderName: string | null;
+      ifscCode: string | null;
+      accountNumberMasked: string | null;
+      gatewayMode: string;
+      isVerified: boolean;
+    } | null = null;
+    let customKeyId: string | null = null;
+
+    try {
+      const pRows: any[] = await withPlatformAdmin(this.database, async (tx) => {
+        return tx.$queryRawUnsafe(
+          `SELECT * FROM "organisation_payout_settings" WHERE "organisation_id" = $1::uuid LIMIT 1`,
+          invoice.organisationId,
+        );
+      });
+      const p = pRows[0] || null;
+      if (p) {
+        payoutDetails = {
+          upiId: p.upi_id || null,
+          bankName: p.bank_name || null,
+          accountHolderName: p.account_holder_name || null,
+          ifscCode: p.ifsc_code || null,
+          accountNumberMasked: p.account_number
+            ? p.account_number.length > 4
+              ? `••••••••${p.account_number.slice(-4)}`
+              : p.account_number
+            : null,
+          gatewayMode: p.gateway_mode || "PLATFORM_ROUTE",
+          isVerified: Boolean(p.is_verified),
+        };
+        if (p.gateway_mode === "CUSTOM_KEYS" && p.custom_razorpay_key_id) {
+          customKeyId = p.custom_razorpay_key_id;
+        }
+      }
+    } catch {
+      // ignore if table not created yet
+    }
+
     return {
       id: invoice.id,
       invoiceNumber: invoice.invoiceNumber,
@@ -97,10 +138,11 @@ export class PublicPaymentController {
       paidTotalMinor: invoice.paidTotalMinor,
       balanceDueMinor: invoice.balanceDueMinor,
       organisation: invoice.organisation,
+      payoutDetails,
       customer: invoice.person,
       items: invoice.items,
       latestReceipt: invoice.payments[0] || null,
-      razorpayKeyId: this.razorpay.getKeyId(),
+      razorpayKeyId: customKeyId || this.razorpay.getKeyId(),
     };
   }
 
@@ -131,6 +173,22 @@ export class PublicPaymentController {
       throw new BadRequestException("This invoice has been voided.");
     }
 
+    let customKeyId: string | null = null;
+    try {
+      const pRows: any[] = await withPlatformAdmin(this.database, async (tx) => {
+        return tx.$queryRawUnsafe(
+          `SELECT * FROM "organisation_payout_settings" WHERE "organisation_id" = $1::uuid LIMIT 1`,
+          invoice.organisationId,
+        );
+      });
+      const p = pRows[0] || null;
+      if (p?.gateway_mode === "CUSTOM_KEYS" && p.custom_razorpay_key_id) {
+        customKeyId = p.custom_razorpay_key_id;
+      }
+    } catch {
+      // ignore
+    }
+
     const order = await this.razorpay.createOrder({
       amountMinor: invoice.balanceDueMinor,
       currency: invoice.currency || "INR",
@@ -147,7 +205,7 @@ export class PublicPaymentController {
       orderId: order.id,
       amountMinor: order.amount,
       currency: order.currency,
-      keyId: this.razorpay.getKeyId(),
+      keyId: customKeyId || this.razorpay.getKeyId(),
       invoiceNumber: invoice.invoiceNumber,
       customerName: invoice.person.displayName,
       customerPhone: invoice.person.primaryPhone,

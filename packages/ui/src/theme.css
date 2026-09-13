@@ -3873,14 +3873,16 @@ html, body {
 }
 
 .group-monogram-thumb {
-  width: 48px;
-  height: 48px;
-  border-radius: 10px;
+  width: 50px;
+  height: 50px;
+  min-width: 50px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .group-summary-stats-bar {
@@ -3905,18 +3907,32 @@ html, body {
 
 .group-working-days-display {
   display: flex;
-  gap: 4px;
-  font-size: 12px;
+  align-items: center;
+  gap: 3px;
+}
+
+.group-working-days-display span {
+  width: 18px;
+  height: 18px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
   font-weight: 700;
 }
 
 .group-working-days-display span.active-day {
+  background: #ecfdf5;
   color: #059669;
+  border: 1px solid #a7f3d0;
   font-weight: 800;
 }
 
 .group-working-days-display span.inactive-day {
-  color: #cbd5e1;
+  background: #f8fafc;
+  color: #94a3b8;
+  border: 1px solid #f1f5f9;
 }
 
 /* Insight Cards */

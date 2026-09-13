@@ -39,6 +39,15 @@ interface PublicInvoice {
     businessType: string | null;
     currency: string;
   };
+  payoutDetails?: {
+    upiId: string | null;
+    bankName: string | null;
+    accountHolderName: string | null;
+    ifscCode: string | null;
+    accountNumberMasked: string | null;
+    gatewayMode: string;
+    isVerified: boolean;
+  } | null;
   customer: {
     id: string;
     displayName: string;
@@ -70,6 +79,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [paying, setPaying] = useState(false);
+  const [paymentMethodTab, setPaymentMethodTab] = useState<"gateway" | "direct_upi">("gateway");
   const [paymentSuccess, setPaymentSuccess] = useState<{
     receiptNumber: string;
     amountPaidMinor: number;
@@ -393,42 +403,185 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                 </div>
               </div>
             ) : (
-              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                <button
-                  type="button"
-                  onClick={handlePayNow}
-                  disabled={paying}
-                  style={{
-                    width: "100%",
-                    padding: "16px",
-                    background: paying ? "#93c5fd" : "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)",
-                    color: "#ffffff",
-                    border: 0,
-                    borderRadius: 12,
-                    fontSize: 15.5,
-                    fontWeight: 800,
-                    cursor: paying ? "not-allowed" : "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: 10,
-                    boxShadow: "0 6px 20px -2px rgba(37, 99, 235, 0.4)",
-                    transition: "all 0.18s ease",
-                  }}
-                >
-                  <span>⚡ Pay {formatMoney(invoice.balanceDueMinor, invoice.currency)} Now</span>
-                  <span style={{ fontSize: 12, background: "rgba(255,255,255,0.25)", padding: "2px 8px", borderRadius: 6 }}>
-                    UPI / Card / NetBanking
-                  </span>
-                </button>
+              <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+                {/* Payment Option Selector (if institute configured UPI) */}
+                {invoice.payoutDetails?.upiId && (
+                  <div
+                    style={{
+                      display: "flex",
+                      background: "#f1f5f9",
+                      padding: 4,
+                      borderRadius: 10,
+                      gap: 4,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethodTab("gateway")}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        fontSize: 12.5,
+                        fontWeight: paymentMethodTab === "gateway" ? 800 : 600,
+                        background: paymentMethodTab === "gateway" ? "#ffffff" : "transparent",
+                        color: paymentMethodTab === "gateway" ? "var(--brand, #2563eb)" : "#64748b",
+                        border: 0,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        boxShadow: paymentMethodTab === "gateway" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      ⚡ Pay Online (Cards / UPI)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethodTab("direct_upi")}
+                      style={{
+                        flex: 1,
+                        padding: "8px 12px",
+                        fontSize: 12.5,
+                        fontWeight: paymentMethodTab === "direct_upi" ? 800 : 600,
+                        background: paymentMethodTab === "direct_upi" ? "#ffffff" : "transparent",
+                        color: paymentMethodTab === "direct_upi" ? "#059669" : "#64748b",
+                        border: 0,
+                        borderRadius: 8,
+                        cursor: "pointer",
+                        boxShadow: paymentMethodTab === "direct_upi" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      📲 Direct Scan & Pay (0% Fee)
+                    </button>
+                  </div>
+                )}
 
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                  <span>🔒 256-Bit Encrypted</span>
-                  <span>·</span>
-                  <span>⚡ Instant Razorpay UPI</span>
-                  <span>·</span>
-                  <span>🧾 Official Receipt Auto-Issued</span>
-                </div>
+                {/* TAB 1: Online Razorpay Gateway */}
+                {paymentMethodTab === "gateway" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                    <button
+                      type="button"
+                      onClick={handlePayNow}
+                      disabled={paying}
+                      style={{
+                        width: "100%",
+                        padding: "16px",
+                        background: paying ? "#93c5fd" : "linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%)",
+                        color: "#ffffff",
+                        border: 0,
+                        borderRadius: 12,
+                        fontSize: 15.5,
+                        fontWeight: 800,
+                        cursor: paying ? "not-allowed" : "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 10,
+                        boxShadow: "0 6px 20px -2px rgba(37, 99, 235, 0.4)",
+                        transition: "all 0.18s ease",
+                      }}
+                    >
+                      <span>⚡ Pay {formatMoney(invoice.balanceDueMinor, invoice.currency)} Now</span>
+                      <span style={{ fontSize: 12, background: "rgba(255,255,255,0.25)", padding: "2px 8px", borderRadius: 6 }}>
+                        UPI / Card / NetBanking
+                      </span>
+                    </button>
+
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, color: "#64748b", fontSize: 11, fontWeight: 600 }}>
+                      <span>🔒 256-Bit Encrypted</span>
+                      <span>·</span>
+                      <span>⚡ Instant Razorpay Auto-Receipt</span>
+                      <span>·</span>
+                      <span>🏦 Auto-Settled (T+1)</span>
+                    </div>
+                  </div>
+                ) : (
+                  /* TAB 2: Direct UPI QR Code (Direct to Institute Account) */
+                  invoice.payoutDetails?.upiId && (
+                    <div
+                      style={{
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        textAlign: "center",
+                        padding: "16px",
+                        background: "#f0fdf4",
+                        border: "1px solid #bbf7d0",
+                        borderRadius: 14,
+                        gap: 12,
+                      }}
+                    >
+                      <span style={{ fontSize: 12, fontWeight: 800, color: "#059669", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                        Direct Payment to {invoice.organisation.name}
+                      </span>
+
+                      {/* Dynamic QR Code */}
+                      {(() => {
+                        const upiUri = `upi://pay?pa=${encodeURIComponent(
+                          invoice.payoutDetails.upiId,
+                        )}&pn=${encodeURIComponent(invoice.organisation.name)}&am=${(
+                          invoice.balanceDueMinor / 100
+                        ).toFixed(2)}&cu=INR&tn=${encodeURIComponent(`Invoice ${invoice.invoiceNumber}`)}`;
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=190x190&data=${encodeURIComponent(
+                          upiUri,
+                        )}`;
+                        return (
+                          <>
+                            <div
+                              style={{
+                                background: "#ffffff",
+                                padding: 10,
+                                borderRadius: 12,
+                                border: "1px solid #cbd5e1",
+                                boxShadow: "0 4px 12px rgba(0,0,0,0.06)",
+                              }}
+                            >
+                              <img
+                                src={qrUrl}
+                                alt="UPI QR Code"
+                                width={180}
+                                height={180}
+                                style={{ display: "block", borderRadius: 8 }}
+                              />
+                            </div>
+
+                            <a
+                              href={upiUri}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 6,
+                                padding: "8px 18px",
+                                borderRadius: 8,
+                                background: "#059669",
+                                color: "#ffffff",
+                                fontSize: 13,
+                                fontWeight: 700,
+                                textDecoration: "none",
+                              }}
+                            >
+                              <span>📱 Tap to Open in Google Pay / PhonePe / Paytm</span>
+                            </a>
+
+                            <div style={{ fontSize: 12, color: "#334155", marginTop: 2 }}>
+                              UPI ID: <strong style={{ color: "#0f172a" }}>{invoice.payoutDetails.upiId}</strong>
+                            </div>
+
+                            {invoice.payoutDetails.bankName && (
+                              <div style={{ fontSize: 11.5, color: "#64748b" }}>
+                                Bank: {invoice.payoutDetails.bankName} · IFSC: {invoice.payoutDetails.ifscCode} · A/C: {invoice.payoutDetails.accountNumberMasked}
+                              </div>
+                            )}
+
+                            <div style={{ fontSize: 11, color: "#059669", fontWeight: 600 }}>
+                              ✓ 100% of this fee directly deposits into the institute&apos;s bank account with 0% platform deductions.
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  )
+                )}
               </div>
             )}
           </div>

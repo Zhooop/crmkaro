@@ -24,6 +24,19 @@ const updateOrganisationSchema = z.object({
   currency: z.string().trim().length(3).transform((value) => value.toUpperCase()).optional(),
 });
 
+const updatePayoutSettingsSchema = z.object({
+  accountHolderName: z.string().trim().max(160).optional(),
+  bankName: z.string().trim().max(120).optional(),
+  accountNumber: z.string().trim().max(60).optional(),
+  ifscCode: z.string().trim().max(20).optional(),
+  upiId: z.string().trim().max(120).optional(),
+  panNumber: z.string().trim().max(20).optional(),
+  businessGstin: z.string().trim().max(30).optional(),
+  gatewayMode: z.string().trim().max(30).optional(),
+  customRazorpayKeyId: z.string().trim().max(100).optional(),
+  customRazorpaySecret: z.string().trim().max(100).optional(),
+});
+
 @Controller("organisations")
 @UseGuards(SessionGuard)
 export class OrganisationsController {
@@ -61,6 +74,27 @@ export class OrganisationsController {
       organisationId,
       request.auth.userId,
       parseBody(updateOrganisationSchema, body),
+    );
+  }
+
+  @Get(":organisationId/payout-settings")
+  getPayoutSettings(
+    @Param("organisationId", new ParseUUIDPipe({ version: "4" })) organisationId: string,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organisations.getPayoutSettings(organisationId, request.auth.userId);
+  }
+
+  @Patch(":organisationId/payout-settings")
+  updatePayoutSettings(
+    @Param("organisationId", new ParseUUIDPipe({ version: "4" })) organisationId: string,
+    @Body() body: unknown,
+    @Req() request: AuthenticatedRequest,
+  ) {
+    return this.organisations.updatePayoutSettings(
+      organisationId,
+      request.auth.userId,
+      parseBody(updatePayoutSettingsSchema, body),
     );
   }
 }

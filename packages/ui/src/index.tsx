@@ -432,6 +432,11 @@ export function AppShell({
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   const handleLinkClick =
     (href?: string, extraOnClick?: () => void) =>
@@ -816,12 +821,12 @@ export function AppShell({
             </button>
             <button
               className="icon-button notification-button"
-              aria-label={`${notificationCount} notifications`}
+              aria-label={isClient ? `${notificationCount} notifications` : "Notifications"}
               onClick={() => setNotificationsOpen(true)}
               suppressHydrationWarning
             >
               <Icon name="bell" />
-              {notificationCount > 0 && <i />}
+              {isClient && notificationCount > 0 && <i />}
             </button>
             <button
               className="primary-button topbar-quick-add"

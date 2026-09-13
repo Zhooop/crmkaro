@@ -298,4 +298,192 @@ export class OrganisationsService {
       },
     );
   }
+
+  async getPayoutSettings(organisationId: string, userId: string) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const rows: any[] = await tx.$queryRawUnsafe(
+        `SELECT * FROM "organisation_payout_settings" WHERE "organisation_id" = $1::uuid LIMIT 1`,
+        organisationId,
+      );
+      const row = rows[0] || null;
+      if (!row) {
+        return {
+          configured: false,
+          payoutStatus: "NOT_CONFIGURED",
+          gatewayMode: "PLATFORM_ROUTE",
+          settlementCycle: "T+1 Daily",
+          isVerified: false,
+          accountHolderName: "",
+          bankName: "",
+          accountNumber: "",
+          accountNumberMasked: "",
+          ifscCode: "",
+          upiId: "",
+          panNumber: "",
+          businessGstin: "",
+          customRazorpayKeyId: "",
+          hasCustomSecret: false,
+        };
+      }
+      const accNum = row.account_number || "";
+      const masked = accNum.length > 4 ? `••••••••${accNum.slice(-4)}` : accNum;
+      return {
+        configured: Boolean(row.account_number && row.ifsc_code),
+        id: row.id,
+        payoutStatus: row.payout_status || (row.account_number ? "ACTIVE" : "NOT_CONFIGURED"),
+        gatewayMode: row.gateway_mode || "PLATFORM_ROUTE",
+        settlementCycle: row.settlement_cycle || "T+1 Daily",
+        isVerified: Boolean(row.is_verified),
+        accountHolderName: row.account_holder_name || "",
+        bankName: row.bank_name || "",
+        accountNumber: accNum,
+        accountNumberMasked: masked,
+        ifscCode: row.ifsc_code || "",
+        upiId: row.upi_id || "",
+        panNumber: row.pan_number || "",
+        businessGstin: row.business_gstin || "",
+        customRazorpayKeyId: row.custom_razorpay_key_id || "",
+        hasCustomSecret: Boolean(row.custom_razorpay_secret),
+      };
+    });
+  }
+
+  async updatePayoutSettings(
+    organisationId: string,
+    userId: string,
+    input: {
+      accountHolderName?: string;
+      bankName?: string;
+      accountNumber?: string;
+      ifscCode?: string;
+      upiId?: string;
+      panNumber?: string;
+      businessGstin?: string;
+      gatewayMode?: string;
+      customRazorpayKeyId?: string;
+      customRazorpaySecret?: string;
+    },
+  ) {
+    return withTenant(this.database, organisationId, userId, async (tx) => {
+      const existingRows: any[] = await tx.$queryRawUnsafe(
+        `SELECT * FROM "organisation_payout_settings" WHERE "organisation_id" = $1::uuid LIMIT 1`,
+        organisationId,
+      );
+      const existing = existingRows[0] || null;
+
+      const accountHolderName =
+        input.accountHolderName !== undefined
+          ? input.accountHolderName.trim()
+          : existing?.account_holder_name || null;
+      const bankName =
+        input.bankName !== undefined ? input.bankName.trim() : existing?.bank_name || null;
+      let accountNumber = existing?.account_number || null;
+      if (input.accountNumber && !input.accountNumber.includes("•")) {
+        accountNumber = input.accountNumber.trim();
+      }
+      const ifscCode =
+        input.ifscCode !== undefined
+          ? input.ifscCode.trim().toUpperCase()
+          : existing?.ifsc_code || null;
+      const upiId =
+        input.upiId !== undefined ? input.upiId.trim().toLowerCase() : existing?.upi_id || null;
+      const panNumber =
+        input.panNumber !== undefined
+          ? input.panNumber.trim().toUpperCase()
+          : existing?.pan_number || null;
+      const businessGstin =
+        input.businessGstin !== undefined
+          ? input.businessGstin.trim().toUpperCase()
+          : existing?.business_gstin || null;
+      const gatewayMode =
+        input.gatewayMode !== undefined ? input.gatewayMode : existing?.gateway_mode || "PLATFORM_ROUTE";
+      const customRazorpayKeyId =
+        input.customRazorpayKeyId !== undefined
+          ? input.customRazorpayKeyId.trim()
+          : existing?.custom_razorpay_key_id || null;
+      let customRazorpaySecret = existing?.custom_razorpay_secret || null;
+      if (input.customRazorpaySecret && !input.customRazorpaySecret.includes("•")) {
+        customRazorpaySecret = input.customRazorpaySecret.trim();
+      }
+
+      const isConfigured = Boolean(accountNumber && ifscCode);
+      const payoutStatus = isConfigured ? "ACTIVE" : "NOT_CONFIGURED";
+
+      if (existing) {
+        await tx.$executeRawUnsafe(
+          `UPDATE "organisation_payout_settings"
+           SET "account_holder_name" = $1,
+               "bank_name" = $2,
+               "account_number" = $3,
+               "ifsc_code" = $4,
+               "upi_id" = $5,
+               "pan_number" = $6,
+               "business_gstin" = $7,
+               "gateway_mode" = $8,
+               "custom_razorpay_key_id" = $9,
+               "custom_razorpay_secret" = $10,
+               "payout_status" = $11,
+               "is_verified" = $12,
+               "updated_at" = now()
+           WHERE "organisation_id" = $13::uuid`,
+          accountHolderName,
+          bankName,
+          accountNumber,
+          ifscCode,
+          upiId,
+          panNumber,
+          businessGstin,
+          gatewayMode,
+          customRazorpayKeyId,
+          customRazorpaySecret,
+          payoutStatus,
+          isConfigured,
+          organisationId,
+        );
+      } else {
+        await tx.$executeRawUnsafe(
+          `INSERT INTO "organisation_payout_settings" (
+             "id", "organisation_id", "account_holder_name", "bank_name", "account_number",
+             "ifsc_code", "upi_id", "pan_number", "business_gstin", "gateway_mode",
+             "custom_razorpay_key_id", "custom_razorpay_secret", "payout_status", "is_verified",
+             "settlement_cycle", "created_at", "updated_at"
+           ) VALUES (
+             gen_random_uuid(), $1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'T+1 Daily', now(), now()
+           )`,
+          organisationId,
+          accountHolderName,
+          bankName,
+          accountNumber,
+          ifscCode,
+          upiId,
+          panNumber,
+          businessGstin,
+          gatewayMode,
+          customRazorpayKeyId,
+          customRazorpaySecret,
+          payoutStatus,
+          isConfigured,
+        );
+      }
+
+      await tx.auditLog.create({
+        data: {
+          organisationId,
+          actorUserId: userId,
+          action: "organisation.payout_settings_updated",
+          entityType: "organisation_payout_setting",
+          entityId: organisationId,
+          metadata: {
+            bankName,
+            ifscCode,
+            upiId,
+            payoutStatus,
+            gatewayMode,
+          },
+        },
+      });
+
+      return this.getPayoutSettings(organisationId, userId);
+    });
+  }
 }

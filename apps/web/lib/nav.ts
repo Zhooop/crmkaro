@@ -1,5 +1,16 @@
-import type { NavItem } from "@crmkaro/ui";
-import { useEffect, useState, useMemo } from "react";
+"use client";
+
+import type { NavItem, OrganisationSummary } from "@crmkaro/ui";
+import { useRouter } from "next/navigation";
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useMemo,
+  useCallback,
+  type ReactNode,
+} from "react";
 
 export const SERVICE_NAV_MAP: Record<string, NavItem> = {
   people: { label: "Members", icon: "people", href: "/people" },
@@ -106,7 +117,7 @@ export function getActiveServicesFromStorage(): string[] {
     const raw = localStorage.getItem("crmkaro_active_services");
     if (raw) {
       const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
     }
   } catch {}
   return DEFAULT_SERVICE_CODES;
@@ -124,6 +135,7 @@ export type WorkspaceContext = {
   userName: string;
   userRole: string;
   currency: string;
+  businessType?: string;
   activeServices: string[];
 };
 
@@ -132,10 +144,26 @@ export const DEFAULT_WORKSPACE_CONTEXT: WorkspaceContext = {
   userName: "Workspace User",
   userRole: "Owner",
   currency: "INR",
+  businessType: "Business",
   activeServices: DEFAULT_SERVICE_CODES,
 };
 
+// In-memory singletons to guarantee instant zero-flicker transitions across routes
+let inMemoryWorkspaceContext: WorkspaceContext | null = null;
+let inMemoryOrganisations: OrganisationSummary[] = [];
+let hasInitialClientHydrationCompleted = false;
+
+export function getInitialWorkspaceContext(): WorkspaceContext {
+  if (hasInitialClientHydrationCompleted && inMemoryWorkspaceContext) {
+    return inMemoryWorkspaceContext;
+  }
+  return DEFAULT_WORKSPACE_CONTEXT;
+}
+
 export function getCachedWorkspaceContext(): WorkspaceContext {
+  if (inMemoryWorkspaceContext) {
+    return inMemoryWorkspaceContext;
+  }
   if (typeof window === "undefined") {
     return DEFAULT_WORKSPACE_CONTEXT;
   }
@@ -143,22 +171,28 @@ export function getCachedWorkspaceContext(): WorkspaceContext {
     const raw = localStorage.getItem("crmkaro_workspace_context");
     if (raw) {
       const parsed = JSON.parse(raw);
-      return {
+      inMemoryWorkspaceContext = {
         orgName: parsed.orgName || "CRMKaro Workspace",
         userName: parsed.userName || "Workspace User",
         userRole: parsed.userRole || "Owner",
         currency: parsed.currency || "INR",
-        activeServices: Array.isArray(parsed.activeServices) ? parsed.activeServices : getActiveServicesFromStorage(),
+        businessType: parsed.businessType || "Business",
+        activeServices: Array.isArray(parsed.activeServices) && parsed.activeServices.length > 0
+          ? parsed.activeServices
+          : getActiveServicesFromStorage(),
       };
+      return inMemoryWorkspaceContext;
     }
   } catch {}
-  return {
+  inMemoryWorkspaceContext = {
     orgName: "CRMKaro Workspace",
     userName: "Workspace User",
     userRole: "Owner",
     currency: "INR",
+    businessType: "Business",
     activeServices: getActiveServicesFromStorage(),
   };
+  return inMemoryWorkspaceContext;
 }
 
 export function saveCachedWorkspaceContext(ctx: Partial<WorkspaceContext>) {
@@ -166,8 +200,9 @@ export function saveCachedWorkspaceContext(ctx: Partial<WorkspaceContext>) {
   try {
     const current = getCachedWorkspaceContext();
     const updated = { ...current, ...ctx };
+    inMemoryWorkspaceContext = updated;
     localStorage.setItem("crmkaro_workspace_context", JSON.stringify(updated));
-    if (ctx.activeServices) {
+    if (ctx.activeServices && Array.isArray(ctx.activeServices)) {
       saveActiveServicesToStorage(ctx.activeServices);
     }
   } catch {}
@@ -200,25 +235,205 @@ export function buildNavItems(activeServices: string[]): NavItem[] {
   ];
 }
 
+export type WorkspaceContextValue = {
+  orgName: string;
+  userName: string;
+  userRole: string;
+  currency: string;
+  businessType: string;
+  activeServices: string[];
+  organisations: OrganisationSummary[];
+  navItems: NavItem[];
+  isHydrated: boolean;
+  updateWorkspace: (ctx: Partial<WorkspaceContext>) => void;
+  setOrganisations: React.Dispatch<React.SetStateAction<OrganisationSummary[]>>;
+  refreshWorkspace: () => Promise<void>;
+};
+
+const WorkspaceReactContext = createContext<WorkspaceContextValue | null>(null);
+
+export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const [context, setContext] = useState<WorkspaceContext>(() => getInitialWorkspaceContext());
+  const [organisations, setOrganisations] = useState<OrganisationSummary[]>(() => inMemoryOrganisations);
+  const [isHydrated, setIsHydrated] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    hasInitialClientHydrationCompleted = true;
+    setIsHydrated(true);
+    const cached = getCachedWorkspaceContext();
+    setContext(cached);
+  }, []);
+
+  // Background Route Pre-warming
+  // Next.js development server compiles routes JIT (on-demand on first request).
+  // By prefetching primary routes in background right after mount/login, Next.js compiles
+  // and caches them in memory so first clicks are instant (40ms instead of 1.5s+).
+  useEffect(() => {
+    if (!isHydrated) return;
+    const routesToWarm = [
+      "/transactions",
+      "/settings",
+      "/people",
+      "/groups",
+      "/quick-collect",
+      "/students",
+      "/crm",
+      "/finance",
+      "/payroll",
+      "/inventory",
+    ];
+    const timer = setTimeout(() => {
+      routesToWarm.forEach((route, index) => {
+        setTimeout(() => {
+          try {
+            router.prefetch(route);
+          } catch {}
+        }, index * 120);
+      });
+    }, 400);
+
+    return () => clearTimeout(timer);
+  }, [isHydrated, router]);
+
+  const updateWorkspace = useCallback((updates: Partial<WorkspaceContext>) => {
+    saveCachedWorkspaceContext(updates);
+    setContext((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const refreshWorkspace = useCallback(async () => {
+    if (typeof window === "undefined") return;
+    try {
+      const api = typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL
+        ? process.env.NEXT_PUBLIC_API_URL
+        : "http://localhost:4000/api/v1";
+
+      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" }).catch(() => null);
+      let newUserName = "";
+      if (meRes && meRes.ok) {
+        const meData = await meRes.json();
+        if (meData.user?.name) {
+          newUserName = meData.user.name;
+        }
+      }
+
+      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" }).catch(() => null);
+      if (orgsRes && orgsRes.ok) {
+        const orgList = await orgsRes.json();
+        const activeEntry = orgList.find((o: any) => o.organisation);
+        if (activeEntry?.organisation) {
+          const oName = activeEntry.organisation.name;
+          const rName = activeEntry.role?.name || "Owner";
+          const bType = activeEntry.organisation.businessType || "Business";
+          const srvs = activeEntry.activeServices || activeEntry.organisation.activeServices;
+          const updates: Partial<WorkspaceContext> = {
+            orgName: oName,
+            userRole: rName,
+            businessType: bType,
+          };
+          if (newUserName) updates.userName = newUserName;
+          if (Array.isArray(srvs) && srvs.length > 0) {
+            updates.activeServices = srvs;
+          }
+          updateWorkspace(updates);
+        }
+        const orgSummaries = orgList
+          .map((o: any) => o.organisation)
+          .filter(Boolean);
+        inMemoryOrganisations = orgSummaries;
+        setOrganisations(orgSummaries);
+      }
+    } catch {}
+  }, [updateWorkspace]);
+
+  useEffect(() => {
+    refreshWorkspace();
+  }, [refreshWorkspace]);
+
+  const navItems = useMemo(
+    () => buildNavItems(context.activeServices),
+    [context.activeServices],
+  );
+
+  const value = useMemo<WorkspaceContextValue>(
+    () => ({
+      orgName: context.orgName,
+      userName: context.userName,
+      userRole: context.userRole,
+      currency: context.currency,
+      businessType: context.businessType || "Business",
+      activeServices: context.activeServices,
+      organisations,
+      navItems,
+      isHydrated,
+      updateWorkspace,
+      setOrganisations,
+      refreshWorkspace,
+    }),
+    [context, organisations, navItems, isHydrated, updateWorkspace, refreshWorkspace],
+  );
+
+  return React.createElement(
+    WorkspaceReactContext.Provider,
+    { value },
+    children,
+  );
+}
+
+export function useWorkspace(): WorkspaceContextValue {
+  const ctx = useContext(WorkspaceReactContext);
+  if (!ctx) {
+    const cached = getCachedWorkspaceContext();
+    return {
+      orgName: cached.orgName,
+      userName: cached.userName,
+      userRole: cached.userRole,
+      currency: cached.currency,
+      businessType: cached.businessType || "Business",
+      activeServices: cached.activeServices,
+      organisations: inMemoryOrganisations,
+      navItems: buildNavItems(cached.activeServices),
+      isHydrated: true,
+      updateWorkspace: saveCachedWorkspaceContext,
+      setOrganisations: () => {},
+      refreshWorkspace: async () => {},
+    };
+  }
+  return ctx;
+}
+
 export function useWorkspaceContext(): {
   context: WorkspaceContext;
   isMounted: boolean;
   nav: NavItem[];
   setContext: React.Dispatch<React.SetStateAction<WorkspaceContext>>;
 } {
-  const [mounted, setMounted] = useState(false);
-  const [context, setContext] = useState<WorkspaceContext>(DEFAULT_WORKSPACE_CONTEXT);
-
-  useEffect(() => {
-    setMounted(true);
-    const cached = getCachedWorkspaceContext();
-    setContext(cached);
-  }, []);
-
-  const nav = useMemo(
-    () => buildNavItems(mounted ? context.activeServices : DEFAULT_SERVICE_CODES),
-    [mounted, context.activeServices],
-  );
-
-  return { context, isMounted: mounted, nav, setContext };
+  const ws = useWorkspace();
+  return {
+    context: {
+      orgName: ws.orgName,
+      userName: ws.userName,
+      userRole: ws.userRole,
+      currency: ws.currency,
+      businessType: ws.businessType,
+      activeServices: ws.activeServices,
+    },
+    isMounted: ws.isHydrated,
+    nav: ws.navItems,
+    setContext: (setter: any) => {
+      if (typeof setter === "function") {
+        const next = setter({
+          orgName: ws.orgName,
+          userName: ws.userName,
+          userRole: ws.userRole,
+          currency: ws.currency,
+          businessType: ws.businessType,
+          activeServices: ws.activeServices,
+        });
+        ws.updateWorkspace(next);
+      } else if (setter) {
+        ws.updateWorkspace(setter);
+      }
+    },
+  };
 }

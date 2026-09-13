@@ -14,12 +14,7 @@ import { Suspense, useCallback, useEffect, useState, type FormEvent } from "reac
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
-  buildNavItems,
-  useWorkspaceContext,
-  DEFAULT_SERVICE_CODES,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
-  saveActiveServicesToStorage,
+  useWorkspace,
 } from "@/lib/nav";
 
 type StudentProfile = {
@@ -114,24 +109,7 @@ function StudentsContent() {
   // Active Tab: "directory" | "recurring-fees" | "attendance" | "summary"
   const [activeTab, setActiveTab] = useState<string>("directory");
 
-  // Context & AppShell info (Instant 0ms cached state)
-  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Owner");
-  const [currency, setCurrency] = useState("INR");
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
-
-  useEffect(() => {
-    if (isMounted) {
-      setOrgName(cached.orgName);
-      setUserName(cached.userName);
-      setUserRole(cached.userRole);
-      setCurrency(cached.currency);
-      setActiveServiceCodes(cached.activeServices);
-    }
-  }, [isMounted, cached]);
+  const { orgName, userName, userRole, currency, organisations, navItems, updateWorkspace } = useWorkspace();
 
   // Students Directory State
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -268,25 +246,19 @@ function StudentsContent() {
             o.organisation,
         );
         if (activeOrgEntry?.organisation) {
-          setOrgName(activeOrgEntry.organisation.name);
-          setUserRole(activeOrgEntry.role?.name || "Admin");
-          setCurrency(activeOrgEntry.organisation.currency || "INR");
           const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
-          if (srvs && Array.isArray(srvs)) {
-            setActiveServiceCodes(srvs);
-            saveActiveServicesToStorage(srvs);
-          }
+          updateWorkspace({
+            orgName: activeOrgEntry.organisation.name,
+            userRole: activeOrgEntry.role?.name || "Admin",
+            currency: activeOrgEntry.organisation.currency || "INR",
+            ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
+          });
         }
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
       }
     } catch {
       // ignore
     }
-  }, [api, router]);
+  }, [api, router, updateWorkspace]);
 
   // Load Students list
   const loadStudents = useCallback(async () => {
@@ -710,8 +682,13 @@ function StudentsContent() {
     }
   }
 
-  // Attendance fast toggles
-  function handleToggleAttendance(studentId: string, status: "PRESENT" | "ABSENT" | "LEAVE") {
+  // Attendance fast toggles with 1-click Auto-Save
+  async function handleToggleAttendance(
+    studentId: string,
+    status: "PRESENT" | "ABSENT" | "LEAVE",
+    studentName?: string,
+  ) {
+    // 1. Optimistically update edits
     setAttendanceEdits((prev) => ({
       ...prev,
       [studentId]: {
@@ -720,32 +697,164 @@ function StudentsContent() {
         remarks: prev[studentId]?.remarks || "",
       },
     }));
+
+    // 2. Optimistically update attendanceData live summary metrics
+    setAttendanceData((prev) => {
+      if (!prev) return prev;
+      const updatedItems = prev.items.map((it) =>
+        it.studentProfileId === studentId ? { ...it, status } : it,
+      );
+      let pCount = 0;
+      let aCount = 0;
+      let lCount = 0;
+      for (const it of updatedItems) {
+        if (it.status === "PRESENT") pCount++;
+        else if (it.status === "ABSENT") aCount++;
+        else if (it.status === "LEAVE") lCount++;
+      }
+      const total = updatedItems.length;
+      const pct = total > 0 ? Math.round((pCount / total) * 100) : 0;
+      return {
+        ...prev,
+        presentCount: pCount,
+        absentCount: aCount,
+        leaveCount: lCount,
+        attendancePercentage: pct,
+        items: updatedItems,
+      };
+    });
+
+    // 3. Immediately persist to API
+    try {
+      const res = await authFetch(`${api}/students/attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          date: selectedDate,
+          records: [
+            {
+              studentProfileId: studentId,
+              status,
+              remarks: attendanceEdits[studentId]?.remarks?.trim() || undefined,
+            },
+          ],
+        }),
+      });
+
+      if (res.ok) {
+        showToast(
+          studentName
+            ? `✓ Marked ${studentName} as ${status}!`
+            : `✓ Attendance updated to ${status}!`,
+          "success",
+        );
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || "Failed to save attendance.", "error");
+        loadAttendance();
+      }
+    } catch {
+      showToast("Error saving attendance.", "error");
+      loadAttendance();
+    }
   }
 
-  function handleMarkAllPresent() {
-    if (!attendanceData?.items) return;
+  async function handleMarkAllPresent() {
+    if (!attendanceData?.items?.length) return;
     const edits: Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }> = {};
-    for (const it of attendanceData.items) {
+    const records = attendanceData.items.map((it) => {
       edits[it.studentProfileId] = {
         status: "PRESENT",
         remarks: attendanceEdits[it.studentProfileId]?.remarks || "",
       };
-    }
+      return {
+        studentProfileId: it.studentProfileId,
+        status: "PRESENT" as const,
+        remarks: attendanceEdits[it.studentProfileId]?.remarks?.trim() || undefined,
+      };
+    });
     setAttendanceEdits(edits);
-    showToast("All students marked Present!", "success");
+
+    setAttendanceData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        presentCount: prev.totalStudents,
+        absentCount: 0,
+        leaveCount: 0,
+        attendancePercentage: 100,
+        items: prev.items.map((it) => ({ ...it, status: "PRESENT" })),
+      };
+    });
+
+    try {
+      const res = await authFetch(`${api}/students/attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          date: selectedDate,
+          records,
+        }),
+      });
+      if (res.ok) {
+        showToast(`✓ All ${records.length} students marked Present & saved!`, "success");
+      } else {
+        showToast("Failed to save batch attendance.", "error");
+        loadAttendance();
+      }
+    } catch {
+      showToast("Error saving batch attendance.", "error");
+      loadAttendance();
+    }
   }
 
-  function handleMarkAllAbsent() {
-    if (!attendanceData?.items) return;
+  async function handleMarkAllAbsent() {
+    if (!attendanceData?.items?.length) return;
     const edits: Record<string, { status: "PRESENT" | "ABSENT" | "LEAVE"; remarks: string }> = {};
-    for (const it of attendanceData.items) {
+    const records = attendanceData.items.map((it) => {
       edits[it.studentProfileId] = {
         status: "ABSENT",
         remarks: attendanceEdits[it.studentProfileId]?.remarks || "",
       };
-    }
+      return {
+        studentProfileId: it.studentProfileId,
+        status: "ABSENT" as const,
+        remarks: attendanceEdits[it.studentProfileId]?.remarks?.trim() || undefined,
+      };
+    });
     setAttendanceEdits(edits);
-    showToast("All students marked Absent!", "success");
+
+    setAttendanceData((prev) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        presentCount: 0,
+        absentCount: prev.totalStudents,
+        leaveCount: 0,
+        attendancePercentage: 0,
+        items: prev.items.map((it) => ({ ...it, status: "ABSENT" })),
+      };
+    });
+
+    try {
+      const res = await authFetch(`${api}/students/attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          date: selectedDate,
+          records,
+        }),
+      });
+      if (res.ok) {
+        showToast(`✓ All ${records.length} students marked Absent & saved!`, "success");
+      } else {
+        showToast("Failed to save batch attendance.", "error");
+        loadAttendance();
+      }
+    } catch {
+      showToast("Error saving batch attendance.", "error");
+      loadAttendance();
+    }
   }
 
   // Save Attendance Batch
@@ -801,17 +910,15 @@ function StudentsContent() {
     { id: "summary", label: "Monthly Summary Report", icon: "reports" as const },
   ];
 
-  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
-
   return (
     <AppShell
       product="CRMKaro"
-      organisation={isMounted ? orgName : "CRMKaro Workspace"}
+      organisation={orgName}
       organisations={organisations}
       currentPath="/students"
       nav={navItems}
-      userName={isMounted ? userName : "Workspace User"}
-      userRole={isMounted ? userRole : "Owner"}
+      userName={userName}
+      userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}
@@ -1852,7 +1959,7 @@ function StudentsContent() {
                           >
                             <button
                               type="button"
-                              onClick={() => handleToggleAttendance(item.studentProfileId, "PRESENT")}
+                              onClick={() => handleToggleAttendance(item.studentProfileId, "PRESENT", item.displayName)}
                               style={{
                                 padding: "6px 16px",
                                 fontSize: 12,
@@ -1868,7 +1975,7 @@ function StudentsContent() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleToggleAttendance(item.studentProfileId, "ABSENT")}
+                              onClick={() => handleToggleAttendance(item.studentProfileId, "ABSENT", item.displayName)}
                               style={{
                                 padding: "6px 16px",
                                 fontSize: 12,
@@ -1887,7 +1994,7 @@ function StudentsContent() {
                             </button>
                             <button
                               type="button"
-                              onClick={() => handleToggleAttendance(item.studentProfileId, "LEAVE")}
+                              onClick={() => handleToggleAttendance(item.studentProfileId, "LEAVE", item.displayName)}
                               style={{
                                 padding: "6px 16px",
                                 fontSize: 12,

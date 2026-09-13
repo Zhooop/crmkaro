@@ -14,12 +14,7 @@ import { Suspense, useCallback, useEffect, useState, type FormEvent } from "reac
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
-  buildNavItems,
-  useWorkspaceContext,
-  DEFAULT_SERVICE_CODES,
-  getCachedWorkspaceContext,
-  saveCachedWorkspaceContext,
-  saveActiveServicesToStorage,
+  useWorkspace,
 } from "@/lib/nav";
 
 type GroupItem = {
@@ -121,22 +116,7 @@ function GroupsContent() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [activeGroupTab, setActiveGroupTab] = useState<string>("dashboard");
 
-  // Context & AppShell info (Instant 0ms cached state)
-  const { context: cached, isMounted, nav: defaultNav } = useWorkspaceContext();
-  const [orgName, setOrgName] = useState("CRMKaro Workspace");
-  const [userName, setUserName] = useState("Workspace User");
-  const [userRole, setUserRole] = useState("Owner");
-  const [organisations, setOrganisations] = useState<OrganisationSummary[]>([]);
-  const [activeServiceCodes, setActiveServiceCodes] = useState<string[]>(DEFAULT_SERVICE_CODES);
-
-  useEffect(() => {
-    if (isMounted) {
-      setOrgName(cached.orgName);
-      setUserName(cached.userName);
-      setUserRole(cached.userRole);
-      setActiveServiceCodes(cached.activeServices);
-    }
-  }, [isMounted, cached]);
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
 
   // Groups List States
   const [groups, setGroups] = useState<GroupItem[]>([]);
@@ -155,6 +135,100 @@ function GroupsContent() {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 2500);
   }, []);
+
+  // Group Attendance States
+  const [attendanceDate, setAttendanceDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [attendanceState, setAttendanceState] = useState<Record<string, "PRESENT" | "ABSENT" | "LEAVE">>({});
+  const [loadingAttendance, setLoadingAttendance] = useState(false);
+  const [savingMemberId, setSavingMemberId] = useState<string | null>(null);
+
+  const loadGroupAttendance = useCallback(async (dateStr: string) => {
+    setLoadingAttendance(true);
+    try {
+      const res = await authFetch(`${api}/students/attendance?date=${dateStr}`, {
+        credentials: "include",
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const map: Record<string, "PRESENT" | "ABSENT" | "LEAVE"> = {};
+        for (const it of data.items || []) {
+          if (it.personId) map[it.personId] = it.status;
+          if (it.studentProfileId) map[it.studentProfileId] = it.status;
+        }
+        setAttendanceState(map);
+      }
+    } catch {
+      // ignore
+    } finally {
+      setLoadingAttendance(false);
+    }
+  }, [api]);
+
+  useEffect(() => {
+    if (activeGroupTab === "attendance") {
+      loadGroupAttendance(attendanceDate);
+    }
+  }, [activeGroupTab, attendanceDate, loadGroupAttendance]);
+
+  async function handleMarkMemberAttendance(personId: string, displayName: string, status: "PRESENT" | "ABSENT" | "LEAVE") {
+    setAttendanceState((prev) => ({ ...prev, [personId]: status }));
+    setSavingMemberId(personId);
+
+    try {
+      const res = await authFetch(`${api}/students/attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          date: attendanceDate,
+          records: [{
+            studentProfileId: personId,
+            status,
+          }],
+        }),
+      });
+
+      if (res.ok) {
+        showToast(`✓ Marked ${displayName} as ${status}!`);
+      } else {
+        const err = await res.json().catch(() => ({}));
+        showToast(err.message || "Failed to update attendance.");
+      }
+    } catch {
+      showToast("Error updating attendance.");
+    } finally {
+      setSavingMemberId(null);
+    }
+  }
+
+  async function handleMarkBatchAll(status: "PRESENT" | "ABSENT") {
+    if (!groupDetail?.members?.length) return;
+    const newMap: Record<string, "PRESENT" | "ABSENT" | "LEAVE"> = { ...attendanceState };
+    const records = groupDetail.members.map((m) => {
+      newMap[m.personId] = status;
+      return {
+        studentProfileId: m.personId,
+        status,
+      };
+    });
+    setAttendanceState(newMap);
+
+    try {
+      const res = await authFetch(`${api}/students/attendance`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          date: attendanceDate,
+          records,
+        }),
+      });
+
+      if (res.ok) {
+        showToast(`✓ All ${records.length} members marked ${status}!`);
+      }
+    } catch {
+      showToast("Error marking attendance.");
+    }
+  }
 
   // New Group Wizard States
   const [wizardStep, setWizardStep] = useState<1 | 2>(1);
@@ -202,24 +276,18 @@ function GroupsContent() {
             o.organisation,
         );
         if (activeOrgEntry?.organisation) {
-          setOrgName(activeOrgEntry.organisation.name);
-          setUserRole(activeOrgEntry.role?.name || "Member");
           const srvs = activeOrgEntry.activeServices || activeOrgEntry.organisation.activeServices;
-          if (srvs && Array.isArray(srvs)) {
-            setActiveServiceCodes(srvs);
-            saveActiveServicesToStorage(srvs);
-          }
+          updateWorkspace({
+            orgName: activeOrgEntry.organisation.name,
+            userRole: activeOrgEntry.role?.name || "Member",
+            ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
+          });
         }
-        setOrganisations(
-          orgList
-            .map((o: { organisation: { id: string; name: string; businessType?: string } }) => o.organisation)
-            .filter(Boolean),
-        );
       }
     } catch {
       // ignore
     }
-  }, [api, router]);
+  }, [api, router, updateWorkspace]);
 
   // Load Groups List
   const loadGroups = useCallback(async () => {
@@ -481,8 +549,6 @@ function GroupsContent() {
     }
   }
 
-  const nav: NavItem[] = buildNavItems(activeServiceCodes);
-
   const filteredPeople = allPeople.filter(
     (p) =>
       p.displayName.toLowerCase().includes(memberSearch.toLowerCase()) ||
@@ -490,17 +556,15 @@ function GroupsContent() {
       (p.email && p.email.toLowerCase().includes(memberSearch.toLowerCase())),
   );
 
-  const navItems: NavItem[] = isMounted ? buildNavItems(activeServiceCodes) : defaultNav;
-
   return (
     <AppShell
       product="CRMKaro"
-      organisation={isMounted ? orgName : "CRMKaro Workspace"}
+      organisation={orgName}
       organisations={organisations}
       currentPath="/groups"
       nav={navItems}
-      userName={isMounted ? userName : "Workspace User"}
-      userRole={isMounted ? userRole : "Owner"}
+      userName={userName}
+      userRole={userRole}
       apiUrl={api}
       onNavigate={(href) => router.push(href)}
       onPrefetch={(href) => router.prefetch(href)}
@@ -608,11 +672,45 @@ function GroupsContent() {
                     <div
                       className="group-monogram-banner"
                       style={{
-                        background: group.color || colorTheme.bg,
-                        color: colorTheme.text,
+                        background: group.color
+                          ? `linear-gradient(135deg, ${group.color}, ${group.color}dd)`
+                          : colorTheme.bg,
+                        color: "#ffffff",
                       }}
                     >
-                      <span>{group.code}</span>
+                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                        <div
+                          style={{
+                            width: 44,
+                            height: 44,
+                            borderRadius: "12px",
+                            background: "rgba(255, 255, 255, 0.2)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            backdropFilter: "blur(4px)",
+                          }}
+                        >
+                          <Icon name="activity" size={22} />
+                        </div>
+                        {group.code && (
+                          <span
+                            style={{
+                              fontSize: "12px",
+                              fontWeight: 800,
+                              letterSpacing: "0.8px",
+                              background: "rgba(0, 0, 0, 0.22)",
+                              color: "#ffffff",
+                              padding: "2px 10px",
+                              borderRadius: "6px",
+                              textTransform: "uppercase",
+                              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                            }}
+                          >
+                            {group.code}
+                          </span>
+                        )}
+                      </div>
                     </div>
 
                     {/* Card Body */}
@@ -1193,27 +1291,53 @@ function GroupsContent() {
                     <div
                       className="group-monogram-thumb"
                       style={{
-                        background: groupDetail.color || "#dbeafe",
-                        color: "#1e40af",
+                        background: groupDetail.color ? `${groupDetail.color}18` : "#eff6ff",
+                        color: groupDetail.color || "var(--primary)",
+                        border: `1.5px solid ${groupDetail.color ? `${groupDetail.color}40` : "#bfdbfe"}`,
                       }}
                     >
-                      {groupDetail.code}
+                      <Icon name="activity" size={26} />
                     </div>
 
                     <div>
-                      <h2 style={{ fontSize: 18, fontWeight: 800, margin: 0, color: "var(--ink)" }}>
-                        {groupDetail.name}
-                      </h2>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
-                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: groupDetail.isActive ? "#059669" : "#64748b", cursor: "pointer" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                        <h2 style={{ fontSize: 20, fontWeight: 800, margin: 0, color: "var(--ink)", letterSpacing: "-0.3px", lineHeight: 1.2 }}>
+                          {groupDetail.name}
+                        </h2>
+                        {groupDetail.code && (
+                          <span
+                            style={{
+                              display: "inline-flex",
+                              alignItems: "center",
+                              padding: "3px 9px",
+                              borderRadius: "6px",
+                              fontSize: "12px",
+                              fontWeight: 700,
+                              fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
+                              background: groupDetail.color ? `${groupDetail.color}15` : "#f1f5f9",
+                              color: groupDetail.color || "var(--primary)",
+                              border: `1px solid ${groupDetail.color ? `${groupDetail.color}35` : "#cbd5e1"}`,
+                              letterSpacing: "0.5px",
+                            }}
+                          >
+                            {groupDetail.code}
+                          </span>
+                        )}
+                        <label style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 700, color: groupDetail.isActive ? "#059669" : "#64748b", cursor: "pointer", background: groupDetail.isActive ? "#ecfdf5" : "#f1f5f9", border: `1px solid ${groupDetail.isActive ? "#a7f3d0" : "#e2e8f0"}`, padding: "2px 8px", borderRadius: "12px" }}>
                           <input
                             type="checkbox"
                             checked={groupDetail.isActive}
                             onChange={() => handleToggleGroupStatus(groupDetail.id, groupDetail.isActive)}
+                            style={{ margin: 0, cursor: "pointer" }}
                           />
                           <span>{groupDetail.isActive ? "Active group" : "Inactive group"}</span>
                         </label>
                       </div>
+                      {groupDetail.description && (
+                        <p style={{ fontSize: 13, color: "var(--muted)", margin: "4px 0 0 0", lineHeight: 1.4 }}>
+                          {groupDetail.description}
+                        </p>
+                      )}
                     </div>
                   </div>
 
@@ -1603,50 +1727,246 @@ function GroupsContent() {
               {/* TAB 5: ATTENDANCE */}
               {activeGroupTab === "attendance" && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "space-between",
+                      alignItems: "center",
+                      flexWrap: "wrap",
+                      gap: 12,
+                      background: "#ffffff",
+                      border: "1px solid var(--line)",
+                      borderRadius: 12,
+                      padding: "14px 18px",
+                    }}
+                  >
                     <div>
-                      <h3 style={{ fontSize: 14, fontWeight: 750, margin: 0 }}>Group Attendance Register</h3>
-                      <small style={{ color: "var(--muted)" }}>
-                        Working Days: {groupDetail.workingDays}
+                      <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0, color: "var(--ink)" }}>
+                        Group Attendance Register
+                      </h3>
+                      <small style={{ color: "var(--muted)", fontSize: 12 }}>
+                        Working Days: {groupDetail.workingDays} · 1-Click Present / Absent / Leave
                       </small>
                     </div>
-                    <a
-                      href="/students"
-                      className="btn btn-secondary btn-sm"
-                    >
-                      <span>Open Full Attendance Matrix →</span>
-                    </a>
+
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+                      <input
+                        type="date"
+                        value={attendanceDate}
+                        onChange={(e) => setAttendanceDate(e.target.value)}
+                        style={{
+                          padding: "6px 12px",
+                          borderRadius: 8,
+                          border: "1px solid var(--line)",
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          background: "#ffffff",
+                        }}
+                      />
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleMarkBatchAll("PRESENT")}
+                        style={{ color: "#059669", background: "#ecfdf5", borderColor: "#a7f3d0", fontWeight: 700 }}
+                      >
+                        ✓ Mark All Present
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleMarkBatchAll("ABSENT")}
+                        style={{ color: "#b91c1c", background: "#fef2f2", borderColor: "#fecaca", fontWeight: 700 }}
+                      >
+                        ✕ Mark All Absent
+                      </button>
+                      <a
+                        href="/students"
+                        className="btn btn-secondary btn-sm"
+                        title="Open Full Academy Attendance Matrix"
+                      >
+                        <span>Full Matrix →</span>
+                      </a>
+                    </div>
                   </div>
+
+                  {/* Attendance Stats Tally */}
+                  {(() => {
+                    let pCount = 0;
+                    let aCount = 0;
+                    let lCount = 0;
+                    for (const m of groupDetail.members) {
+                      const st = attendanceState[m.personId] || "PRESENT";
+                      if (st === "PRESENT") pCount++;
+                      else if (st === "ABSENT") aCount++;
+                      else if (st === "LEAVE") lCount++;
+                    }
+                    const total = groupDetail.members.length;
+                    const pct = total > 0 ? Math.round((pCount / total) * 100) : 0;
+                    return (
+                      <div
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 16,
+                          background: "#f8fafc",
+                          border: "1px solid #e2e8f0",
+                          borderRadius: 10,
+                          padding: "10px 16px",
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          flexWrap: "wrap",
+                        }}
+                      >
+                        <span style={{ color: "var(--ink)" }}>Total: {total} Members</span>
+                        <span style={{ color: "#059669" }}>• Present: {pCount}</span>
+                        <span style={{ color: "#b91c1c" }}>• Absent: {aCount}</span>
+                        <span style={{ color: "#b45309" }}>• Leave: {lCount}</span>
+                        <span style={{ marginLeft: "auto", color: "var(--primary)", fontWeight: 800 }}>
+                          Attendance: {pct}%
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                   <div className="table-wrap">
                     <table className="data-table">
                       <thead>
                         <tr>
-                          <th>Member</th>
+                          <th>Member Name</th>
                           <th>Phone</th>
-                          <th>Today's Status</th>
+                          <th>Current Status</th>
+                          <th style={{ textAlign: "center" }}>Mark Attendance</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {groupDetail.members.map((m) => (
-                          <tr key={m.id}>
-                            <td><strong>{m.displayName}</strong></td>
-                            <td>{m.primaryPhone || "—"}</td>
-                            <td>
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <button className="btn btn-secondary btn-sm" style={{ background: "#dcfce7", color: "#15803d", border: "1px solid #86efac", fontSize: 11, padding: "2px 8px" }}>
-                                  Present
-                                </button>
-                                <button className="btn btn-secondary btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}>
-                                  Absent
-                                </button>
-                                <button className="btn btn-secondary btn-sm" style={{ fontSize: 11, padding: "2px 8px" }}>
-                                  Leave
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
+                        {groupDetail.members.map((m) => {
+                          const currentStatus = attendanceState[m.personId] || "PRESENT";
+                          const isSaving = savingMemberId === m.personId;
+                          return (
+                            <tr key={m.id}>
+                              <td>
+                                <strong style={{ fontSize: 13.5 }}>{m.displayName}</strong>
+                              </td>
+                              <td style={{ color: "var(--muted)", fontSize: 12.5 }}>
+                                {m.primaryPhone || "—"}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    padding: "3px 9px",
+                                    borderRadius: 12,
+                                    fontSize: 11,
+                                    fontWeight: 750,
+                                    background:
+                                      currentStatus === "PRESENT"
+                                        ? "#ecfdf5"
+                                        : currentStatus === "ABSENT"
+                                          ? "#fef2f2"
+                                          : "#fffbeb",
+                                    color:
+                                      currentStatus === "PRESENT"
+                                        ? "#059669"
+                                        : currentStatus === "ABSENT"
+                                          ? "#b91c1c"
+                                          : "#b45309",
+                                    border: `1px solid ${
+                                      currentStatus === "PRESENT"
+                                        ? "#a7f3d0"
+                                        : currentStatus === "ABSENT"
+                                          ? "#fecaca"
+                                          : "#fde68a"
+                                    }`,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: "50%",
+                                      background:
+                                        currentStatus === "PRESENT"
+                                          ? "#10b981"
+                                          : currentStatus === "ABSENT"
+                                            ? "#ef4444"
+                                            : "#f59e0b",
+                                    }}
+                                  />
+                                  {currentStatus}
+                                </span>
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <div
+                                  style={{
+                                    display: "inline-flex",
+                                    borderRadius: 8,
+                                    border: "1px solid var(--line)",
+                                    overflow: "hidden",
+                                    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                  }}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "PRESENT")}
+                                    disabled={isSaving}
+                                    style={{
+                                      padding: "6px 14px",
+                                      fontSize: 12,
+                                      fontWeight: currentStatus === "PRESENT" ? 800 : 600,
+                                      background: currentStatus === "PRESENT" ? "#059669" : "#ffffff",
+                                      color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    Present
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "ABSENT")}
+                                    disabled={isSaving}
+                                    style={{
+                                      padding: "6px 14px",
+                                      fontSize: 12,
+                                      fontWeight: currentStatus === "ABSENT" ? 800 : 600,
+                                      background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
+                                      color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
+                                      borderLeft: "1px solid var(--line)",
+                                      borderRight: "1px solid var(--line)",
+                                      borderTop: "none",
+                                      borderBottom: "none",
+                                      cursor: "pointer",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    Absent
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "LEAVE")}
+                                    disabled={isSaving}
+                                    style={{
+                                      padding: "6px 14px",
+                                      fontSize: 12,
+                                      fontWeight: currentStatus === "LEAVE" ? 800 : 600,
+                                      background: currentStatus === "LEAVE" ? "#d97706" : "#ffffff",
+                                      color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
+                                      border: "none",
+                                      cursor: "pointer",
+                                      transition: "all 0.15s ease",
+                                    }}
+                                  >
+                                    Leave
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
                       </tbody>
                     </table>
                   </div>

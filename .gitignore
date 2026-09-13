@@ -16,3 +16,5 @@ pnpm-debug.log*
 askpass.bat
 scratch/
 build-output/
+*.mp4
+

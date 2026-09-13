@@ -993,22 +993,44 @@ export class StudentsService {
       const results = [];
 
       for (const record of input.records) {
-        const student = await tx.studentProfile.findFirst({
-          where: { id: record.studentProfileId, organisationId },
+        let student = await tx.studentProfile.findFirst({
+          where: {
+            OR: [
+              { id: record.studentProfileId },
+              { personId: record.studentProfileId },
+            ],
+            organisationId,
+          },
         });
+
+        if (!student) {
+          const person = await tx.person.findFirst({
+            where: { id: record.studentProfileId, organisationId },
+          });
+          if (person) {
+            student = await tx.studentProfile.create({
+              data: {
+                organisationId,
+                personId: person.id,
+                standard: "General",
+                status: "ACTIVE",
+              },
+            });
+          }
+        }
         if (!student) continue;
 
         const row = await tx.attendanceRecord.upsert({
           where: {
             organisationId_studentProfileId_date: {
               organisationId,
-              studentProfileId: record.studentProfileId,
+              studentProfileId: student.id,
               date: dateOnly,
             },
           },
           create: {
             organisationId,
-            studentProfileId: record.studentProfileId,
+            studentProfileId: student.id,
             personId: student.personId,
             date: dateOnly,
             status: record.status as AttendanceStatus,
