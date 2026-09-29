@@ -136,6 +136,23 @@ export function DashboardScreen() {
     return `₹${(minor / 100).toLocaleString("en-IN")}`;
   };
 
+  const totalReceivedCard = dashboard?.cards?.find(
+    (c) =>
+      c.key === "total_received" ||
+      c.key === "revenue" ||
+      c.label.toLowerCase().includes("revenue") ||
+      c.label.toLowerCase().includes("collected")
+  );
+  const openLeadsCard = dashboard?.cards?.find(
+    (c) =>
+      c.key.includes("lead") ||
+      c.key.includes("crm") ||
+      c.label.toLowerCase().includes("lead")
+  );
+  const pendingDuesCard = dashboard?.cards?.find(
+    (c) => c.key === "total_due" || c.label.toLowerCase().includes("due")
+  );
+
   const handleCardPress = (cardKey: string) => {
     if (cardKey === "total_members") navigation.navigate("People");
     else if (cardKey === "total_received" || cardKey === "total_due") navigation.navigate("Finance");
@@ -152,16 +169,43 @@ export function DashboardScreen() {
         contentContainerStyle={styles.content}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
       >
-        {/* Executive Hero Banner */}
+        {/* Executive Hero Banner - Vibrant Royal Gradient Style */}
         <View style={styles.heroBanner}>
-          <View style={styles.heroPill}>
-            <View style={styles.pulseDot} />
-            <Text style={styles.heroPillText}>Live Operational Dashboard</Text>
+          <View style={styles.heroTopRow}>
+            <View style={styles.heroPill}>
+              <View style={styles.pulseDot} />
+              <Text style={styles.heroPillText}>LIVE WORKSPACE</Text>
+            </View>
+            <Text style={styles.heroBrandMark}>CRMKARO</Text>
           </View>
+          
           <Text style={styles.heroTitle}>Workspace Pulse</Text>
           <Text style={styles.heroSubtitle}>
-            Real-time billing, admissions and student pipeline metrics.
+            Real-time billing, admissions, and student pipeline metrics.
           </Text>
+
+          {/* Frosted Mini Highlights */}
+          <View style={styles.heroHighlights}>
+            <View style={styles.heroHighlightItem}>
+              <Text style={styles.heroHighlightLabel}>TOTAL COLLECTED</Text>
+              <Text style={styles.heroHighlightValue}>
+                {totalReceivedCard ? formatRupees(totalReceivedCard.value) : "₹0"}
+              </Text>
+            </View>
+            <View style={styles.heroHighlightDivider} />
+            <View style={styles.heroHighlightItem}>
+              <Text style={styles.heroHighlightLabel}>
+                {pendingDuesCard && pendingDuesCard.value > 0 ? "PENDING DUES" : "ACTIVE PIPELINE"}
+              </Text>
+              <Text style={styles.heroHighlightValue}>
+                {pendingDuesCard && pendingDuesCard.value > 0
+                  ? formatRupees(pendingDuesCard.value)
+                  : openLeadsCard
+                    ? `${openLeadsCard.value} Inquiries`
+                    : "0 Inquiries"}
+              </Text>
+            </View>
+          </View>
         </View>
 
         {/* Notifications / Pending Alerts */}
@@ -188,6 +232,12 @@ export function DashboardScreen() {
             ))}
           </View>
         )}
+
+        {/* Section Title */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeader}>Key Performance Indicators</Text>
+          <Text style={styles.sectionMeta}>Updated live</Text>
+        </View>
 
         {/* Dynamic KPI Cards Grid */}
         {dashboard?.cards && dashboard.cards.length > 0 ? (
@@ -249,40 +299,59 @@ export function DashboardScreen() {
           </View>
         )}
 
-        {/* Fast Action Launcher */}
-        <Text style={styles.sectionHeader}>Quick Actions</Text>
-        <View style={styles.quickActionRow}>
+        {/* Fast Action Launcher - 4 Squircle Actions */}
+        <View style={styles.sectionHeaderRow}>
+          <Text style={styles.sectionHeader}>Quick Actions</Text>
+          <Text style={styles.sectionMeta}>Frequent shortcuts</Text>
+        </View>
+
+        <View style={styles.quickGrid}>
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate("QuickCollect")}
-            style={[styles.quickBtn, { backgroundColor: colors.emeraldLight, borderColor: colors.emeraldBorder }]}
+            style={[styles.quickCard, { backgroundColor: colors.emeraldLight, borderColor: colors.emeraldBorder }]}
           >
             <View style={[styles.quickIconWrap, { backgroundColor: colors.emerald }]}>
-              <Icon name="Zap" size={18} color="#ffffff" />
+              <Icon name="Zap" size={20} color="#ffffff" />
             </View>
-            <Text style={[styles.quickLabel, { color: colors.emerald }]}>Quick Collect</Text>
+            <Text style={[styles.quickCardTitle, { color: "#065f46" }]}>Quick Collect</Text>
+            <Text style={[styles.quickCardSub, { color: "#047857" }]}>Fast WhatsApp pay</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate("People")}
-            style={[styles.quickBtn, { backgroundColor: colors.brandLight, borderColor: "#bfdbfe" }]}
+            style={[styles.quickCard, { backgroundColor: colors.brandLight, borderColor: colors.brandBorder }]}
           >
-            <View style={[styles.quickIconWrap, { backgroundColor: colors.brand }]}>
-              <Icon name="UserPlus" size={18} color="#ffffff" />
+            <View style={[styles.quickIconWrap, { backgroundColor: colors.brandVibrant }]}>
+              <Icon name="UserPlus" size={20} color="#ffffff" />
             </View>
-            <Text style={[styles.quickLabel, { color: colors.brand }]}>Add Member</Text>
+            <Text style={[styles.quickCardTitle, { color: "#1e40af" }]}>Add Member</Text>
+            <Text style={[styles.quickCardSub, { color: "#2563eb" }]}>Enroll new contact</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             activeOpacity={0.8}
             onPress={() => navigation.navigate("Finance")}
-            style={[styles.quickBtn, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}
+            style={[styles.quickCard, { backgroundColor: "#fff7ed", borderColor: "#fed7aa" }]}
           >
             <View style={[styles.quickIconWrap, { backgroundColor: "#ea580c" }]}>
-              <Icon name="FileText" size={18} color="#ffffff" />
+              <Icon name="FileText" size={20} color="#ffffff" />
             </View>
-            <Text style={[styles.quickLabel, { color: "#ea580c" }]}>New Bill</Text>
+            <Text style={[styles.quickCardTitle, { color: "#9a3412" }]}>New Bill</Text>
+            <Text style={[styles.quickCardSub, { color: "#c2410c" }]}>Generate invoice</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            activeOpacity={0.8}
+            onPress={() => navigation.navigate("CRM")}
+            style={[styles.quickCard, { backgroundColor: "#f5f3ff", borderColor: "#ddd6fe" }]}
+          >
+            <View style={[styles.quickIconWrap, { backgroundColor: "#7c3aed" }]}>
+              <Icon name="Users" size={20} color="#ffffff" />
+            </View>
+            <Text style={[styles.quickCardTitle, { color: "#5b21b6" }]}>Leads CRM</Text>
+            <Text style={[styles.quickCardSub, { color: "#6d28d9" }]}>Track inquiries</Text>
           </TouchableOpacity>
         </View>
 
@@ -290,7 +359,9 @@ export function DashboardScreen() {
         <View style={styles.activityCard}>
           <View style={styles.activityHeader}>
             <View style={styles.activityTitleRow}>
-              <Icon name="Activity" size={16} color={colors.brand} />
+              <View style={styles.activityIconCircle}>
+                <Icon name="Activity" size={16} color={colors.brandVibrant} />
+              </View>
               <Text style={styles.activityTitle}>Live Workspace Activity</Text>
             </View>
             <Badge tone="blue">Real-time</Badge>
@@ -319,6 +390,9 @@ export function DashboardScreen() {
               ))
             ) : (
               <View style={styles.emptyActivityBox}>
+                <View style={styles.emptyIconWrap}>
+                  <Icon name="Activity" size={24} color={colors.subtle} />
+                </View>
                 <Text style={styles.emptyActivityTitle}>No recent activity</Text>
                 <Text style={styles.emptyActivitySubtitle}>
                   New workspace events, admissions and payments will stream here in real time.
@@ -342,46 +416,117 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
   },
   heroBanner: {
-    backgroundColor: colors.surface,
-    borderRadius: radius.lg,
-    padding: spacing.lg,
-    borderWidth: 1,
-    borderColor: colors.line,
-    marginBottom: spacing.lg,
+    backgroundColor: colors.brandDeep,
+    borderRadius: radius.xxl,
+    padding: spacing.xl,
+    marginBottom: spacing.xl,
+    shadowColor: colors.brand,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28,
+    shadowRadius: 16,
+    elevation: 6,
+    borderWidth: 1.5,
+    borderColor: "rgba(255, 255, 255, 0.18)",
+  },
+  heroTopRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
   },
   heroPill: {
     flexDirection: "row",
     alignItems: "center",
-    alignSelf: "flex-start",
-    backgroundColor: colors.brandLight,
-    paddingHorizontal: spacing.sm,
-    paddingVertical: 3,
+    backgroundColor: "rgba(16, 185, 129, 0.16)",
+    paddingHorizontal: spacing.sm + 2,
+    paddingVertical: 4,
     borderRadius: radius.pill,
-    marginBottom: spacing.xs,
+    borderWidth: 1,
+    borderColor: "rgba(16, 185, 129, 0.35)",
   },
   pulseDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: colors.brand,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: colors.emeraldVibrant,
     marginRight: 6,
   },
   heroPillText: {
+    fontSize: 10,
+    fontWeight: "900",
+    color: "#6ee7b7",
+    letterSpacing: 0.6,
+  },
+  heroBrandMark: {
     fontSize: 11,
-    fontWeight: "700",
-    color: colors.brand,
-    textTransform: "uppercase",
+    fontWeight: "900",
+    color: "rgba(255, 255, 255, 0.4)",
+    letterSpacing: 1.2,
   },
   heroTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: colors.ink,
-    letterSpacing: -0.3,
+    fontSize: 24,
+    fontWeight: "900",
+    color: "#ffffff",
+    letterSpacing: -0.6,
   },
   heroSubtitle: {
-    fontSize: 12.5,
-    color: colors.muted,
+    fontSize: 13,
+    color: "#bfdbfe",
+    marginTop: 4,
+    lineHeight: 18,
+    fontWeight: "500",
+  },
+  heroHighlights: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.1)",
+    borderRadius: radius.lg,
+    paddingVertical: spacing.md,
+    paddingHorizontal: spacing.lg,
+    marginTop: spacing.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.12)",
+  },
+  heroHighlightItem: {
+    flex: 1,
+  },
+  heroHighlightDivider: {
+    width: 1,
+    height: 28,
+    backgroundColor: "rgba(255, 255, 255, 0.18)",
+    marginHorizontal: spacing.md,
+  },
+  heroHighlightLabel: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    color: "#93c5fd",
+    letterSpacing: 0.6,
+  },
+  heroHighlightValue: {
+    fontSize: 17,
+    fontWeight: "900",
+    color: "#ffffff",
     marginTop: 2,
+    letterSpacing: -0.3,
+  },
+  sectionHeaderRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+    marginTop: spacing.xs,
+  },
+  sectionHeader: {
+    fontSize: 13,
+    fontWeight: "900",
+    color: colors.inkSecondary,
+    textTransform: "uppercase",
+    letterSpacing: 0.6,
+  },
+  sectionMeta: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: colors.muted,
   },
   statsGrid: {
     flexDirection: "row",
@@ -394,63 +539,87 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing.xs,
     marginBottom: spacing.sm,
   },
-  sectionHeader: {
-    fontSize: 14,
-    fontWeight: "800",
-    color: colors.ink,
-    marginBottom: spacing.sm,
-    textTransform: "uppercase",
-    letterSpacing: 0.4,
-  },
-  quickActionRow: {
+  quickGrid: {
     flexDirection: "row",
-    gap: spacing.sm,
-    marginBottom: spacing.lg,
+    flexWrap: "wrap",
+    marginHorizontal: -spacing.xs,
+    marginBottom: spacing.xl,
   },
-  quickBtn: {
-    flex: 1,
-    borderRadius: radius.md,
-    borderWidth: 1,
-    paddingVertical: spacing.md,
-    paddingHorizontal: spacing.sm,
+  quickCard: {
+    width: "47.5%",
+    marginHorizontal: "1.25%",
+    borderRadius: radius.xl,
+    borderWidth: 1.5,
+    paddingVertical: spacing.lg,
+    paddingHorizontal: spacing.md,
     alignItems: "center",
+    marginBottom: spacing.sm + 2,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2.5,
   },
   quickIconWrap: {
-    width: 34,
-    height: 34,
+    width: 44,
+    height: 44,
     borderRadius: radius.pill,
     alignItems: "center",
     justifyContent: "center",
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 3,
   },
-  quickLabel: {
-    fontSize: 11.5,
-    fontWeight: "700",
+  quickCardTitle: {
+    fontSize: 13.5,
+    fontWeight: "800",
     textAlign: "center",
+  },
+  quickCardSub: {
+    fontSize: 10.5,
+    fontWeight: "600",
+    textAlign: "center",
+    marginTop: 2,
   },
   activityCard: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.line,
     overflow: "hidden",
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    elevation: 3,
   },
   activityHeader: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    padding: spacing.md,
+    padding: spacing.md + 2,
     borderBottomWidth: 1,
     borderBottomColor: colors.lineLight,
   },
   activityTitleRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: spacing.xs,
+    gap: spacing.sm,
+  },
+  activityIconCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: radius.pill,
+    backgroundColor: colors.brandLight,
+    alignItems: "center",
+    justifyContent: "center",
   },
   activityTitle: {
-    fontSize: 13.5,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
     color: colors.ink,
   },
   activityList: {
@@ -466,30 +635,33 @@ const styles = StyleSheet.create({
     borderBottomColor: colors.lineLight,
   },
   activityDot: {
-    width: 32,
-    height: 32,
+    width: 34,
+    height: 34,
     borderRadius: radius.md,
     backgroundColor: colors.surfaceMuted,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
   },
   activityDotIcon: {
-    fontSize: 14,
+    fontSize: 15,
   },
   activityMeta: {
     flex: 1,
   },
   activitySummary: {
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 13.5,
+    fontWeight: "700",
     color: colors.ink,
     lineHeight: 18,
   },
   activityTime: {
-    fontSize: 11,
+    fontSize: 11.5,
     color: colors.muted,
     marginTop: 2,
+    fontWeight: "500",
   },
   notificationsContainer: {
     marginBottom: spacing.md,
@@ -499,8 +671,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     padding: spacing.md,
-    borderRadius: radius.md,
-    borderWidth: 1,
+    borderRadius: radius.lg,
+    borderWidth: 1.5,
     gap: spacing.sm,
   },
   notifWarning: {
@@ -509,14 +681,14 @@ const styles = StyleSheet.create({
   },
   notifInfo: {
     backgroundColor: colors.brandLight,
-    borderColor: "#bfdbfe",
+    borderColor: colors.brandBorder,
   },
   notifTextWrap: {
     flex: 1,
   },
   notifTitle: {
     fontSize: 13,
-    fontWeight: "700",
+    fontWeight: "800",
     color: colors.ink,
   },
   notifDetail: {
@@ -525,14 +697,25 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   emptyActivityBox: {
-    paddingVertical: spacing.xl,
+    paddingVertical: spacing.xxl,
     paddingHorizontal: spacing.md,
     alignItems: "center",
     justifyContent: "center",
   },
+  emptyIconWrap: {
+    width: 48,
+    height: 48,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.sm,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
   emptyActivityTitle: {
-    fontSize: 13.5,
-    fontWeight: "700",
+    fontSize: 14,
+    fontWeight: "800",
     color: colors.ink,
     marginBottom: 4,
   },
@@ -541,5 +724,6 @@ const styles = StyleSheet.create({
     color: colors.muted,
     textAlign: "center",
     lineHeight: 17,
+    maxWidth: 260,
   },
 });

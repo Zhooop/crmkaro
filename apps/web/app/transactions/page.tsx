@@ -5,6 +5,7 @@ import {
   Badge,
   Icon,
   Modal,
+  StatCard,
   Tabs,
   type NavItem,
   type OrganisationSummary,
@@ -91,6 +92,19 @@ function TransactionsContent() {
   const [paymentRef, setPaymentRef] = useState("");
   const [paymentBusy, setPaymentBusy] = useState(false);
   const [paymentError, setPaymentError] = useState("");
+
+  // Computed Financial Metrics
+  const totalCollectedMinor = invoices.reduce((acc, inv) => {
+    if (inv.status === "PAID") return acc + (inv.grandTotalMinor || 0);
+    if (inv.status === "PARTIALLY_PAID") return acc + Math.max(0, (inv.grandTotalMinor || 0) - (inv.balanceDueMinor || 0));
+    return acc + (inv.paidAmountMinor || 0);
+  }, 0);
+
+  const totalPendingMinor = invoices.reduce((acc, inv) => {
+    return acc + (inv.balanceDueMinor || 0);
+  }, 0);
+
+  const paidCount = invoices.filter((i) => i.status === "PAID").length;
 
   // Load Session Context
   const loadContext = useCallback(async () => {
@@ -238,6 +252,31 @@ function TransactionsContent() {
           </h1>
         </div>
 
+        {/* KPI Stats Grid */}
+        <div className="stats-grid">
+          <StatCard
+            label="Total Collected"
+            value={formatMoney(totalCollectedMinor)}
+            change="Realized inward revenue"
+            icon="checkCircle"
+            tone="teal"
+          />
+          <StatCard
+            label="Pending Inflow"
+            value={formatMoney(totalPendingMinor)}
+            change="Awaiting collection"
+            icon="alertCircle"
+            tone={totalPendingMinor > 0 ? "rose" : "teal"}
+          />
+          <StatCard
+            label="Total Invoices & Bills"
+            value={String(invoices.length)}
+            change={`${paidCount} settled in full`}
+            icon="transactions"
+            tone="blue"
+          />
+        </div>
+
         {/* Horizontal Segmented Tabs (Screenshot 1) */}
         <div style={{ borderBottom: "1px solid var(--line)", marginTop: -4 }}>
           <Tabs
@@ -355,10 +394,29 @@ function TransactionsContent() {
             <p>Loading transactions…</p>
           </div>
         ) : error ? (
-          <div className="empty-state" style={{ minHeight: 280 }}>
+          <div className="empty-state" style={{ minHeight: 280, padding: "40px 20px" }}>
             <Icon name="alertCircle" size={28} />
-            <h3>Error Loading Transactions</h3>
-            <p>{error}</p>
+            <h3 style={{ marginTop: 12 }}>Unable to Load Transactions</h3>
+            <p style={{ maxWidth: 420, margin: "6px auto 16px" }}>{error}</p>
+            <div style={{ display: "flex", gap: 10, justifyContent: "center" }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => loadInvoices()}
+              >
+                <Icon name="refresh" size={14} />
+                <span>Retry Connection</span>
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => router.push("/quick-collect")}
+                style={{ background: "#059669", borderColor: "#059669" }}
+              >
+                <Icon name="zap" size={14} />
+                <span>+ Collect Payment</span>
+              </button>
+            </div>
           </div>
         ) : filteredInvoices.length === 0 ? (
           /* Cute Sleeping Wallet Empty State matching Screenshot 1 */
@@ -691,7 +749,7 @@ function TransactionsContent() {
                 />
               </div>
 
-              <div className="modal-footer" style={{ margin: "-22px", marginTop: 8 }}>
+              <div className="modal-sticky-footer">
                 <button
                   type="button"
                   className="btn btn-secondary"

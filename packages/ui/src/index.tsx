@@ -927,7 +927,7 @@ export function AppShell({
         <div className="modal-overlay" onClick={() => setQuickAddOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: 440 }}
+            style={{ maxWidth: 560 }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1196,13 +1196,15 @@ export function Modal({
   title,
   subtitle,
   children,
-  maxWidth = 520,
+  footer,
+  maxWidth = 540,
 }: {
   isOpen: boolean;
   onClose: () => void;
   title: string;
   subtitle?: string;
   children: ReactNode;
+  footer?: ReactNode;
   maxWidth?: number;
 }) {
   useEffect(() => {
@@ -1238,6 +1240,7 @@ export function Modal({
           </button>
         </div>
         <div className="modal-body">{children}</div>
+        {footer && <div className="modal-footer">{footer}</div>}
       </div>
     </div>
   );

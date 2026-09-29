@@ -343,8 +343,8 @@ const SOLUTION_PRESETS = [
     id: "academy",
     name: "Academy, Classes & Studios",
     subtitle: "Tuition, Gym, Dance, Music & Sports Batches",
-    highlights: ["WhatsApp Fee Collect", "Batch Attendance", "Staff Salary"],
-    modules: ["people", "groups", "quick-collect", "transactions", "payroll", "finance"],
+    highlights: ["Student Admissions & Fees", "Batch Attendance", "WhatsApp Fee Collect", "Staff Salary"],
+    modules: ["students", "people", "groups", "quick-collect", "transactions", "payroll", "finance"],
     isPopular: true,
     color: "#2563eb",
     bgColor: "#eff6ff",
@@ -426,11 +426,13 @@ export default function HomePage() {
   const [customBusinessType, setCustomBusinessType] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("academy");
   const [selectedServices, setSelectedServices] = useState<string[]>([
+    "students",
     "people",
     "groups",
     "quick-collect",
     "transactions",
     "payroll",
+    "finance",
   ]);
   const [showAdvancedModules, setShowAdvancedModules] = useState<boolean>(false);
   const [groupsList, setGroupsList] = useState<any[]>([]);
@@ -867,23 +869,94 @@ export default function HomePage() {
       </main>
     );
 
-  if (error)
-    return (
-      <main className="dashboard-state" aria-live="polite">
-        <h1>Unable to load dashboard</h1>
-        <p>{error}</p>
-        <button
-          className="primary-button"
-          onClick={() => {
-            setError("");
-            loadDashboard().catch((reason: Error) => setError(reason.message));
+  if (error && !data) {
+    const cached = getCachedDashboardData();
+    if (cached) {
+      setData(cached);
+    } else {
+      return (
+        <main
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%)",
+            padding: 24,
           }}
-          type="button"
+          aria-live="polite"
         >
-          Try again
-        </button>
-      </main>
-    );
+          <div
+            style={{
+              maxWidth: 440,
+              width: "100%",
+              background: "#ffffff",
+              borderRadius: 16,
+              padding: "36px 32px",
+              boxShadow: "0 20px 40px -10px rgba(15, 23, 42, 0.12)",
+              border: "1px solid var(--line, #e2e8f0)",
+              textAlign: "center",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: 16,
+            }}
+          >
+            <div
+              style={{
+                width: 56,
+                height: 56,
+                borderRadius: 14,
+                background: "#eff6ff",
+                border: "1px solid #bfdbfe",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+            >
+              <img
+                src="/brand/crmkaro-mark.png"
+                alt="CRMKaro"
+                style={{ width: 34, height: 34, objectFit: "contain" }}
+              />
+            </div>
+
+            <div>
+              <h2 style={{ fontSize: 18, fontWeight: 750, color: "var(--ink, #0f172a)", margin: 0 }}>
+                Unable to load workspace
+              </h2>
+              <p style={{ fontSize: 13, color: "var(--muted, #64748b)", marginTop: 6, margin: 0, lineHeight: 1.5 }}>
+                Could not connect to your live workspace overview. Your session may have expired or the server is syncing.
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, width: "100%", marginTop: 8 }}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setError("");
+                  loadDashboard().catch((reason: Error) => setError(reason.message));
+                }}
+                type="button"
+                style={{ flex: 1, padding: "10px 16px", fontSize: 13, fontWeight: 650 }}
+              >
+                Retry
+              </button>
+              <button
+                className="btn btn-primary"
+                onClick={() => router.push("/login")}
+                type="button"
+                style={{ flex: 1, padding: "10px 16px", fontSize: 13, fontWeight: 700 }}
+              >
+                Go to Login →
+              </button>
+            </div>
+          </div>
+        </main>
+      );
+    }
+  }
 
   const orgName = data?.organisation?.name || wsOrgName;
   const displayName = data?.user?.name || wsUserName;
@@ -917,6 +990,12 @@ export default function HomePage() {
         </div>
       ) : (
         <>
+      {error && data && (
+        <div style={{ padding: "10px 16px", background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
+          <span>⚠️ Showing cached overview: {error}</span>
+          <button className="btn btn-secondary btn-sm" onClick={() => { setError(""); loadDashboard(); }}>Sync Now</button>
+        </div>
+      )}
       {/* 🌟 Modern Hero Banner */}
       <div
         className="dashboard-hero"
@@ -1098,7 +1177,7 @@ export default function HomePage() {
           {data.services.includes("students") && (
             <>
               <button
-                onClick={() => router.push("/students")}
+                onClick={() => router.push("/students?action=new-admission")}
                 className="hero-launch-btn"
                 style={{
                   background: "#2563eb",

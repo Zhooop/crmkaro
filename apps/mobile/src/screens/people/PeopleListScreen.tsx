@@ -36,6 +36,7 @@ export function PeopleListScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
+  const [typeFilter, setTypeFilter] = useState<"ALL" | "CUSTOMER" | "STUDENT" | "STAFF">("ALL");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -133,11 +134,16 @@ export function PeopleListScreen() {
 
   const filteredPeople = people.filter((p) => {
     const q = search.toLowerCase();
-    return (
+    const matchesSearch =
       p.displayName.toLowerCase().includes(q) ||
       p.primaryPhone?.includes(q) ||
-      p.email?.toLowerCase().includes(q)
-    );
+      p.email?.toLowerCase().includes(q);
+
+    if (!matchesSearch) return false;
+    if (typeFilter === "CUSTOMER") return p.types?.some((t) => t.type === "CUSTOMER" || t.type === "MEMBER");
+    if (typeFilter === "STUDENT") return p.types?.some((t) => t.type === "STUDENT") || p.displayName.toLowerCase().includes("student");
+    if (typeFilter === "STAFF") return p.types?.some((t) => t.type === "EMPLOYEE" || t.type === "STAFF");
+    return true;
   });
 
   return (
@@ -161,6 +167,28 @@ export function PeopleListScreen() {
           value={search}
           onChangeText={setSearch}
         />
+
+        {/* Type Filter Chips */}
+        <View style={styles.typeFilterRow}>
+          {(
+            [
+              { key: "ALL", label: "All Contacts" },
+              { key: "CUSTOMER", label: "Customers" },
+              { key: "STUDENT", label: "Students" },
+              { key: "STAFF", label: "Staff" },
+            ] as const
+          ).map((t) => (
+            <TouchableOpacity
+              key={t.key}
+              onPress={() => setTypeFilter(t.key)}
+              style={[styles.typeChip, typeFilter === t.key && styles.typeChipActive]}
+            >
+              <Text style={[styles.typeChipText, typeFilter === t.key && styles.typeChipTextActive]}>
+                {t.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </View>
 
       <FlatList
@@ -170,6 +198,34 @@ export function PeopleListScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchPeople(); }} />
         }
         contentContainerStyle={styles.list}
+        ListEmptyComponent={
+          loading ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>Loading directory members…</Text>
+            </View>
+          ) : (
+            <View style={styles.emptyContainer}>
+              <View style={styles.emptyIconCircle}>
+                <Icon name="Users" size={28} color={colors.brand} />
+              </View>
+              <Text style={styles.emptyTitle}>
+                {search ? "No matching members found" : "Directory is empty"}
+              </Text>
+              <Text style={styles.emptySubtitle}>
+                {search
+                  ? `No contacts found for "${search}". Try checking the spelling or phone number.`
+                  : "Add your students, customers, or staff to start managing them."}
+              </Text>
+              {!search && (
+                <PrimaryButton
+                  title="+ Add First Member"
+                  onPress={openCreateModal}
+                  style={{ marginTop: spacing.md, minWidth: 180 }}
+                />
+              )}
+            </View>
+          )
+        }
         renderItem={({ item }) => (
           <TouchableOpacity
             activeOpacity={0.7}
@@ -190,7 +246,30 @@ export function PeopleListScreen() {
               <Text style={styles.memberPhone}>{item.primaryPhone || "No Phone number"}</Text>
             </View>
 
-            <Icon name="ChevronRight" size={18} color={colors.subtle} />
+            {/* 1-Tap Quick Action Buttons */}
+            {Boolean(item.primaryPhone) && (
+              <View style={styles.cardActions}>
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => Linking.openURL(`tel:${item.primaryPhone}`)}
+                  style={styles.quickCallBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                >
+                  <Icon name="Phone" size={13} color={colors.brand} />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  onPress={() => Linking.openURL(`https://wa.me/${item.primaryPhone?.replace(/\D/g, "")}`)}
+                  style={styles.quickWaBtn}
+                  hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+                >
+                  <Icon name="MessageSquare" size={13} color="#ffffff" />
+                </TouchableOpacity>
+              </View>
+            )}
+
+            <Icon name="ChevronRight" size={16} color={colors.subtle} />
           </TouchableOpacity>
         )}
       />
@@ -415,10 +494,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.line,
-    marginBottom: spacing.xs,
+    marginBottom: spacing.sm,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1.5,
   },
   avatar: {
     width: 40,
@@ -543,5 +627,85 @@ const styles = StyleSheet.create({
   modalFooterRow: {
     flexDirection: "row",
     gap: spacing.md,
+  },
+  typeFilterRow: {
+    flexDirection: "row",
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  typeChip: {
+    paddingHorizontal: spacing.md,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  typeChipActive: {
+    backgroundColor: colors.brandNavy,
+    borderColor: colors.brandNavy,
+  },
+  typeChipText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  typeChipTextActive: {
+    color: "#ffffff",
+  },
+  cardActions: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    marginRight: spacing.sm,
+  },
+  quickCallBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.brandLight,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  quickWaBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: colors.whatsapp,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyContainer: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 60,
+    paddingHorizontal: spacing.xl,
+  },
+  emptyIconCircle: {
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: colors.brandLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: spacing.md,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "800",
+    color: colors.ink,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 12.5,
+    color: colors.muted,
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 18,
+    maxWidth: 280,
+  },
+  emptyText: {
+    fontSize: 13,
+    color: colors.muted,
   },
 });

@@ -1032,7 +1032,7 @@ function FinanceContent() {
             title="Generate a bill or invoice for your student or customer"
           >
             <Icon name="plus" size={15} />
-            <span>+ Create Invoice / Bill</span>
+            <span>Create Invoice / Bill</span>
           </button>
         </div>
       </div>
@@ -1088,10 +1088,6 @@ function FinanceContent() {
                 </div>
               </div>
             </div>
-            <button className="btn btn-primary btn-sm" onClick={() => openCreateInvoiceModal()} style={{ flexShrink: 0 }}>
-              <Icon name="plus" size={14} />
-              <span>+ Create Invoice</span>
-            </button>
           </div>
 
           <div className="toolbar">
@@ -2146,7 +2142,7 @@ function FinanceContent() {
             </div>
           </div>
 
-          <div className="modal-footer" style={{ margin: 0, marginTop: 8, padding: "14px 0 0 0", background: "transparent", borderTop: "1px solid var(--line)" }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"
@@ -2380,7 +2376,7 @@ function FinanceContent() {
             />
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"
@@ -2430,7 +2426,7 @@ function FinanceContent() {
             />
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"

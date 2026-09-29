@@ -18,7 +18,7 @@ import { apiFetch } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { colors, radius, spacing } from "../../theme/colors";
 
-const PRESET_AMOUNTS = [500, 1000, 2000, 5000];
+const PRESET_AMOUNTS = [500, 1000, 2500, 5000, 10000];
 
 type Person = {
   id: string;
@@ -70,6 +70,14 @@ export function QuickCollectScreen() {
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedIds(next);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === filteredPeople.length && filteredPeople.length > 0) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredPeople.map((p) => p.id)));
+    }
   };
 
   const handleSend = async () => {
@@ -130,6 +138,8 @@ export function QuickCollectScreen() {
     const url = `https://wa.me/${item.phone?.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`;
     Linking.openURL(url);
   };
+
+  const isAllSelected = filteredPeople.length > 0 && selectedIds.size === filteredPeople.length;
 
   return (
     <View style={styles.container}>
@@ -231,7 +241,19 @@ export function QuickCollectScreen() {
             <View style={styles.card}>
               <View style={styles.payersHeader}>
                 <Text style={styles.cardTitle}>Select Payers ({filteredPeople.length})</Text>
-                <Badge tone="emerald">Selected {selectedIds.size}</Badge>
+                <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                  {filteredPeople.length > 0 && (
+                    <TouchableOpacity
+                      onPress={toggleSelectAll}
+                      style={styles.selectAllBtn}
+                    >
+                      <Text style={styles.selectAllText}>
+                        {isAllSelected ? "Clear All" : "Select All"}
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                  <Badge tone="emerald">Selected {selectedIds.size}</Badge>
+                </View>
               </View>
 
               <SearchInput
@@ -262,19 +284,33 @@ export function QuickCollectScreen() {
                 })}
               </View>
             </View>
-
-            {/* Submit Bar */}
-            <PrimaryButton
-              title={`Request ₹${feeAmount || 0} from ${selectedIds.size} Payer${selectedIds.size === 1 ? "" : "s"}`}
-              onPress={handleSend}
-              loading={submitting}
-              variant="emerald"
-              disabled={selectedIds.size === 0 || !feeAmount}
-              style={styles.submitBtn}
-            />
           </>
         )}
       </ScrollView>
+
+      {/* Pinned Bottom Action Bar (always visible while selecting) */}
+      {!successInvoices && (
+        <View style={styles.fixedBottomBar}>
+          <View style={styles.bottomBarInfo}>
+            <Text style={styles.bottomBarCount}>
+              {selectedIds.size} Payer{selectedIds.size === 1 ? "" : "s"} Selected
+            </Text>
+            <Text style={styles.bottomBarTotal}>
+              {selectedIds.size > 0 && Number(feeAmount) > 0
+                ? `Total: ₹${(Number(feeAmount) * selectedIds.size).toLocaleString("en-IN")}`
+                : "Select payers to request fees"}
+            </Text>
+          </View>
+          <PrimaryButton
+            title={submitting ? "Sending…" : "Send Links →"}
+            onPress={handleSend}
+            loading={submitting}
+            variant="emerald"
+            disabled={selectedIds.size === 0 || !feeAmount || Number(feeAmount) < 2}
+            style={styles.fixedSubmitBtn}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -290,11 +326,16 @@ const styles = StyleSheet.create({
   },
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.lg,
+    borderRadius: radius.xl,
     padding: spacing.lg,
     borderWidth: 1,
     borderColor: colors.line,
     marginBottom: spacing.lg,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 8,
+    elevation: 2,
   },
   cardTitle: {
     fontSize: 15,
@@ -482,5 +523,52 @@ const styles = StyleSheet.create({
     color: "#ffffff",
     fontSize: 11.5,
     fontWeight: "700",
+  },
+  selectAllBtn: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.xs,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  selectAllText: {
+    fontSize: 11,
+    fontWeight: "750",
+    color: colors.brand,
+  },
+  fixedBottomBar: {
+    backgroundColor: colors.surface,
+    borderTopWidth: 1.5,
+    borderTopColor: colors.line,
+    paddingHorizontal: spacing.lg,
+    paddingVertical: spacing.md,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: spacing.md,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  bottomBarInfo: {
+    flex: 1,
+  },
+  bottomBarCount: {
+    fontSize: 13.5,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  bottomBarTotal: {
+    fontSize: 11.5,
+    color: colors.muted,
+    marginTop: 1,
+    fontWeight: "600",
+  },
+  fixedSubmitBtn: {
+    minWidth: 140,
+    height: 44,
   },
 });

@@ -5,10 +5,13 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
+  Alert,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { AppHeader } from "../../components/AppHeader";
+import { Badge } from "../../components/Badge";
 import { Icon, IconName } from "../../components/Icon";
+import { useAuth } from "../../context/AuthContext";
 import { colors, radius, spacing } from "../../theme/colors";
 
 type ModuleItem = {
@@ -23,6 +26,14 @@ type ModuleItem = {
 
 export function MoreMenuScreen() {
   const navigation = useNavigation<any>();
+  const { user, activeOrg, logout } = useAuth();
+
+  const handleLogout = () => {
+    Alert.alert("Sign Out", "Are you sure you want to sign out from CRMKaro?", [
+      { text: "Cancel", style: "cancel" },
+      { text: "Sign Out", style: "destructive", onPress: () => logout() },
+    ]);
+  };
 
   const modules: ModuleItem[] = [
     {
@@ -53,9 +64,36 @@ export function MoreMenuScreen() {
       bg: "#fff7ed",
     },
     {
+      id: "transactions",
+      title: "Transactions & Receipts",
+      subtitle: "Payment ledger, verified receipts & billing",
+      iconName: "Receipt",
+      iconColor: colors.emerald,
+      route: "Transactions",
+      bg: colors.emeraldLight,
+    },
+    {
+      id: "inventory",
+      title: "Inventory & Catalog",
+      subtitle: "Stock levels, books, uniforms & reorder alerts",
+      iconName: "Package",
+      iconColor: "#8b5cf6",
+      route: "Inventory",
+      bg: "#f3e8ff",
+    },
+    {
+      id: "payroll",
+      title: "Payroll & Staff",
+      subtitle: "Employee roster, salary CTC & payroll runs",
+      iconName: "DollarSign",
+      iconColor: "#0284c7",
+      route: "Payroll",
+      bg: "#e0f2fe",
+    },
+    {
       id: "settings",
       title: "Workspace Settings",
-      subtitle: "Branding, organization logo & security",
+      subtitle: "Branding, team staff & organization security",
       iconName: "Settings",
       iconColor: colors.ink,
       route: "Settings",
@@ -68,6 +106,33 @@ export function MoreMenuScreen() {
       <AppHeader title="All Modules" subtitle="Complete CRMKaro Service Suite" />
 
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Profile & Active Workspace Header */}
+        <View style={styles.profileCard}>
+          <View style={styles.profileAvatar}>
+            <Text style={styles.profileAvatarText}>
+              {(user?.name || activeOrg?.name || "U").slice(0, 1).toUpperCase()}
+            </Text>
+          </View>
+          <View style={styles.profileMeta}>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Text style={styles.profileName}>{user?.name || "Workspace User"}</Text>
+              <Badge tone="blue">Admin</Badge>
+            </View>
+            <Text style={styles.profileOrg}>
+              🏢 {activeOrg?.name || "CRMKaro Business OS"}
+            </Text>
+            <Text style={styles.profileEmail}>{user?.email || "Signed in"}</Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => navigation.navigate("Settings")}
+            style={styles.settingsIconBtn}
+          >
+            <Icon name="Settings" size={18} color={colors.muted} />
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionHeading}>Business Modules</Text>
+
         {modules.map((m) => (
           <TouchableOpacity
             key={m.id}
@@ -85,6 +150,16 @@ export function MoreMenuScreen() {
             <Icon name="ChevronRight" size={18} color={colors.subtle} />
           </TouchableOpacity>
         ))}
+
+        {/* Quick Sign Out Action */}
+        <TouchableOpacity
+          activeOpacity={0.7}
+          onPress={handleLogout}
+          style={styles.logoutBtn}
+        >
+          <Icon name="LogOut" size={18} color={colors.danger} />
+          <Text style={styles.logoutText}>Sign Out from Workspace</Text>
+        </TouchableOpacity>
       </ScrollView>
     </View>
   );
@@ -100,19 +175,84 @@ const styles = StyleSheet.create({
     paddingBottom: spacing.xxxl,
     gap: spacing.sm,
   },
+  profileCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: colors.surface,
+    padding: spacing.md,
+    borderRadius: radius.xl,
+    borderWidth: 1,
+    borderColor: colors.line,
+    marginBottom: spacing.xs,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  profileAvatar: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.brandLight,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: spacing.md,
+  },
+  profileAvatarText: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: colors.brand,
+  },
+  profileMeta: {
+    flex: 1,
+    gap: 2,
+  },
+  profileName: {
+    fontSize: 14.5,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  profileOrg: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: colors.brandNavy,
+  },
+  profileEmail: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+  settingsIconBtn: {
+    padding: 8,
+  },
+  sectionHeading: {
+    fontSize: 11.5,
+    fontWeight: "800",
+    color: colors.muted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+    marginTop: spacing.sm,
+    marginBottom: 2,
+    paddingHorizontal: 4,
+  },
   moduleCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: colors.surface,
     padding: spacing.md,
-    borderRadius: radius.md,
+    borderRadius: radius.xl,
     borderWidth: 1,
     borderColor: colors.line,
+    shadowColor: "#0f172a",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
   },
   iconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: radius.md,
+    width: 46,
+    height: 46,
+    borderRadius: radius.lg,
     alignItems: "center",
     justifyContent: "center",
     marginRight: spacing.md,
@@ -129,5 +269,22 @@ const styles = StyleSheet.create({
     fontSize: 11.5,
     color: colors.muted,
     marginTop: 2,
+  },
+  logoutBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: spacing.sm,
+    backgroundColor: "#fff1f2",
+    borderWidth: 1,
+    borderColor: "#fecdd3",
+    borderRadius: radius.xl,
+    paddingVertical: 14,
+    marginTop: spacing.md,
+  },
+  logoutText: {
+    fontSize: 13.5,
+    fontWeight: "750",
+    color: colors.danger,
   },
 });

@@ -12,34 +12,45 @@ type StatCardProps = {
 };
 
 export function StatCard({ label, value, change, tone = "blue", onPress }: StatCardProps) {
-  const getBorderColor = () => {
+  const getToneConfig = () => {
     switch (tone) {
       case "emerald":
-        return "#10b981";
+        return { color: "#059669", bg: "#ecfdf5", border: "#a7f3d0", label: "REVENUE" };
       case "amber":
-        return "#f59e0b";
+        return { color: "#d97706", bg: "#fef3c7", border: "#fde68a", label: "PIPELINE" };
       case "rose":
-        return "#f43f5e";
+        return { color: "#e11d48", bg: "#ffe4e6", border: "#fecdd3", label: "ALERT" };
       case "purple":
-        return "#8b5cf6";
+        return { color: "#7c3aed", bg: "#f5f3ff", border: "#ddd6fe", label: "ACADEMIC" };
       case "teal":
-        return "#0d9488";
+        return { color: "#0d9488", bg: "#f0fdfa", border: "#99f6e4", label: "INVENTORY" };
       default:
-        return colors.brand;
+        return { color: colors.brandVibrant, bg: colors.brandLight, border: "#bfdbfe", label: "CORE" };
     }
   };
 
+  const tc = getToneConfig();
+
   const content = (
-    <View style={[styles.card, { borderLeftColor: getBorderColor(), borderLeftWidth: 4 }]}>
-      <Text style={styles.label}>{label}</Text>
-      <Text style={styles.value}>{value}</Text>
-      {Boolean(change) && <Text style={styles.change}>{change}</Text>}
+    <View style={[styles.card, { borderTopColor: tc.color }]}>
+      <View style={styles.cardHeader}>
+        <Text numberOfLines={1} style={styles.label}>{label}</Text>
+        <View style={[styles.toneBadge, { backgroundColor: tc.bg, borderColor: tc.border }]}>
+          <View style={[styles.toneDot, { backgroundColor: tc.color }]} />
+        </View>
+      </View>
+      <Text numberOfLines={1} style={styles.value}>{value}</Text>
+      {Boolean(change) && (
+        <View style={[styles.changeBadge, { backgroundColor: tc.bg, borderColor: tc.border }]}>
+          <Text numberOfLines={1} style={[styles.change, { color: tc.color }]}>{change}</Text>
+        </View>
+      )}
     </View>
   );
 
   if (onPress) {
     return (
-      <TouchableOpacity activeOpacity={0.8} onPress={onPress}>
+      <TouchableOpacity activeOpacity={0.75} onPress={onPress}>
         {content}
       </TouchableOpacity>
     );
@@ -51,33 +62,63 @@ export function StatCard({ label, value, change, tone = "blue", onPress }: StatC
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colors.surface,
-    borderRadius: radius.md,
-    padding: spacing.md,
+    borderRadius: radius.xl,
+    padding: spacing.md + 2,
     borderWidth: 1,
     borderColor: colors.line,
+    borderTopWidth: 4,
     shadowColor: "#0f172a",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.04,
-    shadowRadius: 3,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 10,
+    elevation: 3.5,
+  },
+  cardHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 6,
+  },
+  toneBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 5,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+  },
+  toneDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
   },
   label: {
     fontSize: 11.5,
-    fontWeight: "600",
+    fontWeight: "800",
     color: colors.muted,
     textTransform: "uppercase",
-    letterSpacing: 0.4,
-    marginBottom: 4,
+    letterSpacing: 0.5,
+    flex: 1,
+    marginRight: 4,
   },
   value: {
-    fontSize: 20,
-    fontWeight: "800",
+    fontSize: 23,
+    fontWeight: "900",
     color: colors.ink,
-    letterSpacing: -0.3,
+    letterSpacing: -0.6,
+    marginVertical: 2,
+  },
+  changeBadge: {
+    alignSelf: "flex-start",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: radius.pill,
+    borderWidth: 1,
+    marginTop: 6,
+    maxWidth: "100%",
   },
   change: {
     fontSize: 11,
-    color: colors.muted,
-    marginTop: 4,
+    fontWeight: "700",
   },
 });

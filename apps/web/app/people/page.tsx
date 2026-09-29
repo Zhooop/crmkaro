@@ -748,6 +748,45 @@ function PeopleContent() {
           </div>
         )}
 
+        {/* Student Admission Guidance Banner */}
+        <div
+          style={{
+            padding: "10px 14px",
+            background: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: 8,
+            fontSize: 12.5,
+            color: "#1e40af",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 10,
+          }}
+        >
+          <div>
+            <strong>🎓 Enrolling a Student with Fees & Batch?</strong>
+            <p style={{ margin: "2px 0 0", color: "#3b82f6", fontSize: 11.5 }}>
+              Use the dedicated Student Admission portal to configure monthly/term fee plans, batch rosters & admission dates.
+            </p>
+          </div>
+          <a
+            href="/students?action=new-admission"
+            style={{
+              padding: "5px 12px",
+              background: "#2563eb",
+              color: "#ffffff",
+              borderRadius: 6,
+              fontWeight: 700,
+              fontSize: 11.5,
+              textDecoration: "none",
+              whiteSpace: "nowrap",
+              flexShrink: 0,
+            }}
+          >
+            + Go to Admissions
+          </a>
+        </div>
+
         {/* Section 1: Personal Information */}
         <section
           className="add-member-section"
@@ -1293,7 +1332,7 @@ function PeopleContent() {
     if (isEdit) {
       return (
         <div
-          className="modal-footer"
+          className="modal-footer modal-sticky-footer"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1384,7 +1423,7 @@ function PeopleContent() {
     if (modalActiveTab === "personal") {
       return (
         <div
-          className="modal-footer"
+          className="modal-footer modal-sticky-footer"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1442,7 +1481,7 @@ function PeopleContent() {
     if (modalActiveTab === "address") {
       return (
         <div
-          className="modal-footer"
+          className="modal-footer modal-sticky-footer"
           style={{
             display: "flex",
             justifyContent: "space-between",
@@ -1496,7 +1535,7 @@ function PeopleContent() {
     // Tab 3: "more"
     return (
       <div
-        className="modal-footer"
+        className="modal-footer modal-sticky-footer"
         style={{
           display: "flex",
           justifyContent: "space-between",
@@ -2095,6 +2134,14 @@ function PeopleContent() {
                 >
                   <Icon name="finance" size={14} />
                   <span>New Invoice</span>
+                </a>
+                <a
+                  href={`/students?action=new-admission`}
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}
+                >
+                  <Icon name="student" size={14} />
+                  <span>Admit as Student</span>
                 </a>
                 <button
                   className="btn btn-secondary btn-sm"

@@ -802,7 +802,7 @@ function InventoryContent() {
             />
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"
@@ -844,7 +844,7 @@ function InventoryContent() {
             />
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"
@@ -911,7 +911,7 @@ function InventoryContent() {
             />
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"

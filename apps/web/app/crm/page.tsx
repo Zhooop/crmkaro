@@ -350,7 +350,13 @@ function CrmContent() {
         }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.message || "Failed to create lead.");
+      if (!res.ok) {
+        let msg = data.message || "Failed to create lead.";
+        if (typeof msg === "string" && msg.toLowerCase().includes("internal server error")) {
+          msg = "Unable to save lead on server. Please check your connection and try again.";
+        }
+        throw new Error(msg);
+      }
       setCreateOpen(false);
       resetForm();
       loadLeads();
@@ -1406,7 +1412,7 @@ function CrmContent() {
             )}
           </div>
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 10 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"
@@ -1486,7 +1492,7 @@ function CrmContent() {
             </div>
           )}
 
-          <div className="modal-footer" style={{ margin: "-22px", marginTop: 6 }}>
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="btn btn-secondary"

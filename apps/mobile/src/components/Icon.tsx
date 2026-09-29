@@ -33,7 +33,19 @@ export type IconName =
   | "Key"
   | "Lock"
   | "AlertCircle"
-  | "Info";
+  | "Info"
+  | "Bell"
+  | "Package"
+  | "CreditCard"
+  | "DollarSign"
+  | "Receipt"
+  | "Tag"
+  | "Filter"
+  | "RefreshCw"
+  | "CheckCircle2"
+  | "ChevronDown"
+  | "ArrowUpRight"
+  | "ArrowDownRight";
 
 type IconProps = {
   name: IconName;

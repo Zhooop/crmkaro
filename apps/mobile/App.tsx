@@ -22,6 +22,9 @@ import { StudentsScreen } from "./src/screens/students/StudentsScreen";
 import { GroupsScreen } from "./src/screens/groups/GroupsScreen";
 import { CrmScreen } from "./src/screens/crm/CrmScreen";
 import { SettingsScreen } from "./src/screens/settings/SettingsScreen";
+import { TransactionsScreen } from "./src/screens/transactions/TransactionsScreen";
+import { InventoryScreen } from "./src/screens/inventory/InventoryScreen";
+import { PayrollScreen } from "./src/screens/payroll/PayrollScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -42,13 +45,20 @@ function MainTabs() {
         tabBarStyle: {
           backgroundColor: colors.surface,
           borderTopColor: colors.line,
-          height: 60,
-          paddingBottom: 8,
+          borderTopWidth: 1.5,
+          height: 66,
+          paddingBottom: 10,
           paddingTop: 6,
+          shadowColor: "#0f172a",
+          shadowOffset: { width: 0, height: -4 },
+          shadowOpacity: 0.06,
+          shadowRadius: 12,
+          elevation: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: "700",
+          fontWeight: "800",
+          marginTop: -2,
         },
       }}
     >
@@ -57,7 +67,11 @@ function MainTabs() {
         component={DashboardScreen}
         options={{
           tabBarLabel: "Home",
-          tabBarIcon: ({ color, size }: any) => <Icon name="Home" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size, focused }: any) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+              <Icon name="Home" size={size - 2} color={focused ? colors.brand : color} />
+            </View>
+          ),
         }}
       />
       <TabScreen
@@ -66,7 +80,11 @@ function MainTabs() {
         options={{
           tabBarLabel: "Collect",
           tabBarActiveTintColor: colors.emerald,
-          tabBarIcon: ({ color, size }: any) => <Icon name="Zap" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size, focused }: any) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapEmerald]}>
+              <Icon name="Zap" size={size - 3} color={focused ? colors.emerald : color} />
+            </View>
+          ),
         }}
       />
       <TabScreen
@@ -74,7 +92,11 @@ function MainTabs() {
         component={PeopleListScreen}
         options={{
           tabBarLabel: "Directory",
-          tabBarIcon: ({ color, size }: any) => <Icon name="Users" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size, focused }: any) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+              <Icon name="Users" size={size - 3} color={focused ? colors.brand : color} />
+            </View>
+          ),
         }}
       />
       <TabScreen
@@ -82,7 +104,11 @@ function MainTabs() {
         component={FinanceScreen}
         options={{
           tabBarLabel: "Finance",
-          tabBarIcon: ({ color, size }: any) => <Icon name="FileText" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size, focused }: any) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+              <Icon name="FileText" size={size - 3} color={focused ? colors.brand : color} />
+            </View>
+          ),
         }}
       />
       <TabScreen
@@ -90,7 +116,11 @@ function MainTabs() {
         component={MoreMenuScreen}
         options={{
           tabBarLabel: "Menu",
-          tabBarIcon: ({ color, size }: any) => <Icon name="Menu" size={size - 2} color={color} />,
+          tabBarIcon: ({ color, size, focused }: any) => (
+            <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+              <Icon name="Menu" size={size - 3} color={focused ? colors.brand : color} />
+            </View>
+          ),
         }}
       />
     </TabNavigator>
@@ -108,6 +138,20 @@ function RootNavigator() {
     );
   }
 
+  const screenHeaderOpts = {
+    headerShown: true,
+    headerBackTitle: "Back",
+    headerStyle: {
+      backgroundColor: colors.surface,
+    },
+    headerTintColor: colors.brandNavy,
+    headerTitleStyle: {
+      fontWeight: "800" as const,
+      fontSize: 16,
+    },
+    headerShadowVisible: false,
+  };
+
   return (
     <NavContainer>
       <StackNavigator screenOptions={{ headerShown: false }}>
@@ -121,22 +165,37 @@ function RootNavigator() {
             <StackScreen
               name="Students"
               component={StudentsScreen}
-              options={{ headerShown: true, title: "Students & Attendance", headerBackTitle: "Back" }}
+              options={{ ...screenHeaderOpts, title: "Students & Attendance" }}
             />
             <StackScreen
               name="Groups"
               component={GroupsScreen}
-              options={{ headerShown: true, title: "Groups & Batches", headerBackTitle: "Back" }}
+              options={{ ...screenHeaderOpts, title: "Groups & Batches" }}
             />
             <StackScreen
               name="CRM"
               component={CrmScreen}
-              options={{ headerShown: true, title: "Leads & CRM Pipeline", headerBackTitle: "Back" }}
+              options={{ ...screenHeaderOpts, title: "Leads & CRM Pipeline" }}
             />
             <StackScreen
               name="Settings"
               component={SettingsScreen}
-              options={{ headerShown: true, title: "Workspace Settings", headerBackTitle: "Back" }}
+              options={{ ...screenHeaderOpts, title: "Workspace Settings" }}
+            />
+            <StackScreen
+              name="Transactions"
+              component={TransactionsScreen}
+              options={{ ...screenHeaderOpts, title: "Transactions & Receipts" }}
+            />
+            <StackScreen
+              name="Inventory"
+              component={InventoryScreen}
+              options={{ ...screenHeaderOpts, title: "Inventory & Catalog" }}
+            />
+            <StackScreen
+              name="Payroll"
+              component={PayrollScreen}
+              options={{ ...screenHeaderOpts, title: "Payroll & Staff" }}
             />
           </>
         )}
@@ -162,5 +221,22 @@ const styles = StyleSheet.create({
     backgroundColor: colors.canvas,
     alignItems: "center",
     justifyContent: "center",
+  },
+  tabIconWrap: {
+    width: 44,
+    height: 30,
+    borderRadius: 15,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  tabIconWrapActive: {
+    backgroundColor: colors.brandLight,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+  },
+  tabIconWrapEmerald: {
+    backgroundColor: colors.emeraldLight,
+    borderWidth: 1,
+    borderColor: colors.emeraldBorder,
   },
 });

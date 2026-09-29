@@ -675,6 +675,29 @@ function QuickCollectContent() {
               <small style={{ color: "var(--muted)", fontSize: 11, display: "block", marginTop: 4 }}>
                 Allowed amount between ₹2 and ₹2,00,000
               </small>
+              {/* Quick Amount Preset Chips */}
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {[500, 1000, 2500, 5000, 10000, 20000].map((amt) => (
+                  <button
+                    key={amt}
+                    type="button"
+                    onClick={() => setFeeAmount(String(amt))}
+                    style={{
+                      padding: "3px 9px",
+                      borderRadius: 6,
+                      border: "1px solid var(--line, #cbd5e1)",
+                      background: feeAmount === String(amt) ? "#eff6ff" : "#ffffff",
+                      color: feeAmount === String(amt) ? "var(--brand, #2563eb)" : "var(--ink, #334155)",
+                      fontSize: 11.5,
+                      fontWeight: 650,
+                      cursor: "pointer",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    ₹{amt.toLocaleString("en-IN")}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Notes */}
@@ -919,6 +942,8 @@ function QuickCollectContent() {
         {/* CARD 3: ACTION FOOTER */}
         <div
           style={{
+            position: "sticky",
+            bottom: 16,
             background: "#ffffff",
             border: "1px solid var(--line, #e2e8f0)",
             borderRadius: 12,
@@ -927,7 +952,8 @@ function QuickCollectContent() {
             alignItems: "center",
             justifyContent: "space-between",
             gap: 16,
-            boxShadow: "0 4px 15px rgba(0, 0, 0, 0.03)",
+            boxShadow: "0 8px 30px rgba(15, 23, 42, 0.12)",
+            zIndex: 10,
           }}
         >
           <div>

@@ -7,6 +7,7 @@ import {
   Icon,
   Modal,
   StatCard,
+  type IconName,
   type NavItem,
   type OrganisationSummary,
 } from "@crmkaro/ui";
@@ -63,7 +64,7 @@ type RecurringFeeItem = {
   balanceMinor: number;
   invoiceId: string | null;
   invoiceNumber: string | null;
-  lastPaymentDate: string | null;
+  lastPaymentDate?: string | null;
   whatsappUrl?: string | null;
 };
 
@@ -101,6 +102,16 @@ function formatMoney(minor: number, currency = "INR") {
   }).format(minor / 100);
 }
 
+function formatMonthLabel(targetMonth: string) {
+  try {
+    const [y, m] = targetMonth.split("-");
+    const d = new Date(Number(y), Number(m) - 1, 1);
+    return d.toLocaleString("en-US", { month: "long", year: "numeric" });
+  } catch {
+    return targetMonth;
+  }
+}
+
 function StudentsContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -109,7 +120,31 @@ function StudentsContent() {
   // Active Tab: "directory" | "recurring-fees" | "attendance" | "summary"
   const [activeTab, setActiveTab] = useState<string>("directory");
 
-  const { orgName, userName, userRole, currency, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, currency, businessType, organisations, navItems, updateWorkspace } = useWorkspace();
+
+  const isGym = (() => {
+    const bt = (businessType || "").toLowerCase();
+    const on = (orgName || "").toLowerCase();
+    return (
+      bt.includes("gym") ||
+      bt.includes("fitness") ||
+      bt.includes("sports") ||
+      bt.includes("dance") ||
+      bt.includes("yoga") ||
+      bt.includes("club") ||
+      bt.includes("studio") ||
+      bt.includes("crossfit") ||
+      bt.includes("martial") ||
+      bt.includes("boxing") ||
+      on.includes("gym") ||
+      on.includes("fitness") ||
+      on.includes("crossfit") ||
+      on.includes("sports") ||
+      on.includes("dance") ||
+      on.includes("yoga") ||
+      on.includes("studio")
+    );
+  })();
 
   // Students Directory State
   const [students, setStudents] = useState<StudentProfile[]>([]);
@@ -122,6 +157,8 @@ function StudentsContent() {
   // Recurring Fees State
   const todayYyyyMm = new Date().toISOString().slice(0, 7);
   const [selectedMonth, setSelectedMonth] = useState(todayYyyyMm);
+  const [feeStatusFilter, setFeeStatusFilter] = useState<"ALL" | "PENDING" | "PAID">("ALL");
+  const [feeSearchQuery, setFeeSearchQuery] = useState("");
   const [recurringFeesData, setRecurringFeesData] = useState<{
     cycleMonth: string;
     cycleMonthLabel: string;
@@ -203,13 +240,17 @@ function StudentsContent() {
   const [formCity, setFormCity] = useState("");
   const [formState, setFormState] = useState("");
   const [formRollNumber, setFormRollNumber] = useState("");
-  const [formStandard, setFormStandard] = useState("10th Standard");
-  const [formBatch, setFormBatch] = useState("Morning Batch");
+  const [formStandard, setFormStandard] = useState("");
+  const [customStandard, setCustomStandard] = useState("");
+  const [formBatch, setFormBatch] = useState("");
   const [formGuardianName, setFormGuardianName] = useState("");
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
-  const [formGuardianRelation, setFormGuardianRelation] = useState("Father");
+  const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
   const [formFeeFrequency, setFormFeeFrequency] = useState<"MONTHLY" | "QUARTERLY" | "ANNUAL">("MONTHLY");
   const [formFeeAmount, setFormFeeAmount] = useState("");
+  const [admissionPaymentStatus, setAdmissionPaymentStatus] = useState<"PAID_NOW" | "PENDING">("PAID_NOW");
+  const [admissionPaymentMethod, setAdmissionPaymentMethod] = useState<string>("UPI");
+  const [admissionAmountPaid, setAdmissionAmountPaid] = useState<string>("");
   const [feePlanType, setFeePlanType] = useState<"MONTHLY" | "TERM_INSTALLMENTS">("MONTHLY");
   const [term1Amount, setTerm1Amount] = useState("15000");
   const [term1DueDate, setTerm1DueDate] = useState("2026-04-15");
@@ -386,13 +427,22 @@ function StudentsContent() {
   async function handleSaveAdmission(e: FormEvent) {
     e.preventDefault();
     if (!formName.trim()) {
-      setAdmissionError("Please enter student full name.");
+      setAdmissionError(isGym ? "Please enter member full name." : "Please enter student full name.");
       return;
     }
-    if (!formStandard.trim()) {
-      setAdmissionError("Please enter class or standard.");
-      return;
+
+    let finalStandard = formStandard.trim();
+    if (isGym && (finalStandard === "Custom Plan" || !finalStandard)) {
+      finalStandard = customStandard.trim() || "General Gym";
+    } else if (!finalStandard) {
+      finalStandard = isGym ? "General Gym" : "General";
     }
+
+    let finalBatch = formBatch.trim();
+    if (isGym && !finalBatch) {
+      finalBatch = "General Flexible Access";
+    }
+
     setAdmissionBusy(true);
     setAdmissionError("");
     try {
@@ -400,7 +450,7 @@ function StudentsContent() {
       let calculatedFeeAmount = Math.round(Number(formFeeAmount) * 100) || 0;
       let finalFeeFrequency = formFeeFrequency;
 
-      if (feePlanType === "TERM_INSTALLMENTS") {
+      if (!isGym && feePlanType === "TERM_INSTALLMENTS") {
         finalFeeFrequency = "QUARTERLY";
         const t1 = Math.round(Number(term1Amount) * 100) || 0;
         calculatedFeeAmount = t1;
@@ -418,8 +468,8 @@ function StudentsContent() {
             ? { street: formStreet, city: formCity, state: formState }
             : undefined,
         rollNumber: formRollNumber.trim() || undefined,
-        standard: formStandard.trim(),
-        batch: formBatch.trim() || undefined,
+        standard: finalStandard,
+        batch: finalBatch || undefined,
         guardianName: formGuardianName.trim() || undefined,
         guardianPhone: formGuardianPhone.trim() || undefined,
         guardianRelation: formGuardianRelation.trim() || undefined,
@@ -438,14 +488,42 @@ function StudentsContent() {
 
       const data = await res.json();
       if (!res.ok) {
-        throw new Error(data.message || "Failed to create student admission.");
+        throw new Error(data.message || (isGym ? "Failed to enroll member." : "Failed to create student admission."));
+      }
+
+      // If Paid Now was selected, immediately collect the fee for this cycle so invoice is generated and marked PAID
+      if (admissionPaymentStatus === "PAID_NOW" && calculatedFeeAmount > 0) {
+        const paidNowNum = Number(admissionAmountPaid || formFeeAmount || 0);
+        if (paidNowNum > 0) {
+          const currentMonth = formAdmissionDate ? formAdmissionDate.slice(0, 7) : new Date().toISOString().slice(0, 7);
+          try {
+            await authFetch(`${api}/students/collect-fee`, {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({
+                studentProfileId: data.id,
+                month: currentMonth,
+                amountMinor: Math.round(paidNowNum * 100),
+                paymentMethod: admissionPaymentMethod,
+                notes: `Fee paid at enrollment/admission via ${admissionPaymentMethod}`,
+              }),
+            });
+          } catch (feeErr) {
+            console.error("Auto fee collection on admission error:", feeErr);
+          }
+        }
       }
 
       setAdmissionModalOpen(false);
       resetAdmissionForm();
       loadStudents();
       loadRecurringFees();
-      showToast(`Student ${data.person?.displayName || formName} admitted successfully!`, "success");
+      showToast(
+        isGym
+          ? `Member ${data.person?.displayName || formName} enrolled successfully${admissionPaymentStatus === "PAID_NOW" ? " & fee recorded as PAID!" : "!"}`
+          : `Student ${data.person?.displayName || formName} admitted successfully${admissionPaymentStatus === "PAID_NOW" ? " & fee recorded as PAID!" : "!"}`,
+        "success"
+      );
     } catch (err) {
       setAdmissionError((err as Error).message);
     } finally {
@@ -461,14 +539,17 @@ function StudentsContent() {
     setFormStreet("");
     setFormCity("");
     setFormState("");
-    setFormRollNumber("");
-    setFormStandard("10th Standard");
-    setFormBatch("Morning Batch");
+    setFormStandard(isGym ? "General Gym (Weights & Cardio)" : "10th Standard");
+    setCustomStandard("");
+    setFormBatch(isGym ? "Full Day Flexible Access" : "Morning Batch");
     setFormGuardianName("");
     setFormGuardianPhone("");
-    setFormGuardianRelation("Father");
+    setFormGuardianRelation(isGym ? "Self" : "Father");
     setFormFeeFrequency("MONTHLY");
     setFormFeeAmount("");
+    setAdmissionPaymentStatus("PAID_NOW");
+    setAdmissionPaymentMethod("UPI");
+    setAdmissionAmountPaid("");
     setFormAdmissionDate(todayYyyyMmDd);
     setFormNotes("");
     setAdmissionError("");
@@ -898,16 +979,29 @@ function StudentsContent() {
   );
 
   const tabItems = [
-    { id: "directory", label: "Student Directory", icon: "student" as const, count: students.length },
+    {
+      id: "directory",
+      label: isGym ? "Members Directory" : "Student Directory",
+      icon: (isGym ? "people" : "student") as IconName,
+      count: students.length,
+    },
     {
       id: "recurring-fees",
-      label: "Recurring Fees Cycle",
+      label: isGym ? "Upcoming Fees & Dues" : "Recurring Fees Cycle",
       icon: "finance" as const,
       count: recurringFeesData?.pendingCount ?? 0,
       highlight: (recurringFeesData?.pendingCount ?? 0) > 0,
     },
-    { id: "attendance", label: "Daily Attendance Grid", icon: "calendar" as const },
-    { id: "summary", label: "Monthly Summary Report", icon: "reports" as const },
+    {
+      id: "attendance",
+      label: isGym ? "Daily Check-in & Attendance" : "Daily Attendance Grid",
+      icon: "calendar" as const,
+    },
+    {
+      id: "summary",
+      label: isGym ? "Monthly Revenue Report" : "Monthly Summary Report",
+      icon: "reports" as const,
+    },
   ];
 
   return (
@@ -968,20 +1062,23 @@ function StudentsContent() {
               alignItems: "center",
               gap: 6,
               fontSize: 11.5,
-              fontWeight: 700,
+              fontWeight: 750,
               color: "var(--brand)",
               textTransform: "uppercase",
               letterSpacing: "0.05em",
               marginBottom: 4,
             }}
           >
-            <Icon name="student" size={15} /> Student Lifecycle & Academy Portal
+            <Icon name={isGym ? "activity" : "student"} size={15} />{" "}
+            {isGym ? "Member Lifecycle & Fitness Portal" : "Student Lifecycle & Academy Portal"}
           </div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>
-            Students & Academy Management
+            {isGym ? "Memberships & Gym Management" : "Students & Academy Management"}
           </h1>
           <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "4px 0 0", maxWidth: 650 }}>
-            Track one-time student admissions, automated recurring monthly fees rolling ledger, and 1-click attendance.
+            {isGym
+              ? "Track member enrollments, recurring membership fees rolling ledger, and 1-click check-ins."
+              : "Track one-time student admissions, automated recurring monthly fees rolling ledger, and 1-click attendance."}
           </p>
         </div>
         <button
@@ -1003,37 +1100,37 @@ function StudentsContent() {
           }}
         >
           <Icon name="plus" size={16} />
-          <span>New Student Admission</span>
+          <span>{isGym ? "New Member Admission" : "New Student Admission"}</span>
         </button>
       </div>
 
       {/* Quick Summary Metric Cards */}
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <StatCard
-          label="Active Students"
+          label={isGym ? "Active Members" : "Active Students"}
           value={students.filter((s) => s.status === "ACTIVE").length.toString()}
-          change={`${distinctStandards.length} Standards · ${distinctBatches.length} Batches`}
-          icon="student"
+          change={isGym ? `${distinctStandards.length} Plans · ${distinctBatches.length} Slots` : `${distinctStandards.length} Standards · ${distinctBatches.length} Batches`}
+          icon={isGym ? "people" : "student"}
           tone="teal"
         />
         <StatCard
           label={`${recurringFeesData?.cycleMonthLabel || "This Month"} Fees Collected`}
           value={formatMoney(recurringFeesData?.totalCollectedMinor || 0, currency)}
-          change={`${recurringFeesData?.paidCount || 0} students cleared`}
+          change={`${recurringFeesData?.paidCount || 0} ${isGym ? "members" : "students"} cleared`}
           icon="finance"
           tone="blue"
         />
         <StatCard
           label="Pending Fee Dues"
           value={formatMoney(recurringFeesData?.totalPendingMinor || 0, currency)}
-          change={`${recurringFeesData?.pendingCount || 0} students due`}
+          change={`${recurringFeesData?.pendingCount || 0} ${isGym ? "members" : "students"} due`}
           icon="rupee"
           tone="amber"
         />
         <StatCard
-          label="Today's Attendance"
+          label={isGym ? "Today's Check-ins" : "Today's Attendance"}
           value={`${attendanceData?.attendancePercentage ?? 0}%`}
-          change={`${attendanceData?.presentCount ?? 0} Present / ${attendanceData?.totalStudents ?? 0} Total`}
+          change={`${attendanceData?.presentCount ?? 0} Checked in / ${attendanceData?.totalStudents ?? 0} Total`}
           icon="calendar"
           tone="rose"
         />
@@ -1219,10 +1316,12 @@ function StudentsContent() {
                 <Icon name="student" size={28} />
               </div>
               <h3 style={{ fontSize: 16, fontWeight: 750, margin: "0 0 6px", color: "var(--ink)" }}>
-                No students enrolled yet
+                No {isGym ? "members" : "students"} enrolled yet
               </h3>
               <p style={{ fontSize: 13, color: "var(--muted)", maxWidth: 440, margin: "0 auto 20px" }}>
-                Admit students with class/batch, guardian phone for WhatsApp receipts, and recurring fee plan.
+                {isGym
+                  ? "Enroll members with workout package/slot, emergency contact, and membership fee plan."
+                  : "Admit students with class/batch, guardian phone for WhatsApp receipts, and recurring fee plan."}
               </p>
               <button
                 type="button"
@@ -1242,7 +1341,7 @@ function StudentsContent() {
                 }}
               >
                 <Icon name="plus" size={15} />
-                <span>Admit First Student</span>
+                <span>{isGym ? "Enroll First Member" : "Admit First Student"}</span>
               </button>
             </div>
           ) : (
@@ -1250,10 +1349,10 @@ function StudentsContent() {
               <table className="data-table">
                 <thead>
                   <tr>
-                    <th>Student Details</th>
-                    <th>Standard & Batch</th>
-                    <th>Guardian / Parent</th>
-                    <th>Fee Plan</th>
+                    <th>{isGym ? "Member Details" : "Student Details"}</th>
+                    <th>{isGym ? "Plan & Slot" : "Standard & Batch"}</th>
+                    <th>{isGym ? "Emergency / Contact" : "Guardian / Parent"}</th>
+                    <th>{isGym ? "Membership Fee" : "Fee Plan"}</th>
                     <th>Enrolled On</th>
                     <th>Status</th>
                     <th style={{ textAlign: "right" }}>Actions</th>
@@ -1298,10 +1397,12 @@ function StudentsContent() {
                         {std.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{std.batch}</div>}
                       </td>
                       <td>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{std.guardianName || "—"}</div>
+                        <div style={{ fontSize: 13, fontWeight: 600 }}>
+                          {std.guardianName || (isGym ? std.person.displayName : "—")}
+                        </div>
                         <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
                           {std.guardianRelation ? `(${std.guardianRelation}) ` : ""}
-                          {std.guardianPhone || "—"}
+                          {std.guardianPhone || (isGym ? std.person.primaryPhone : "—")}
                         </div>
                       </td>
                       <td>
@@ -1447,7 +1548,7 @@ function StudentsContent() {
                   {formatMoney(recurringFeesData.totalExpectedMinor, currency)}
                 </div>
                 <small style={{ color: "var(--muted)", fontSize: 11.5 }}>
-                  {recurringFeesData.studentsCount} Active students enrolled
+                  {recurringFeesData.studentsCount} Active {isGym ? "members" : "students"} enrolled
                 </small>
               </div>
 
@@ -1459,7 +1560,7 @@ function StudentsContent() {
                   {formatMoney(recurringFeesData.totalCollectedMinor, currency)}
                 </div>
                 <small style={{ color: "#047857", fontSize: 11.5 }}>
-                  {recurringFeesData.paidCount} students cleared
+                  {recurringFeesData.paidCount} {isGym ? "members" : "students"} cleared
                 </small>
               </div>
 
@@ -1471,8 +1572,130 @@ function StudentsContent() {
                   {formatMoney(recurringFeesData.totalPendingMinor, currency)}
                 </div>
                 <small style={{ color: "#b45309", fontSize: 11.5 }}>
-                  {recurringFeesData.pendingCount} students pending
+                  {recurringFeesData.pendingCount} {isGym ? "members" : "students"} pending
                 </small>
+              </div>
+            </div>
+          )}
+
+          {/* Status Filter & Search Controls */}
+          {recurringFeesData && recurringFeesData.items?.length > 0 && (
+            <div
+              style={{
+                display: "flex",
+                flexWrap: "wrap",
+                alignItems: "center",
+                justifyContent: "space-between",
+                gap: 12,
+                marginBottom: 16,
+              }}
+            >
+              {/* Status Filter Pills */}
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <button
+                  type="button"
+                  onClick={() => setFeeStatusFilter("ALL")}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12.5,
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    border: feeStatusFilter === "ALL" ? "1px solid var(--brand)" : "1px solid #cbd5e1",
+                    background: feeStatusFilter === "ALL" ? "var(--brand)" : "#ffffff",
+                    color: feeStatusFilter === "ALL" ? "#ffffff" : "var(--ink)",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  All ({recurringFeesData.items?.length || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeeStatusFilter("PENDING")}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12.5,
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    border: feeStatusFilter === "PENDING" ? "1px solid #b45309" : "1px solid #fed7aa",
+                    background: feeStatusFilter === "PENDING" ? "#b45309" : "#fffbeb",
+                    color: feeStatusFilter === "PENDING" ? "#ffffff" : "#b45309",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  ⚠️ Pending Dues ({recurringFeesData.pendingCount || 0})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFeeStatusFilter("PAID")}
+                  style={{
+                    padding: "6px 14px",
+                    fontSize: 12.5,
+                    borderRadius: 20,
+                    cursor: "pointer",
+                    fontWeight: 700,
+                    border: feeStatusFilter === "PAID" ? "1px solid #047857" : "1px solid #a7f3d0",
+                    background: feeStatusFilter === "PAID" ? "#047857" : "#ecfdf5",
+                    color: feeStatusFilter === "PAID" ? "#ffffff" : "#047857",
+                    transition: "all 0.15s ease",
+                  }}
+                >
+                  ✅ Fully Cleared / Paid ({recurringFeesData.paidCount || 0})
+                </button>
+              </div>
+
+              {/* Search Bar */}
+              <div style={{ position: "relative", minWidth: 260, maxWidth: 360, flex: 1 }}>
+                <input
+                  type="text"
+                  placeholder={
+                    isGym
+                      ? "Search member name, slot, plan..."
+                      : "Search student, roll #, phone, batch..."
+                  }
+                  value={feeSearchQuery}
+                  onChange={(e) => setFeeSearchQuery(e.target.value)}
+                  style={{
+                    width: "100%",
+                    padding: "8px 12px 8px 34px",
+                    fontSize: 12.5,
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    background: "#ffffff",
+                  }}
+                />
+                <div
+                  style={{
+                    position: "absolute",
+                    left: 10,
+                    top: "50%",
+                    transform: "translateY(-50%)",
+                    color: "var(--muted)",
+                    pointerEvents: "none",
+                  }}
+                >
+                  <Icon name="search" size={14} />
+                </div>
+                {feeSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setFeeSearchQuery("")}
+                    style={{
+                      position: "absolute",
+                      right: 8,
+                      top: "50%",
+                      transform: "translateY(-50%)",
+                      background: "none",
+                      border: "none",
+                      color: "var(--muted)",
+                      cursor: "pointer",
+                      fontSize: 14,
+                    }}
+                  >
+                    ×
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1511,41 +1734,93 @@ function StudentsContent() {
                 No active fee cycles
               </h3>
               <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
-                No active students enrolled for {recurringFeesData?.cycleMonthLabel || "this month"}.
+                No active {isGym ? "members" : "students"} enrolled for {recurringFeesData?.cycleMonthLabel || "this month"}.
               </p>
             </div>
-          ) : (
-            <div className="table-responsive" style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Student Details</th>
-                    <th>Standard & Batch</th>
-                    <th>Guardian Contact</th>
-                    <th>Monthly Plan</th>
-                    <th>Fee Status</th>
-                    <th>Paid Amount</th>
-                    <th>Balance Due</th>
-                    <th style={{ textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recurringFeesData.items.map((item) => (
-                    <tr key={item.studentProfileId}>
-                      <td>
-                        <strong style={{ fontSize: 13.5 }}>{item.displayName}</strong>
-                        <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
-                          {item.rollNumber ? `#${item.rollNumber}` : ""} · {item.cycleMonthLabel}
-                        </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, fontSize: 13 }}>{item.standard}</div>
-                        {item.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.batch}</div>}
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>{item.guardianName || "—"}</div>
-                        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.guardianPhone || "—"}</div>
-                      </td>
+          ) : (() => {
+            const filteredFeeItems = recurringFeesData.items.filter((item) => {
+              if (feeStatusFilter === "PENDING" && item.status === "PAID") return false;
+              if (feeStatusFilter === "PAID" && item.status !== "PAID") return false;
+              if (feeSearchQuery.trim()) {
+                const q = feeSearchQuery.trim().toLowerCase();
+                const matchName = item.displayName?.toLowerCase().includes(q);
+                const matchRoll = item.rollNumber?.toLowerCase().includes(q);
+                const matchPhone = item.guardianPhone?.toLowerCase().includes(q);
+                const matchStandard = item.standard?.toLowerCase().includes(q);
+                const matchBatch = item.batch?.toLowerCase().includes(q);
+                const matchGuardian = item.guardianName?.toLowerCase().includes(q);
+                if (!matchName && !matchRoll && !matchPhone && !matchStandard && !matchBatch && !matchGuardian) {
+                  return false;
+                }
+              }
+              return true;
+            });
+
+            if (filteredFeeItems.length === 0) {
+              return (
+                <div
+                  style={{
+                    padding: "40px 20px",
+                    textAlign: "center",
+                    background: "#fafbfd",
+                    borderRadius: 14,
+                    border: "1px dashed #cbd5e1",
+                    margin: "10px 0",
+                  }}
+                >
+                  <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                    No fee records match current filters
+                  </div>
+                  <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "0 0 12px" }}>
+                    Try switching filter pills or clear your search term.
+                  </p>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={() => {
+                      setFeeStatusFilter("ALL");
+                      setFeeSearchQuery("");
+                    }}
+                    style={{ padding: "6px 14px", fontSize: 12, borderRadius: 6 }}
+                  >
+                    Clear Filters
+                  </button>
+                </div>
+              );
+            }
+
+            return (
+              <div className="table-responsive" style={{ overflowX: "auto" }}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>{isGym ? "Member Details" : "Student Details"}</th>
+                      <th>{isGym ? "Membership Plan & Slot" : "Standard & Batch"}</th>
+                      <th>{isGym ? "Contact / Phone" : "Guardian Contact"}</th>
+                      <th>{isGym ? "Fee Package" : "Monthly Plan"}</th>
+                      <th>Fee Status</th>
+                      <th>Paid Amount</th>
+                      <th>Balance Due</th>
+                      <th style={{ textAlign: "right" }}>Action</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredFeeItems.map((item) => (
+                      <tr key={item.studentProfileId}>
+                        <td>
+                          <strong style={{ fontSize: 13.5 }}>{item.displayName}</strong>
+                          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                            {item.rollNumber ? `#${item.rollNumber}` : ""} · {item.cycleMonthLabel}
+                          </div>
+                        </td>
+                        <td>
+                          <div style={{ fontWeight: 650, fontSize: 13 }}>{item.standard}</div>
+                          {item.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.batch}</div>}
+                        </td>
+                        <td>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{item.guardianName || (isGym ? item.displayName : "—")}</div>
+                          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{item.guardianPhone || "—"}</div>
+                        </td>
                       <td>
                         <strong style={{ color: "var(--ink)", fontSize: 13 }}>
                           {formatMoney(item.feePlanAmountMinor, currency)}
@@ -1736,7 +2011,8 @@ function StudentsContent() {
                 </tbody>
               </table>
             </div>
-          )}
+            );
+          })()}
         </section>
       )}
 
@@ -2198,8 +2474,8 @@ function StudentsContent() {
       <Modal
         isOpen={admissionModalOpen}
         onClose={() => setAdmissionModalOpen(false)}
-        title="🎓 New Student Admission & Enrollment"
-        subtitle="Create permanent student record, course batch, guardian contact, and recurring fee plan."
+        title={isGym ? "🏋️ New Member Admission & Package Enrollment" : "🎓 New Student Admission & Enrollment"}
+        subtitle={isGym ? "Create member profile, gym package, workout slot, emergency contact, and fee plan." : "Create permanent student record, course batch, guardian contact, and recurring fee plan."}
         maxWidth={780}
       >
         <form onSubmit={handleSaveAdmission}>
@@ -2239,16 +2515,16 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="people" size={14} /> Student Profile & Contact
+              <Icon name="people" size={14} /> {isGym ? "Member Profile & Contact" : "Student Profile & Contact"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student Full Name *
+                  {isGym ? "Member Full Name *" : "Student Full Name *"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Aryan Sharma"
+                  placeholder={isGym ? "e.g. Rahul Sharma" : "e.g. Aryan Sharma"}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   required
@@ -2263,13 +2539,14 @@ function StudentsContent() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student Mobile Number
+                  {isGym ? "Member Mobile Number *" : "Student Mobile Number"}
                 </label>
                 <input
                   type="tel"
                   placeholder="e.g. +91 9876543210"
                   value={formPhone}
                   onChange={(e) => setFormPhone(e.target.value)}
+                  required={isGym}
                   style={{
                     width: "100%",
                     padding: "9px 12px",
@@ -2284,11 +2561,11 @@ function StudentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student ID / Roll Number
+                  {isGym ? "Member ID / Reg No" : "Student ID / Roll Number"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. STD-101 (leave blank for auto)"
+                  placeholder={isGym ? "e.g. GYM-101 (leave blank for auto)" : "e.g. STD-101 (leave blank for auto)"}
                   value={formRollNumber}
                   onChange={(e) => setFormRollNumber(e.target.value)}
                   style={{
@@ -2306,7 +2583,7 @@ function StudentsContent() {
                 </label>
                 <input
                   type="email"
-                  placeholder="student@example.com"
+                  placeholder={isGym ? "member@example.com" : "student@example.com"}
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   style={{
@@ -2321,7 +2598,7 @@ function StudentsContent() {
             </div>
           </div>
 
-          {/* Section 2: Academic & Batch Allocation */}
+          {/* Section 2: Membership Package OR Academic Batch */}
           <div
             style={{
               padding: "16px 18px",
@@ -2344,57 +2621,141 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="student" size={14} /> Class / Course & Batch Allocation
+              <Icon name="activity" size={14} />{" "}
+              {isGym ? "Membership Package & Workout Slot" : "Class / Course & Batch Allocation"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Class / Course / Standard *
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. 10th Standard, Dance Batch A, Martial Arts"
-                  value={formStandard}
-                  onChange={(e) => setFormStandard(e.target.value)}
-                  required
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #cbd5e1",
-                    fontSize: 13,
-                    background: "#ffffff",
-                  }}
-                />
+
+            {isGym ? (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                      Membership Plan / Package *
+                    </label>
+                    <select
+                      value={formStandard}
+                      onChange={(e) => setFormStandard(e.target.value)}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #cbd5e1",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 650,
+                      }}
+                    >
+                      <option value="General Gym (Weights & Cardio)">🏋️ General Gym (Weights & Cardio)</option>
+                      <option value="Cardio & CrossFit / HIIT">⚡ Cardio & CrossFit / HIIT</option>
+                      <option value="Personal Training (1-on-1 PT)">🥊 Personal Training (1-on-1 PT)</option>
+                      <option value="Strength & Bodybuilding">💪 Strength & Bodybuilding</option>
+                      <option value="Yoga & Zumba Studio">🧘 Yoga & Zumba Studio</option>
+                      <option value="Custom Plan">✨ Custom Package Plan</option>
+                    </select>
+                  </div>
+
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                      Workout Slot / Timing Shift
+                    </label>
+                    <select
+                      value={formBatch}
+                      onChange={(e) => setFormBatch(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #cbd5e1",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="Full Day Flexible Access">🌅 Full Day Flexible Access (6 AM - 10 PM)</option>
+                      <option value="Morning Slot (6:00 AM - 10:00 AM)">🌄 Morning Slot (6:00 AM - 10:00 AM)</option>
+                      <option value="Afternoon Slot (12:00 PM - 4:00 PM)">☀️ Afternoon Slot (12:00 PM - 4:00 PM)</option>
+                      <option value="Evening Slot (5:00 PM - 10:00 PM)">🌇 Evening Slot (5:00 PM - 10:00 PM)</option>
+                      <option value="Night Slot (8:00 PM - 11:00 PM)">🌙 Night Slot (8:00 PM - 11:00 PM)</option>
+                      <option value="Weekend Only Access">🗓️ Weekend Only Access</option>
+                    </select>
+                  </div>
+                </div>
+
+                {formStandard === "Custom Plan" && (
+                  <div className="form-group" style={{ marginTop: 12, marginBottom: 0 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                      Custom Plan Name *
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 6 Months Transformation Bootcamp + Diet Plan"
+                      value={customStandard}
+                      onChange={(e) => setCustomStandard(e.target.value)}
+                      required
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #cbd5e1",
+                        fontSize: 13,
+                        background: "#ffffff",
+                      }}
+                    />
+                  </div>
+                )}
               </div>
-              <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Batch Timing / Shift
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Morning 8:00 AM, Evening Shift"
-                  value={formBatch}
-                  onChange={(e) => setFormBatch(e.target.value)}
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #cbd5e1",
-                    fontSize: 13,
-                    background: "#ffffff",
-                  }}
-                />
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    Class / Course / Standard *
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. 10th Standard, Dance Batch A, Martial Arts"
+                    value={formStandard}
+                    onChange={(e) => setFormStandard(e.target.value)}
+                    required
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 13,
+                      background: "#ffffff",
+                    }}
+                  />
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    Batch Timing / Shift
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Morning 8:00 AM, Evening Shift"
+                    value={formBatch}
+                    onChange={(e) => setFormBatch(e.target.value)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #cbd5e1",
+                      fontSize: 13,
+                      background: "#ffffff",
+                    }}
+                  />
+                </div>
               </div>
-            </div>
+            )}
           </div>
 
-          {/* Section 3: Guardian Details (For WhatsApp & PDF Receipts) */}
+          {/* Section 3: Guardian / Emergency Contact */}
           <div
             style={{
               padding: "16px 18px",
-              background: "#f0fdf4",
-              border: "1px solid #bbf7d0",
+              background: isGym ? "#f8fafc" : "#f0fdf4",
+              border: isGym ? "1px solid #e2e8f0" : "1px solid #bbf7d0",
               borderRadius: 10,
               marginBottom: 16,
             }}
@@ -2403,7 +2764,7 @@ function StudentsContent() {
               style={{
                 fontSize: 12,
                 fontWeight: 750,
-                color: "#166534",
+                color: isGym ? "#334155" : "#166534",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
                 marginBottom: 10,
@@ -2412,28 +2773,35 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="phone" size={14} /> Guardian Contact (For Automated WhatsApp & PDF Receipts)
+              <Icon name="phone" size={14} />{" "}
+              {isGym
+                ? "Emergency Contact & Reference (Optional)"
+                : "Guardian Contact (For Automated WhatsApp & PDF Receipts)"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Guardian Name</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
+                  {isGym ? "Contact Person Name" : "Guardian Name"}
+                </label>
                 <input
                   type="text"
-                  placeholder="e.g. Rajesh Sharma"
+                  placeholder={isGym ? "e.g. Amit (Friend/Brother)" : "e.g. Rajesh Sharma"}
                   value={formGuardianName}
                   onChange={(e) => setFormGuardianName(e.target.value)}
                   style={{
                     width: "100%",
                     padding: "9px 12px",
                     borderRadius: 8,
-                    border: "1px solid #86efac",
+                    border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
                     background: "#ffffff",
                   }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Guardian Mobile *</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
+                  {isGym ? "Emergency Mobile" : "Guardian Mobile *"}
+                </label>
                 <input
                   type="tel"
                   placeholder="e.g. +91 9876543210"
@@ -2443,14 +2811,14 @@ function StudentsContent() {
                     width: "100%",
                     padding: "9px 12px",
                     borderRadius: 8,
-                    border: "1px solid #86efac",
+                    border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
                     background: "#ffffff",
                   }}
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Relation</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>Relation</label>
                 <select
                   value={formGuardianRelation}
                   onChange={(e) => setFormGuardianRelation(e.target.value)}
@@ -2458,16 +2826,19 @@ function StudentsContent() {
                     width: "100%",
                     padding: "9px 12px",
                     borderRadius: 8,
-                    border: "1px solid #86efac",
+                    border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
                     background: "#ffffff",
                     fontWeight: 600,
                   }}
                 >
+                  <option value="Self">Self</option>
+                  <option value="Friend">Friend</option>
+                  <option value="Spouse">Spouse</option>
                   <option value="Father">Father</option>
                   <option value="Mother">Mother</option>
                   <option value="Guardian">Guardian</option>
-                  <option value="Self">Self</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
             </div>
@@ -2499,50 +2870,55 @@ function StudentsContent() {
               }}
             >
               <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <Icon name="rupee" size={14} /> Fee Plan &amp; Billing Structure
+                <Icon name="rupee" size={14} />{" "}
+                {isGym ? "Membership Fee & Validity Plan" : "Fee Plan & Billing Structure"}
               </span>
 
-              {/* Plan Choice Pills */}
-              <div style={{ display: "inline-flex", background: "#ffffff", padding: "2px", borderRadius: 8, border: "1px solid #fde047" }}>
-                <button
-                  type="button"
-                  onClick={() => setFeePlanType("MONTHLY")}
-                  style={{
-                    padding: "3px 10px",
-                    borderRadius: 6,
-                    border: "none",
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    background: feePlanType === "MONTHLY" ? "#854d0e" : "transparent",
-                    color: feePlanType === "MONTHLY" ? "#ffffff" : "#854d0e",
-                  }}
-                >
-                  Monthly Recurring
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setFeePlanType("TERM_INSTALLMENTS")}
-                  style={{
-                    padding: "3px 10px",
-                    borderRadius: 6,
-                    border: "none",
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    background: feePlanType === "TERM_INSTALLMENTS" ? "#854d0e" : "transparent",
-                    color: feePlanType === "TERM_INSTALLMENTS" ? "#ffffff" : "#854d0e",
-                  }}
-                >
-                  📋 3-Term Installments (Term 1, 2, 3)
-                </button>
-              </div>
+              {/* Plan Choice Pills - Hidden for gym */}
+              {!isGym && (
+                <div style={{ display: "inline-flex", background: "#ffffff", padding: "2px", borderRadius: 8, border: "1px solid #fde047" }}>
+                  <button
+                    type="button"
+                    onClick={() => setFeePlanType("MONTHLY")}
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      border: "none",
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      background: feePlanType === "MONTHLY" ? "#854d0e" : "transparent",
+                      color: feePlanType === "MONTHLY" ? "#ffffff" : "#854d0e",
+                    }}
+                  >
+                    Monthly Recurring
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setFeePlanType("TERM_INSTALLMENTS")}
+                    style={{
+                      padding: "3px 10px",
+                      borderRadius: 6,
+                      border: "none",
+                      fontSize: 11.5,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      background: feePlanType === "TERM_INSTALLMENTS" ? "#854d0e" : "transparent",
+                      color: feePlanType === "TERM_INSTALLMENTS" ? "#ffffff" : "#854d0e",
+                    }}
+                  >
+                    📋 3-Term Installments (Term 1, 2, 3)
+                  </button>
+                </div>
+              )}
             </div>
 
-            {feePlanType === "MONTHLY" ? (
+            {isGym || feePlanType === "MONTHLY" ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                    {isGym ? "Plan Validity / Cycle" : "Billing Frequency"}
+                  </label>
                   <select
                     value={formFeeFrequency}
                     onChange={(e) => setFormFeeFrequency(e.target.value as any)}
@@ -2556,18 +2932,25 @@ function StudentsContent() {
                       fontWeight: 600,
                     }}
                   >
-                    <option value="MONTHLY">Monthly</option>
-                    <option value="QUARTERLY">Quarterly</option>
-                    <option value="ANNUAL">Annual</option>
+                    <option value="MONTHLY">{isGym ? "Monthly (1 Month)" : "Monthly"}</option>
+                    <option value="QUARTERLY">{isGym ? "Quarterly (3 Months)" : "Quarterly"}</option>
+                    <option value="ANNUAL">{isGym ? "Annual (12 Months)" : "Annual"}</option>
                   </select>
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Monthly Fee (₹) *</label>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                    {isGym ? "Membership Fee (₹) *" : "Monthly Fee (₹) *"}
+                  </label>
                   <input
                     type="number"
-                    placeholder="e.g. 500"
+                    placeholder={isGym ? "e.g. 1500" : "e.g. 500"}
                     value={formFeeAmount}
-                    onChange={(e) => setFormFeeAmount(e.target.value)}
+                    onChange={(e) => {
+                      setFormFeeAmount(e.target.value);
+                      if (!admissionAmountPaid || admissionAmountPaid === formFeeAmount) {
+                        setAdmissionAmountPaid(e.target.value);
+                      }
+                    }}
                     required
                     style={{
                       width: "100%",
@@ -2580,7 +2963,9 @@ function StudentsContent() {
                   />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Admission Date</label>
+                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                    {isGym ? "Joining Date" : "Admission Date"}
+                  </label>
                   <input
                     type="date"
                     value={formAdmissionDate}
@@ -2682,6 +3067,127 @@ function StudentsContent() {
             )}
           </div>
 
+          {/* Section 5: Initial Enrollment Payment Status (PAID vs PENDING) */}
+          <div
+            style={{
+              padding: "16px 18px",
+              background: admissionPaymentStatus === "PAID_NOW" ? "#f0fdf4" : "#fffbeb",
+              border: admissionPaymentStatus === "PAID_NOW" ? "1px solid #86efac" : "1px solid #fed7aa",
+              borderRadius: 10,
+              marginBottom: 16,
+              transition: "all 0.2s ease",
+            }}
+          >
+            <div
+              style={{
+                fontSize: 12,
+                fontWeight: 750,
+                color: admissionPaymentStatus === "PAID_NOW" ? "#166534" : "#9a3412",
+                textTransform: "uppercase",
+                letterSpacing: "0.04em",
+                marginBottom: 10,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                flexWrap: "wrap",
+                gap: 8,
+              }}
+            >
+              <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <Icon name="checkCircle" size={14} /> Fee Payment at Admission
+              </span>
+
+              <div style={{ display: "inline-flex", background: "#ffffff", padding: "2px", borderRadius: 8, border: "1px solid #cbd5e1" }}>
+                <button
+                  type="button"
+                  onClick={() => setAdmissionPaymentStatus("PAID_NOW")}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: admissionPaymentStatus === "PAID_NOW" ? "#16a34a" : "transparent",
+                    color: admissionPaymentStatus === "PAID_NOW" ? "#ffffff" : "#166534",
+                  }}
+                >
+                  ✅ Paid Now (Cleared)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAdmissionPaymentStatus("PENDING")}
+                  style={{
+                    padding: "4px 12px",
+                    borderRadius: 6,
+                    border: "none",
+                    fontSize: 12,
+                    fontWeight: 700,
+                    cursor: "pointer",
+                    background: admissionPaymentStatus === "PENDING" ? "#ea580c" : "transparent",
+                    color: admissionPaymentStatus === "PENDING" ? "#ffffff" : "#9a3412",
+                  }}
+                >
+                  ⏳ Pay Later (Pending Due)
+                </button>
+              </div>
+            </div>
+
+            {admissionPaymentStatus === "PAID_NOW" ? (
+              <div>
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Payment Mode *</label>
+                    <select
+                      value={admissionPaymentMethod}
+                      onChange={(e) => setAdmissionPaymentMethod(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #86efac",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 650,
+                      }}
+                    >
+                      <option value="UPI">UPI (GooglePay / PhonePe / Paytm / QR)</option>
+                      <option value="CASH">Cash in Hand</option>
+                      <option value="CARD">Credit / Debit Card (POS)</option>
+                      <option value="BANK_TRANSFER">Direct Bank Transfer / NEFT / IMPS</option>
+                    </select>
+                  </div>
+                  <div className="form-group" style={{ margin: 0 }}>
+                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Amount Received (₹) *</label>
+                    <input
+                      type="number"
+                      placeholder={formFeeAmount || "e.g. 1500"}
+                      value={admissionAmountPaid !== "" ? admissionAmountPaid : formFeeAmount}
+                      onChange={(e) => setAdmissionAmountPaid(e.target.value)}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #86efac",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 700,
+                        color: "#166534",
+                      }}
+                    />
+                  </div>
+                </div>
+                <p style={{ margin: "8px 0 0", fontSize: 12, color: "#15803d" }}>
+                  ✓ <strong>Instant Cleared Status:</strong> An official invoice will be generated and marked <strong>PAID</strong> immediately upon saving!
+                </p>
+              </div>
+            ) : (
+              <div style={{ padding: "6px 0", fontSize: 12.5, color: "#9a3412" }}>
+                ⚠️ {isGym ? "Member" : "Student"} will be admitted with fee marked as <strong>PENDING DUE</strong>. You can collect fee or send reminder anytime from Upcoming Fees tab.
+              </div>
+            )}
+          </div>
+
           {/* Section 5: Address */}
           <div style={{ marginBottom: 18 }}>
             <div
@@ -2751,17 +3257,8 @@ function StudentsContent() {
             </div>
           </div>
 
-          {/* Action Buttons in Modal Footer */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 12,
-              paddingTop: 18,
-              borderTop: "1px solid #e2e8f0",
-              marginTop: 10,
-            }}
-          >
+          {/* Action Buttons in Sticky Modal Footer */}
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="secondary-button"
@@ -2789,20 +3286,22 @@ function StudentsContent() {
                 cursor: "pointer",
               }}
             >
-              {admissionBusy ? "Admitting Student…" : "Save Admission & Permanent Profile"}
+              {admissionBusy
+                ? (isGym ? "Enrolling Member…" : "Admitting Student…")
+                : (isGym ? "Save Member Enrollment" : "Save Admission & Permanent Profile")}
             </button>
           </div>
         </form>
       </Modal>
 
       {/* ------------------------------------------------------------- */}
-      {/* MODAL: EDIT EXISTING STUDENT PROFILE                          */}
+      {/* MODAL: EDIT EXISTING STUDENT / MEMBER PROFILE                 */}
       {/* ------------------------------------------------------------- */}
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title={`✏️ Edit Student: ${editingStudent?.person.displayName || "Profile"}`}
-        subtitle="Update academic allocation, contact numbers, guardian information, and recurring fee plan."
+        title={isGym ? `✏️ Edit Member: ${editingStudent?.person.displayName || "Profile"}` : `✏️ Edit Student: ${editingStudent?.person.displayName || "Profile"}`}
+        subtitle={isGym ? "Update membership allocation, contact numbers, emergency contact, and fee plan." : "Update academic allocation, contact numbers, guardian information, and recurring fee plan."}
         maxWidth={780}
       >
         <form onSubmit={handleSaveEditStudent}>
@@ -2842,16 +3341,16 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="people" size={14} /> Student Profile & Contact
+              <Icon name="people" size={14} /> {isGym ? "Member Profile & Contact" : "Student Profile & Contact"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student Full Name *
+                  {isGym ? "Member Full Name *" : "Student Full Name *"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Aryan Sharma"
+                  placeholder={isGym ? "e.g. Rahul Sharma" : "e.g. Aryan Sharma"}
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                   required
@@ -2866,7 +3365,7 @@ function StudentsContent() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student Mobile Number
+                  {isGym ? "Member Mobile Number" : "Student Mobile Number"}
                 </label>
                 <input
                   type="tel"
@@ -2887,11 +3386,11 @@ function StudentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Student ID / Roll Number
+                  {isGym ? "Member ID / Reg No" : "Student ID / Roll Number"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. STD-101"
+                  placeholder={isGym ? "e.g. GYM-101" : "e.g. STD-101"}
                   value={formRollNumber}
                   onChange={(e) => setFormRollNumber(e.target.value)}
                   style={{
@@ -2927,7 +3426,7 @@ function StudentsContent() {
                 </label>
                 <input
                   type="email"
-                  placeholder="student@example.com"
+                  placeholder="name@example.com"
                   value={formEmail}
                   onChange={(e) => setFormEmail(e.target.value)}
                   style={{
@@ -2965,16 +3464,16 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="student" size={14} /> Class & Batch Allocation
+              <Icon name="activity" size={14} /> {isGym ? "Membership Package & Slot" : "Class & Batch Allocation"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Standard / Class *
+                  {isGym ? "Membership Plan / Package *" : "Standard / Class *"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. 10th Standard"
+                  placeholder={isGym ? "e.g. General Gym, CrossFit" : "e.g. 10th Standard"}
                   value={formStandard}
                   onChange={(e) => setFormStandard(e.target.value)}
                   required
@@ -2990,11 +3489,11 @@ function StudentsContent() {
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  Section / Batch
+                  {isGym ? "Workout Slot / Shift" : "Section / Batch"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Morning Batch"
+                  placeholder={isGym ? "e.g. Morning 6 AM, Evening Shift" : "e.g. Morning Batch"}
                   value={formBatch}
                   onChange={(e) => setFormBatch(e.target.value)}
                   style={{
@@ -3024,8 +3523,8 @@ function StudentsContent() {
                     fontWeight: 650,
                   }}
                 >
-                  <option value="ACTIVE">Active Student</option>
-                  <option value="INACTIVE">Inactive / Alumni</option>
+                  <option value="ACTIVE">{isGym ? "Active Member" : "Active Student"}</option>
+                  <option value="INACTIVE">{isGym ? "Inactive / Expired" : "Inactive / Alumni"}</option>
                 </select>
               </div>
             </div>
@@ -3054,16 +3553,16 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="people" size={14} /> Parent & Guardian (WhatsApp Receipts)
+              <Icon name="people" size={14} /> {isGym ? "Emergency Contact & Reference" : "Parent & Guardian (WhatsApp Receipts)"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
-                  Guardian Name
+                  {isGym ? "Contact Person Name" : "Guardian Name"}
                 </label>
                 <input
                   type="text"
-                  placeholder="e.g. Ramesh Sharma"
+                  placeholder={isGym ? "e.g. Ramesh (Friend/Brother)" : "e.g. Ramesh Sharma"}
                   value={formGuardianName}
                   onChange={(e) => setFormGuardianName(e.target.value)}
                   style={{
@@ -3092,16 +3591,18 @@ function StudentsContent() {
                     background: "#ffffff",
                   }}
                 >
+                  <option value="Self">Self</option>
+                  <option value="Friend">Friend</option>
+                  <option value="Spouse">Spouse</option>
                   <option value="Father">Father</option>
                   <option value="Mother">Mother</option>
                   <option value="Guardian">Guardian</option>
-                  <option value="Self">Self</option>
                   <option value="Other">Other</option>
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
-                  Guardian WhatsApp Mobile
+                  {isGym ? "Emergency Mobile" : "Guardian WhatsApp Mobile"}
                 </label>
                 <input
                   type="tel"
@@ -3144,11 +3645,13 @@ function StudentsContent() {
                 gap: 6,
               }}
             >
-              <Icon name="rupee" size={14} /> Recurring Fee Plan
+              <Icon name="rupee" size={14} /> {isGym ? "Membership Fee Plan" : "Recurring Fee Plan"}
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Billing Frequency</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                  {isGym ? "Plan Cycle / Frequency" : "Billing Frequency"}
+                </label>
                 <select
                   value={formFeeFrequency}
                   onChange={(e) => setFormFeeFrequency(e.target.value as any)}
@@ -3162,16 +3665,18 @@ function StudentsContent() {
                     fontWeight: 600,
                   }}
                 >
-                  <option value="MONTHLY">Monthly</option>
-                  <option value="QUARTERLY">Quarterly</option>
-                  <option value="ANNUAL">Annual</option>
+                  <option value="MONTHLY">{isGym ? "Monthly (1 Month)" : "Monthly"}</option>
+                  <option value="QUARTERLY">{isGym ? "Quarterly (3 Months)" : "Quarterly"}</option>
+                  <option value="ANNUAL">{isGym ? "Annual (12 Months)" : "Annual"}</option>
                 </select>
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>Monthly Fee Amount (₹) *</label>
+                <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                  {isGym ? "Membership Fee (₹) *" : "Monthly Fee Amount (₹) *"}
+                </label>
                 <input
                   type="number"
-                  placeholder="e.g. 5000"
+                  placeholder={isGym ? "e.g. 1500" : "e.g. 5000"}
                   value={formFeeAmount}
                   onChange={(e) => setFormFeeAmount(e.target.value)}
                   required
@@ -3259,17 +3764,8 @@ function StudentsContent() {
             </div>
           </div>
 
-          {/* Action Buttons in Modal Footer */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "flex-end",
-              gap: 12,
-              paddingTop: 18,
-              borderTop: "1px solid #e2e8f0",
-              marginTop: 10,
-            }}
-          >
+          {/* Action Buttons in Sticky Modal Footer */}
+          <div className="modal-sticky-footer">
             <button
               type="button"
               className="secondary-button"
@@ -3297,7 +3793,7 @@ function StudentsContent() {
                 cursor: "pointer",
               }}
             >
-              {editBusy ? "Saving Changes…" : "Save Student Changes"}
+              {editBusy ? "Saving Changes…" : isGym ? "Update Member Profile" : "Save Student Changes"}
             </button>
           </div>
         </form>
@@ -3638,8 +4134,12 @@ function StudentsContent() {
       <Drawer
         isOpen={detailDrawerOpen}
         onClose={() => setDetailDrawerOpen(false)}
-        title={selectedStudent ? selectedStudent.person.displayName : "Student Profile"}
-        subtitle="Complete academic enrollment, guardian details, and payment history."
+        title={selectedStudent ? selectedStudent.person.displayName : (isGym ? "Member Profile" : "Student Profile")}
+        subtitle={
+          isGym
+            ? "Complete membership details, workout slot, emergency contact & payment history."
+            : "Complete academic enrollment, guardian details, and payment history."
+        }
         width={480}
       >
         {selectedStudent && (
@@ -3659,7 +4159,7 @@ function StudentsContent() {
               <div>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 750 }}>{selectedStudent.person.displayName}</h3>
                 <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
-                  {selectedStudent.rollNumber ? `Roll #${selectedStudent.rollNumber} · ` : ""}
+                  {selectedStudent.rollNumber ? (isGym ? `Member #${selectedStudent.rollNumber} · ` : `Roll #${selectedStudent.rollNumber} · `) : ""}
                   {selectedStudent.standard} {selectedStudent.batch ? `(${selectedStudent.batch})` : ""}
                 </div>
               </div>
@@ -3667,6 +4167,220 @@ function StudentsContent() {
                 {selectedStudent.status}
               </Badge>
             </div>
+
+            {/* LIVE FEE STATUS CARD (PAID / PENDING DUE) */}
+            {(() => {
+              const invoices: any[] = studentDetailFull?.person?.invoices || [];
+              const latestInv = invoices[0];
+              const isCleared =
+                latestInv?.status === "PAID" ||
+                (latestInv && latestInv.paidTotalMinor > 0 && latestInv.balanceDueMinor <= 0);
+
+              if (isCleared) {
+                return (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "#f0fdf4",
+                      borderRadius: 12,
+                      border: "1px solid #86efac",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: "50%",
+                          background: "#dcfce7",
+                          color: "#16a34a",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 18,
+                          fontWeight: 800,
+                        }}
+                      >
+                        ✓
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "#166534" }}>
+                          Fee Status: PAID (Cleared)
+                        </div>
+                        <div style={{ fontSize: 12, color: "#15803d", marginTop: 2 }}>
+                          Invoice #{latestInv.invoiceNumber} · {formatMoney(latestInv.paidTotalMinor || latestInv.grandTotalMinor, currency)} cleared
+                        </div>
+                      </div>
+                    </div>
+                    <Badge tone="green">PAID</Badge>
+                  </div>
+                );
+              }
+
+              if (latestInv && (latestInv.status === "PARTIALLY_PAID" || latestInv.balanceDueMinor > 0)) {
+                return (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "#fffbeb",
+                      borderRadius: 12,
+                      border: "1px solid #fde68a",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: "50%",
+                          background: "#fef3c7",
+                          color: "#d97706",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontSize: 18,
+                        }}
+                      >
+                        ⚠️
+                      </div>
+                      <div>
+                        <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e" }}>
+                          Fee Status: PENDING DUE
+                        </div>
+                        <div style={{ fontSize: 12, color: "#b45309", marginTop: 2 }}>
+                          Balance Due: {formatMoney(latestInv.balanceDueMinor, currency)} (of {formatMoney(latestInv.grandTotalMinor, currency)})
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="primary-button"
+                      style={{
+                        padding: "7px 14px",
+                        fontSize: 12.5,
+                        fontWeight: 700,
+                        borderRadius: 8,
+                        background: "#d97706",
+                        borderColor: "#d97706",
+                        whiteSpace: "nowrap",
+                      }}
+                      onClick={() => {
+                        setDetailDrawerOpen(false);
+                        openCollectFeeModal({
+                          studentProfileId: selectedStudent.id,
+                          personId: selectedStudent.personId,
+                          displayName: selectedStudent.person.displayName,
+                          rollNumber: selectedStudent.rollNumber,
+                          standard: selectedStudent.standard,
+                          batch: selectedStudent.batch,
+                          guardianName: selectedStudent.guardianName,
+                          guardianPhone: selectedStudent.guardianPhone || selectedStudent.person.primaryPhone,
+                          feeFrequency: selectedStudent.feeFrequency,
+                          feePlanAmountMinor: selectedStudent.feeAmountMinor,
+                          cycleMonth: todayYyyyMm,
+                          cycleMonthLabel: formatMonthLabel(todayYyyyMm),
+                          status: "PARTIALLY_PAID",
+                          paidMinor: latestInv.paidTotalMinor,
+                          balanceMinor: latestInv.balanceDueMinor,
+                          invoiceId: latestInv.id,
+                          invoiceNumber: latestInv.invoiceNumber,
+                          lastPaymentDate: latestInv.paidAt || null,
+                          whatsappUrl: null,
+                        });
+                      }}
+                    >
+                      💳 Collect Due
+                    </button>
+                  </div>
+                );
+              }
+
+              return (
+                <div
+                  style={{
+                    padding: "14px 16px",
+                    background: "#fff7ed",
+                    borderRadius: 12,
+                    border: "1px solid #ffedd5",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 12,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <div
+                      style={{
+                        width: 38,
+                        height: 38,
+                        borderRadius: "50%",
+                        background: "#ffedd5",
+                        color: "#c2410c",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        fontSize: 18,
+                      }}
+                    >
+                      ⏳
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 14, fontWeight: 800, color: "#9a3412" }}>
+                        Fee Status: PENDING / DUE
+                      </div>
+                      <div style={{ fontSize: 12, color: "#c2410c", marginTop: 2 }}>
+                        Fee Plan: {formatMoney(selectedStudent.feeAmountMinor, currency)} / {selectedStudent.feeFrequency.toLowerCase()}
+                      </div>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    className="primary-button"
+                    style={{
+                      padding: "7px 14px",
+                      fontSize: 12.5,
+                      fontWeight: 700,
+                      borderRadius: 8,
+                      whiteSpace: "nowrap",
+                    }}
+                    onClick={() => {
+                      setDetailDrawerOpen(false);
+                      openCollectFeeModal({
+                        studentProfileId: selectedStudent.id,
+                        personId: selectedStudent.personId,
+                        displayName: selectedStudent.person.displayName,
+                        rollNumber: selectedStudent.rollNumber,
+                        standard: selectedStudent.standard,
+                        batch: selectedStudent.batch,
+                        guardianName: selectedStudent.guardianName,
+                        guardianPhone: selectedStudent.guardianPhone || selectedStudent.person.primaryPhone,
+                        feeFrequency: selectedStudent.feeFrequency,
+                        feePlanAmountMinor: selectedStudent.feeAmountMinor,
+                        cycleMonth: todayYyyyMm,
+                        cycleMonthLabel: formatMonthLabel(todayYyyyMm),
+                        status: "PENDING",
+                        paidMinor: 0,
+                        balanceMinor: selectedStudent.feeAmountMinor,
+                        invoiceId: null,
+                        invoiceNumber: null,
+                        lastPaymentDate: null,
+                        whatsappUrl: null,
+                      });
+                    }}
+                  >
+                    💳 Collect Fee
+                  </button>
+                </div>
+              );
+            })()}
 
             {/* Guardian and Contact */}
             <div style={{ border: "1px solid #e2e8f0", borderRadius: 10, padding: 16, background: "#ffffff" }}>
@@ -3680,15 +4394,15 @@ function StudentsContent() {
                   letterSpacing: "0.04em",
                 }}
               >
-                Contact & Guardian
+                {isGym ? "Contact & Emergency Details" : "Contact & Guardian"}
               </strong>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>📱 <strong>Student Phone:</strong> {selectedStudent.person.primaryPhone || "—"}</div>
+                <div>📱 <strong>{isGym ? "Member Phone:" : "Student Phone:"}</strong> {selectedStudent.person.primaryPhone || "—"}</div>
                 <div>
-                  👤 <strong>Guardian Name:</strong> {selectedStudent.guardianName || "—"}{" "}
-                  ({selectedStudent.guardianRelation || "Guardian"})
+                  👤 <strong>{isGym ? "Emergency Contact:" : "Guardian Name:"}</strong> {selectedStudent.guardianName || "—"}{" "}
+                  ({selectedStudent.guardianRelation || (isGym ? "Self" : "Guardian")})
                 </div>
-                <div>📞 <strong>Guardian Mobile:</strong> {selectedStudent.guardianPhone || "—"}</div>
+                <div>📞 <strong>{isGym ? "Emergency Mobile:" : "Guardian Mobile:"}</strong> {selectedStudent.guardianPhone || "—"}</div>
                 <div>✉️ <strong>Email:</strong> {selectedStudent.person.email || "—"}</div>
               </div>
             </div>
@@ -3705,15 +4419,15 @@ function StudentsContent() {
                   letterSpacing: "0.04em",
                 }}
               >
-                Fee Plan Configuration
+                {isGym ? "Membership Package & Fees" : "Fee Plan Configuration"}
               </strong>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  💰 <strong>Fee Rate:</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
+                  💰 <strong>{isGym ? "Membership Fee:" : "Fee Rate:"}</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
                   {selectedStudent.feeFrequency.toLowerCase()}
                 </div>
                 <div>
-                  📅 <strong>Enrolled On:</strong>{" "}
+                  📅 <strong>{isGym ? "Joined On:" : "Enrolled On:"}</strong>{" "}
                   {new Date(selectedStudent.admissionDate).toLocaleDateString("en-IN")}
                 </div>
               </div>
@@ -3826,7 +4540,7 @@ function StudentsContent() {
                 }}
                 onClick={() => handleOpenEdit(selectedStudent)}
               >
-                ✏️ Edit Student Profile
+                {isGym ? "✏️ Edit Member Profile" : "✏️ Edit Student Profile"}
               </button>
               <button
                 className="secondary-button"
