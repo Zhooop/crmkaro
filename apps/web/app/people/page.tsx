@@ -11,7 +11,7 @@ import {
   type NavItem,
   type OrganisationSummary,
 } from "@crmkaro/ui";
-import { Suspense, useCallback, useEffect, useState, type FormEvent } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
@@ -71,12 +71,41 @@ type Person = {
     guardianName?: string;
     admissionNumber?: string;
     admissionDate?: string;
+    planValidityMonths?: string;
   } | null;
   notes: string | null;
   status: "ACTIVE" | "ARCHIVED";
   createdAt: string;
   types: Array<{ type: PersonType }>;
   tags: Array<{ tagId: string; tag: Tag }>;
+  studentProfile?: {
+    id: string;
+    rollNumber: string | null;
+    standard: string | null;
+    batch: string | null;
+    feeAmountMinor: number;
+    feeFrequency: string;
+    admissionDate: string;
+    status: string;
+  } | null;
+  payments?: Array<{
+    id: string;
+    amountMinor: number;
+    receivedAt: string;
+    method: string;
+    status: string;
+    invoiceId: string | null;
+  }>;
+  invoices?: Array<{
+    id: string;
+    invoiceNumber: string;
+    grandTotalMinor: number;
+    paidTotalMinor: number;
+    balanceDueMinor: number;
+    dueDate: string;
+    status: string;
+    notes?: string | null;
+  }>;
   activities?: Array<{
     id: string;
     action: string;
@@ -86,6 +115,188 @@ type Person = {
     createdAt: string;
   }>;
 };
+
+export type PersonFeeDetails = {
+  hasFeePlan: boolean;
+  planMonths: number;
+  planLabel: string;
+  feeAmountMinor: number;
+  latestPayment: {
+    id: string;
+    amountMinor: number;
+    receivedAt: string;
+    method: string;
+    status: string;
+    invoiceId: string | null;
+  } | null;
+  latestInvoice: {
+    id: string;
+    invoiceNumber: string;
+    grandTotalMinor: number;
+    paidTotalMinor: number;
+    balanceDueMinor: number;
+    dueDate: string;
+    status: string;
+  } | null;
+  feeStatus: "PAID" | "EXPIRING_SOON" | "OVERDUE" | "PARTIALLY_PAID" | "PENDING" | "NO_PLAN";
+  statusBadgeLabel: string;
+  statusBadgeTone: "green" | "amber" | "red" | "neutral";
+  statusBadgeColor: string;
+  statusBadgeBg: string;
+  statusBadgeBorder: string;
+  validUntilDate: Date | null;
+  validUntilStr: string | null;
+  daysRemaining: number | null;
+  paidAmountMinor: number;
+  paidDateStr: string | null;
+  paidMethod: string | null;
+  memberId: string | null;
+};
+
+export function getPersonFeeDetails(person: Person): PersonFeeDetails {
+  const profile = person.studentProfile;
+  const payments = person.payments || [];
+  const invoices = person.invoices || [];
+
+  let planMonths = 1;
+  const addr = (person.address && typeof person.address === "object" ? person.address : {}) as Record<string, any>;
+  if (addr.planValidityMonths) {
+    const parsed = parseInt(addr.planValidityMonths, 10);
+    if (!isNaN(parsed) && parsed > 0) planMonths = parsed;
+  } else if (profile?.feeFrequency === "ANNUAL") {
+    planMonths = 12;
+  } else if (profile?.feeFrequency === "QUARTERLY") {
+    planMonths = 3;
+  } else if (person.notes) {
+    const m = person.notes.match(/(\d+)\s*(?:month|mahina|mahine)/i);
+    if (m && m[1]) {
+      const p = parseInt(m[1], 10);
+      if (!isNaN(p) && p > 0 && p <= 12) planMonths = p;
+    }
+  }
+
+  const feeAmountMinor = profile?.feeAmountMinor || invoices[0]?.grandTotalMinor || 0;
+  const latestPayment = payments[0] || null;
+  const latestInvoice = invoices[0] || null;
+  const memberId = profile?.rollNumber || addr.admissionNumber || null;
+
+  const planLabel = planMonths === 1 ? "1 Month Plan" : planMonths === 12 ? "12 Months (1 Year)" : `${planMonths} Months Plan`;
+
+  const now = new Date();
+  const nowMs = now.getTime();
+
+  let feeStatus: PersonFeeDetails["feeStatus"] = "NO_PLAN";
+  let statusBadgeLabel = "No Active Plan";
+  let statusBadgeTone: PersonFeeDetails["statusBadgeTone"] = "neutral";
+  let statusBadgeColor = "#64748b";
+  let statusBadgeBg = "#f1f5f9";
+  let statusBadgeBorder = "#cbd5e1";
+  let validUntilDate: Date | null = null;
+  let validUntilStr: string | null = null;
+  let daysRemaining: number | null = null;
+  let paidAmountMinor = 0;
+  let paidDateStr: string | null = null;
+  let paidMethod: string | null = null;
+
+  if (latestPayment) {
+    paidAmountMinor = latestPayment.amountMinor;
+    paidDateStr = new Date(latestPayment.receivedAt).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    paidMethod = latestPayment.method || "CASH";
+  } else if (latestInvoice && latestInvoice.paidTotalMinor > 0) {
+    paidAmountMinor = latestInvoice.paidTotalMinor;
+    paidDateStr = new Date(latestInvoice.dueDate || person.createdAt).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+    paidMethod = "RECORDED";
+  }
+
+  const hasPlan = feeAmountMinor > 0 || Boolean(profile) || payments.length > 0 || invoices.length > 0 || Boolean(addr.planValidityMonths);
+
+  if (hasPlan) {
+    if (latestInvoice && latestInvoice.paidTotalMinor > 0 && latestInvoice.balanceDueMinor > 0) {
+      feeStatus = "PARTIALLY_PAID";
+      statusBadgeLabel = `Partially Paid (₹${(latestInvoice.balanceDueMinor / 100).toLocaleString("en-IN")} Due)`;
+      statusBadgeTone = "amber";
+      statusBadgeColor = "#b45309";
+      statusBadgeBg = "#fef3c7";
+      statusBadgeBorder = "#fde68a";
+    } else if (latestPayment || (latestInvoice && latestInvoice.paidTotalMinor > 0)) {
+      const baseDate = latestPayment
+        ? new Date(latestPayment.receivedAt)
+        : new Date(latestInvoice?.dueDate || person.createdAt);
+      
+      validUntilDate = new Date(baseDate);
+      validUntilDate.setMonth(validUntilDate.getMonth() + planMonths);
+      validUntilStr = validUntilDate.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+      
+      const diffMs = validUntilDate.getTime() - nowMs;
+      daysRemaining = Math.ceil(diffMs / (24 * 60 * 60 * 1000));
+
+      if (daysRemaining > 10) {
+        feeStatus = "PAID";
+        statusBadgeLabel = `Paid (till ${validUntilStr})`;
+        statusBadgeTone = "green";
+        statusBadgeColor = "#047857";
+        statusBadgeBg = "#d1fae5";
+        statusBadgeBorder = "#a7f3d0";
+      } else if (daysRemaining >= 0) {
+        feeStatus = "EXPIRING_SOON";
+        statusBadgeLabel = daysRemaining === 0 ? `Expires Today (${validUntilStr})` : `Upcoming (Expires in ${daysRemaining}d · ${validUntilStr})`;
+        statusBadgeTone = "amber";
+        statusBadgeColor = "#b45309";
+        statusBadgeBg = "#fffbeb";
+        statusBadgeBorder = "#fde68a";
+      } else {
+        feeStatus = "OVERDUE";
+        statusBadgeLabel = `Overdue (${Math.abs(daysRemaining)}d ago · ${validUntilStr})`;
+        statusBadgeTone = "red";
+        statusBadgeColor = "#dc2626";
+        statusBadgeBg = "#fef2f2";
+        statusBadgeBorder = "#fecaca";
+      }
+    } else {
+      feeStatus = "PENDING";
+      const dueAmount = latestInvoice ? latestInvoice.balanceDueMinor : feeAmountMinor;
+      statusBadgeLabel = dueAmount > 0 ? `Unpaid (₹${(dueAmount / 100).toLocaleString("en-IN")} Due)` : "Fee Unpaid";
+      statusBadgeTone = "red";
+      statusBadgeColor = "#dc2626";
+      statusBadgeBg = "#fef2f2";
+      statusBadgeBorder = "#fecaca";
+    }
+  }
+
+  return {
+    hasFeePlan: hasPlan,
+    planMonths,
+    planLabel,
+    feeAmountMinor,
+    latestPayment,
+    latestInvoice,
+    feeStatus,
+    statusBadgeLabel,
+    statusBadgeTone,
+    statusBadgeColor,
+    statusBadgeBg,
+    statusBadgeBorder,
+    validUntilDate,
+    validUntilStr,
+    daysRemaining,
+    paidAmountMinor,
+    paidDateStr,
+    paidMethod,
+    memberId,
+  };
+}
 
 function PeopleContent() {
   const router = useRouter();
@@ -100,8 +311,57 @@ function PeopleContent() {
 
   // Filter states
   const [activeTab, setActiveTab] = useState<string>("ALL");
+  const [feeFilter, setFeeFilter] = useState<"ALL" | "PENDING" | "PAID" | "UPCOMING">("ALL");
   const [search, setSearch] = useState("");
   const [selectedTag, setSelectedTag] = useState("");
+
+  // Memoized fee counts for filter buttons
+  const feeCounts = useMemo(() => {
+    let pending = 0;
+    let paid = 0;
+    let upcoming = 0;
+
+    for (const p of people) {
+      const details = getPersonFeeDetails(p);
+      if (!details.hasFeePlan) continue;
+      if (details.feeStatus === "PAID") {
+        paid++;
+      } else if (details.feeStatus === "EXPIRING_SOON") {
+        upcoming++;
+      } else if (
+        details.feeStatus === "PENDING" ||
+        details.feeStatus === "OVERDUE" ||
+        details.feeStatus === "PARTIALLY_PAID"
+      ) {
+        pending++;
+      }
+    }
+
+    return {
+      total: people.length,
+      pending,
+      paid,
+      upcoming,
+    };
+  }, [people]);
+
+  // Filtered people based on active fee filter
+  const displayedPeople = useMemo(() => {
+    if (feeFilter === "ALL") return people;
+    return people.filter((p) => {
+      const details = getPersonFeeDetails(p);
+      if (feeFilter === "PAID") return details.feeStatus === "PAID";
+      if (feeFilter === "UPCOMING") return details.feeStatus === "EXPIRING_SOON";
+      if (feeFilter === "PENDING") {
+        return (
+          details.feeStatus === "PENDING" ||
+          details.feeStatus === "OVERDUE" ||
+          details.feeStatus === "PARTIALLY_PAID"
+        );
+      }
+      return true;
+    });
+  }, [people, feeFilter]);
 
   const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
 
@@ -1639,6 +1899,182 @@ function PeopleContent() {
 
       <Tabs items={tabItems} active={activeTab} onChange={setActiveTab} />
 
+      {/* 🏷️ Quick Fee & Plan Filters Bar */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
+          margin: "12px 0 10px 0",
+          flexWrap: "wrap",
+          padding: "8px 12px",
+          background: "#ffffff",
+          borderRadius: 10,
+          border: "1px solid var(--line, #e2e8f0)",
+          boxShadow: "0 1px 3px rgba(0,0,0,0.03)",
+        }}
+      >
+        <span
+          style={{
+            fontSize: 11,
+            fontWeight: 800,
+            color: "var(--muted, #64748b)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            marginRight: 4,
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 5,
+          }}
+        >
+          <Icon name="finance" size={13} /> Fee Filter:
+        </span>
+
+        <button
+          type="button"
+          onClick={() => setFeeFilter("ALL")}
+          style={{
+            padding: "5px 12px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: feeFilter === "ALL" ? 750 : 600,
+            cursor: "pointer",
+            border: feeFilter === "ALL" ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
+            background: feeFilter === "ALL" ? "#eff6ff" : "#ffffff",
+            color: feeFilter === "ALL" ? "#1d4ed8" : "#334155",
+            transition: "all 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>All Records</span>
+          <span
+            style={{
+              background: feeFilter === "ALL" ? "#2563eb" : "#e2e8f0",
+              color: feeFilter === "ALL" ? "#ffffff" : "#475569",
+              padding: "1px 6px",
+              borderRadius: 10,
+              fontSize: 10.5,
+              fontWeight: 750,
+            }}
+          >
+            {feeCounts.total}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeeFilter("PENDING")}
+          style={{
+            padding: "5px 12px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: feeFilter === "PENDING" ? 750 : 600,
+            cursor: "pointer",
+            border: feeFilter === "PENDING" ? "1.5px solid #dc2626" : "1px solid #fecaca",
+            background: feeFilter === "PENDING" ? "#fef2f2" : "#ffffff",
+            color: feeFilter === "PENDING" ? "#991b1b" : "#b91c1c",
+            transition: "all 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>🔴 Pending Fees</span>
+          <span
+            style={{
+              background: feeFilter === "PENDING" ? "#dc2626" : "#fee2e2",
+              color: feeFilter === "PENDING" ? "#ffffff" : "#991b1b",
+              padding: "1px 6px",
+              borderRadius: 10,
+              fontSize: 10.5,
+              fontWeight: 750,
+            }}
+          >
+            {feeCounts.pending}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeeFilter("PAID")}
+          style={{
+            padding: "5px 12px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: feeFilter === "PAID" ? 750 : 600,
+            cursor: "pointer",
+            border: feeFilter === "PAID" ? "1.5px solid #059669" : "1px solid #a7f3d0",
+            background: feeFilter === "PAID" ? "#ecfdf5" : "#ffffff",
+            color: feeFilter === "PAID" ? "#065f46" : "#047857",
+            transition: "all 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>🟢 Paid Fees</span>
+          <span
+            style={{
+              background: feeFilter === "PAID" ? "#059669" : "#d1fae5",
+              color: feeFilter === "PAID" ? "#ffffff" : "#065f46",
+              padding: "1px 6px",
+              borderRadius: 10,
+              fontSize: 10.5,
+              fontWeight: 750,
+            }}
+          >
+            {feeCounts.paid}
+          </span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setFeeFilter("UPCOMING")}
+          style={{
+            padding: "5px 12px",
+            borderRadius: 20,
+            fontSize: 12,
+            fontWeight: feeFilter === "UPCOMING" ? 750 : 600,
+            cursor: "pointer",
+            border: feeFilter === "UPCOMING" ? "1.5px solid #d97706" : "1px solid #fde68a",
+            background: feeFilter === "UPCOMING" ? "#fffbeb" : "#ffffff",
+            color: feeFilter === "UPCOMING" ? "#92400e" : "#b45309",
+            transition: "all 0.15s ease",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+          }}
+        >
+          <span>🟡 Upcoming Fees (10-Day Window)</span>
+          <span
+            style={{
+              background: feeFilter === "UPCOMING" ? "#d97706" : "#fef3c7",
+              color: feeFilter === "UPCOMING" ? "#ffffff" : "#92400e",
+              padding: "1px 6px",
+              borderRadius: 10,
+              fontSize: 10.5,
+              fontWeight: 750,
+            }}
+          >
+            {feeCounts.upcoming}
+          </span>
+        </button>
+
+        {feeFilter !== "ALL" && (
+          <button
+            type="button"
+            className="btn-icon"
+            onClick={() => setFeeFilter("ALL")}
+            title="Reset fee filter"
+            style={{ fontSize: 11, color: "var(--muted)", textDecoration: "underline", background: "none", border: "none", cursor: "pointer", marginLeft: "auto" }}
+          >
+            Clear Filter
+          </button>
+        )}
+      </div>
+
       <div className="toolbar">
         <div className="search-box">
           <Icon name="search" size={16} />
@@ -1712,117 +2148,208 @@ function PeopleContent() {
               <tr>
                 <th>Person / Member</th>
                 <th>Contact</th>
+                <th>Fee Plan & Validity</th>
+                <th>Payment & Status</th>
                 <th>Category</th>
                 <th>Location</th>
-                <th>Tags</th>
-                <th>Status</th>
                 <th style={{ textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
-              {people.map((person) => (
-                <tr
-                  key={person.id}
-                  className="clickable"
-                  onClick={() => setDetailPerson(person)}
-                >
-                  <td>
-                    <div className="table-primary-cell">
-                      <div className="table-avatar">
-                        {person.displayName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <strong>{person.displayName}</strong>
-                        {person.address?.guardianName && (
-                          <small style={{ color: "var(--muted)", display: "block" }}>
-                            Guardian: {person.address.guardianName}
-                          </small>
-                        )}
-                      </div>
+              {displayedPeople.length === 0 ? (
+                <tr>
+                  <td colSpan={7} style={{ textAlign: "center", padding: "36px 16px", color: "var(--muted)" }}>
+                    <div style={{ fontSize: 14, fontWeight: 700, color: "var(--ink)", marginBottom: 4 }}>
+                      No members match "{feeFilter === "PENDING" ? "Pending Fees" : feeFilter === "PAID" ? "Paid Fees" : "Upcoming Fees"}"
                     </div>
-                  </td>
-                  <td>
-                    <div>
-                      {person.primaryPhone && (
-                        <div style={{ fontWeight: 600 }}>{person.primaryPhone}</div>
-                      )}
-                      {person.email && (
-                        <small style={{ color: "var(--muted)", display: "block" }}>
-                          {person.email}
-                        </small>
-                      )}
-                      {!person.email && !person.primaryPhone && (
-                        <span style={{ color: "var(--muted)" }}>—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {person.types.map((t) => (
-                        <Badge key={t.type} tone="blue">
-                          {t.type}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td>
-                    {person.address?.city || person.address?.state ? (
-                      <span style={{ fontSize: 12.5, color: "var(--ink)" }}>
-                        {[person.address.city, person.address.state].filter(Boolean).join(", ")}
-                      </span>
-                    ) : (
-                      <span style={{ color: "var(--muted)" }}>—</span>
-                    )}
-                  </td>
-                  <td>
-                    <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                      {person.tags.length > 0 ? (
-                        person.tags.map((t) => (
-                          <Badge key={t.tagId} tone="neutral">
-                            {t.tag.name}
-                          </Badge>
-                        ))
-                      ) : (
-                        <span style={{ color: "var(--muted)" }}>—</span>
-                      )}
-                    </div>
-                  </td>
-                  <td>
-                    <Badge tone={person.status === "ACTIVE" ? "green" : "neutral"}>
-                      {person.status}
-                    </Badge>
-                  </td>
-                  <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                    <div className="table-actions">
-                      <button
-                        className="btn-icon"
-                        title="Edit Details"
-                        onClick={() => openEditModal(person)}
-                      >
-                        <Icon name="edit" size={15} />
-                      </button>
-                      {person.status === "ACTIVE" ? (
-                        <button
-                          className="btn-icon"
-                          title="Archive"
-                          onClick={() => setArchiveCandidate(person)}
-                        >
-                          <Icon name="trash" size={15} />
-                        </button>
-                      ) : (
-                        <button
-                          className="btn-icon"
-                          title="Restore / Unarchive"
-                          onClick={() => setUnarchiveCandidate(person)}
-                          style={{ color: "#059669" }}
-                        >
-                          <Icon name="refresh" size={15} />
-                        </button>
-                      )}
-                    </div>
+                    <p style={{ margin: "0 0 12px 0", fontSize: 12.5 }}>
+                      Try selecting "All Records" or changing the directory tab above.
+                    </p>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setFeeFilter("ALL")}
+                      type="button"
+                    >
+                      Reset Fee Filter
+                    </button>
                   </td>
                 </tr>
-              ))}
+              ) : (
+                displayedPeople.map((person) => {
+                  const feeDetails = getPersonFeeDetails(person);
+                  return (
+                    <tr
+                      key={person.id}
+                      className="clickable"
+                      onClick={() => setDetailPerson(person)}
+                    >
+                      <td>
+                        <div className="table-primary-cell">
+                          <div className="table-avatar">
+                            {person.displayName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <strong>{person.displayName}</strong>
+                            {feeDetails.memberId && (
+                              <span
+                                style={{
+                                  display: "inline-block",
+                                  fontSize: 10,
+                                  fontWeight: 750,
+                                  color: "#2563eb",
+                                  background: "#eff6ff",
+                                  border: "1px solid #bfdbfe",
+                                  padding: "1px 5px",
+                                  borderRadius: 4,
+                                  marginTop: 2,
+                                  marginRight: 4,
+                                }}
+                              >
+                                {feeDetails.memberId}
+                              </span>
+                            )}
+                            {person.address?.guardianName && (
+                              <small style={{ color: "var(--muted)", display: "block" }}>
+                                Guardian: {person.address.guardianName}
+                              </small>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td>
+                        <div>
+                          {person.primaryPhone && (
+                            <div style={{ fontWeight: 600 }}>{person.primaryPhone}</div>
+                          )}
+                          {person.email && (
+                            <small style={{ color: "var(--muted)", display: "block" }}>
+                              {person.email}
+                            </small>
+                          )}
+                          {!person.email && !person.primaryPhone && (
+                            <span style={{ color: "var(--muted)" }}>—</span>
+                          )}
+                        </div>
+                      </td>
+                      <td>
+                        {feeDetails.hasFeePlan ? (
+                          <div>
+                            <div style={{ fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: 4, fontSize: 12.5 }}>
+                              <span>⏱️ {feeDetails.planLabel}</span>
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2 }}>
+                              {feeDetails.feeAmountMinor > 0 ? (
+                                <span style={{ fontWeight: 700, color: "#1e293b" }}>
+                                  ₹{(feeDetails.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                                </span>
+                              ) : (
+                                <span style={{ color: "var(--muted)" }}>Configured Plan</span>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--muted)", fontSize: 12 }}>No plan</span>
+                        )}
+                      </td>
+                      <td>
+                        {feeDetails.hasFeePlan ? (
+                          <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
+                            <div>
+                              <span
+                                style={{
+                                  background: feeDetails.statusBadgeBg,
+                                  color: feeDetails.statusBadgeColor,
+                                  border: `1px solid ${feeDetails.statusBadgeBorder}`,
+                                  padding: "2px 8px",
+                                  borderRadius: 5,
+                                  fontSize: 11,
+                                  fontWeight: 750,
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 4,
+                                }}
+                              >
+                                {feeDetails.statusBadgeLabel}
+                              </span>
+                            </div>
+                            <div style={{ fontSize: 11, color: "var(--muted)", lineHeight: 1.35 }}>
+                              {feeDetails.paidAmountMinor > 0 ? (
+                                <div>
+                                  <strong style={{ color: "#047857" }}>
+                                    Paid ₹{(feeDetails.paidAmountMinor / 100).toLocaleString("en-IN")}
+                                  </strong>
+                                  {feeDetails.paidDateStr && <span> on {feeDetails.paidDateStr}</span>}
+                                  {feeDetails.paidMethod && (
+                                    <span style={{ textTransform: "uppercase", fontSize: 10, color: "#475569", marginLeft: 4 }}>
+                                      ({feeDetails.paidMethod})
+                                    </span>
+                                  )}
+                                </div>
+                              ) : (
+                                <span style={{ color: "#dc2626", fontWeight: 650 }}>No payment recorded</span>
+                              )}
+                              {feeDetails.validUntilStr && (
+                                <div style={{ fontSize: 10.5, color: "#64748b" }}>
+                                  Expires: <strong>{feeDetails.validUntilStr}</strong>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--muted)", fontSize: 12 }}>—</span>
+                        )}
+                      </td>
+                      <td>
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          {person.types.map((t) => (
+                            <Badge key={t.type} tone="blue">
+                              {t.type}
+                            </Badge>
+                          ))}
+                        </div>
+                      </td>
+                      <td>
+                        {person.address?.city || person.address?.state ? (
+                          <span style={{ fontSize: 12, color: "var(--ink)" }}>
+                            {[person.address.city, person.address.state].filter(Boolean).join(", ")}
+                          </span>
+                        ) : (
+                          <span style={{ color: "var(--muted)" }}>—</span>
+                        )}
+                      </td>
+                      <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                        <div className="table-actions">
+                          <button
+                            className="btn-icon"
+                            title="Edit Details"
+                            onClick={() => openEditModal(person)}
+                          >
+                            <Icon name="edit" size={15} />
+                          </button>
+                          {person.status === "ACTIVE" ? (
+                            <button
+                              className="btn-icon"
+                              title="Archive"
+                              onClick={() => setArchiveCandidate(person)}
+                            >
+                              <Icon name="trash" size={15} />
+                            </button>
+                          ) : (
+                            <button
+                              className="btn-icon"
+                              title="Restore / Unarchive"
+                              onClick={() => setUnarchiveCandidate(person)}
+                              style={{ color: "#059669" }}
+                            >
+                              <Icon name="refresh" size={15} />
+                            </button>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
@@ -1866,7 +2393,121 @@ function PeopleContent() {
               </div>
             </div>
 
-            {/* Address Details */}
+            {/* 🌟 Membership Fee & Payment Details Card */}
+            {(() => {
+              const feeInfo = getPersonFeeDetails(detailPerson);
+              return (
+                <div
+                  style={{
+                    background:
+                      feeInfo.feeStatus === "PAID"
+                        ? "#f0fdf4"
+                        : feeInfo.feeStatus === "EXPIRING_SOON"
+                        ? "#fffbeb"
+                        : feeInfo.feeStatus === "OVERDUE" || feeInfo.feeStatus === "PENDING"
+                        ? "#fef2f2"
+                        : "#f8fafc",
+                    border: `1px solid ${feeInfo.statusBadgeBorder}`,
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+                      <span style={{ fontSize: 16 }}>💳</span>
+                      <strong style={{ fontSize: 13.5, color: "var(--ink)" }}>Fee Plan & Payment Details</strong>
+                    </div>
+                    <span
+                      style={{
+                        background: feeInfo.statusBadgeBg,
+                        color: feeInfo.statusBadgeColor,
+                        border: `1px solid ${feeInfo.statusBadgeBorder}`,
+                        padding: "3px 9px",
+                        borderRadius: 6,
+                        fontSize: 11,
+                        fontWeight: 750,
+                      }}
+                    >
+                      {feeInfo.statusBadgeLabel}
+                    </span>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Plan Validity (Months)</small>
+                      <strong style={{ color: "var(--ink)", fontSize: 13 }}>⏱️ {feeInfo.planLabel}</strong>
+                      {feeInfo.feeAmountMinor > 0 && (
+                        <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
+                          ₹{(feeInfo.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Valid Until / Expiry</small>
+                      <strong style={{ color: feeInfo.feeStatus === "OVERDUE" ? "#dc2626" : "var(--ink)", fontSize: 13 }}>
+                        {feeInfo.validUntilStr || "—"}
+                      </strong>
+                      {feeInfo.daysRemaining !== null && (
+                        <div
+                          style={{
+                            fontSize: 11,
+                            fontWeight: 650,
+                            marginTop: 1,
+                            color:
+                              feeInfo.daysRemaining < 0
+                                ? "#dc2626"
+                                : feeInfo.daysRemaining <= 10
+                                ? "#d97706"
+                                : "#059669",
+                          }}
+                        >
+                          {feeInfo.daysRemaining < 0
+                            ? `${Math.abs(feeInfo.daysRemaining)} days overdue`
+                            : feeInfo.daysRemaining === 0
+                            ? "Expires today"
+                            : `${feeInfo.daysRemaining} days remaining`}
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Amount Paid (Last Payment)</small>
+                      <strong style={{ color: feeInfo.paidAmountMinor > 0 ? "#047857" : "#dc2626", fontSize: 13 }}>
+                        {feeInfo.paidAmountMinor > 0
+                          ? `₹${(feeInfo.paidAmountMinor / 100).toLocaleString("en-IN")}`
+                          : "No payment recorded"}
+                      </strong>
+                    </div>
+
+                    <div>
+                      <small style={{ color: "var(--muted)", display: "block" }}>Payment Date & Method</small>
+                      <strong style={{ color: "var(--ink)", fontSize: 13 }}>
+                        {feeInfo.paidDateStr ? `${feeInfo.paidDateStr} (${feeInfo.paidMethod || "CASH"})` : "—"}
+                      </strong>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${feeInfo.statusBadgeBorder}`, display: "flex", gap: 8 }}>
+                    <a
+                      href={`/quick-collect?personId=${detailPerson.id}&amount=${feeInfo.feeAmountMinor > 0 ? feeInfo.feeAmountMinor / 100 : ""}`}
+                      className="btn btn-primary btn-sm"
+                      style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 700 }}
+                    >
+                      ⚡ Collect Fee / Renew
+                    </a>
+                    <a
+                      href={`/finance?action=new-invoice&personId=${detailPerson.id}`}
+                      className="btn btn-secondary btn-sm"
+                      style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 650 }}
+                    >
+                      📄 New Invoice
+                    </a>
+                  </div>
+                </div>
+              );
+            })()}
             {detailPerson.address && (
               <div style={{ background: "#f8fafc", padding: 12, borderRadius: 10, border: "1px solid var(--line)" }}>
                 <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>

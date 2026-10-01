@@ -7,7 +7,49 @@ import { csvCell, normaliseEmail, normalisePhone, parseCsv } from "./people.util
 
 type PersonUpdate = Partial<PersonInput>;
 type TenantTx = Prisma.TransactionClient;
-const personInclude = { types: true, tags: { include: { tag: true } } } as const;
+const personInclude = {
+  types: true,
+  tags: { include: { tag: true } },
+  studentProfile: {
+    select: {
+      id: true,
+      rollNumber: true,
+      standard: true,
+      batch: true,
+      feeAmountMinor: true,
+      feeFrequency: true,
+      admissionDate: true,
+      status: true,
+    },
+  },
+  payments: {
+    where: { status: "COMPLETED" as const },
+    orderBy: { receivedAt: "desc" as const },
+    take: 5,
+    select: {
+      id: true,
+      amountMinor: true,
+      receivedAt: true,
+      method: true,
+      status: true,
+      invoiceId: true,
+    },
+  },
+  invoices: {
+    orderBy: { dueDate: "desc" as const },
+    take: 5,
+    select: {
+      id: true,
+      invoiceNumber: true,
+      grandTotalMinor: true,
+      paidTotalMinor: true,
+      balanceDueMinor: true,
+      dueDate: true,
+      status: true,
+      notes: true,
+    },
+  },
+} as const;
 
 @Injectable()
 export class PeopleService {

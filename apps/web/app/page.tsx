@@ -1073,49 +1073,79 @@ export default function HomePage() {
           }}
         />
 
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 12 }}>
-          <div>
-            <div className="hero-badge-row" style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
-              <span
-                style={{
-                  background: "rgba(59, 130, 246, 0.2)",
-                  color: "#93c5fd",
-                  padding: "2px 8px",
-                  borderRadius: 16,
-                  fontSize: 11,
-                  fontWeight: 650,
-                  border: "1px solid rgba(59, 130, 246, 0.3)",
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-              >
-                <Icon name="activity" size={11} />
-                {data.organisation.businessType || "Business Workspace"}
-              </span>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>·</span>
-              <span style={{ fontSize: 11.5, color: "#cbd5e1", fontWeight: 600 }}>{data.organisation.name}</span>
-            </div>
-
-            <h1 className="hero-heading" style={{ fontSize: 18, fontWeight: 800, margin: "0 0 4px", letterSpacing: "-0.02em" }} suppressHydrationWarning>
+        {/* 🌟 ROW 1: Greeting, Category Badge & Date in ONE clean, aligned line */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 10,
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", minWidth: 0 }}>
+            <h1
+              className="hero-heading"
+              style={{
+                fontSize: 17,
+                fontWeight: 800,
+                margin: 0,
+                letterSpacing: "-0.02em",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                whiteSpace: "nowrap",
+              }}
+              suppressHydrationWarning
+            >
               {getGreeting(displayName)} 👋
             </h1>
-            <p className="hero-subtitle" style={{ margin: 0, fontSize: 11.5, color: "#94a3b8", maxWidth: 650 }}>
-              {getCategoryHeroSubtitle(data.organisation.businessType, data.services)}
-            </p>
+
+            <span style={{ color: "rgba(255, 255, 255, 0.25)", fontSize: 13, margin: "0 2px" }}>|</span>
+
+            <span
+              style={{
+                background: "rgba(59, 130, 246, 0.2)",
+                color: "#93c5fd",
+                padding: "2px 8px",
+                borderRadius: 12,
+                fontSize: 11,
+                fontWeight: 650,
+                border: "1px solid rgba(59, 130, 246, 0.3)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 4,
+                whiteSpace: "nowrap",
+              }}
+            >
+              <Icon name="activity" size={11} />
+              {data.organisation.businessType || "Business Workspace"}
+            </span>
+
+            <span style={{ fontSize: 11.5, color: "#cbd5e1", fontWeight: 600, whiteSpace: "nowrap" }}>
+              · {data.organisation.name}
+            </span>
+
+            <span style={{ color: "#94a3b8", fontSize: 11, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+              — {isGymOrStudio ? "Live pulse of member enrollments, fee dues & attendance" : getCategoryHeroSubtitle(data.organisation.businessType, data.services)}
+            </span>
           </div>
 
-          <div className="hero-date-pill" style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+          <div className="hero-date-pill" style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <span
               suppressHydrationWarning
               style={{
                 background: "rgba(255, 255, 255, 0.08)",
-                padding: "4px 9px",
+                padding: "3px 9px",
                 borderRadius: 6,
-                fontSize: 11,
+                fontSize: 11.5,
                 fontWeight: 600,
                 color: "#f1f5f9",
                 border: "1px solid rgba(255, 255, 255, 0.12)",
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 5,
+                whiteSpace: "nowrap",
               }}
             >
               📅 {todayFormatted}
@@ -1123,16 +1153,30 @@ export default function HomePage() {
           </div>
         </div>
 
-        {/* ⚡ Quick Routine Launch Bar */}
+        {/* ⚡ ROW 2: Fast Launch Buttons in ONE dedicated line */}
         <div
           className="hero-fast-launch"
           style={{
-            marginTop: 10,
-            paddingTop: 10,
+            marginTop: 8,
+            paddingTop: 8,
             borderTop: "1px solid rgba(255, 255, 255, 0.1)",
+            display: "flex",
+            alignItems: "center",
+            flexWrap: "wrap",
+            gap: 7,
           }}
         >
-          <span className="hero-fast-launch-label" style={{ fontSize: 10.5, color: "#94a3b8", fontWeight: 650, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+          <span
+            className="hero-fast-launch-label"
+            style={{
+              fontSize: 10.5,
+              color: "#94a3b8",
+              fontWeight: 700,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              marginRight: 3,
+            }}
+          >
             Fast Launch:
           </span>
 
@@ -1215,7 +1259,7 @@ export default function HomePage() {
                   }}
                 >
                   <Icon name="activity" size={12} />
-                  <span>+ New Group</span>
+                  <span>{isGymOrStudio ? "+ New Batch / Group" : "+ New Group"}</span>
                 </button>
               );
             }
@@ -1244,7 +1288,7 @@ export default function HomePage() {
                 }}
               >
                 <Icon name="student" size={12} />
-                <span>+ Admit Student</span>
+                <span>{isGymOrStudio ? "+ Enroll Member" : "+ Admit Student"}</span>
               </button>
               <button
                 onClick={() => router.push("/quick-collect")}
@@ -1334,7 +1378,7 @@ export default function HomePage() {
               }}
             >
               <Icon name="people" size={12} />
-              <span>+ Add Person</span>
+              <span>{isGymOrStudio ? "+ Add Member" : "+ Add Person"}</span>
             </button>
           )}
 
