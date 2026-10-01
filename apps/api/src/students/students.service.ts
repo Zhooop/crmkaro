@@ -245,8 +245,19 @@ export class StudentsService {
       // 2. Generate Roll Number if not supplied
       let roll = input.rollNumber?.trim();
       if (!roll) {
-        const nextNum = await this.sequence(tx, organisationId, "student_roll");
-        roll = String(1000 + nextNum);
+        const org = await tx.organisation.findUnique({
+          where: { id: organisationId },
+          select: { businessType: true, industry: true },
+        });
+        const isGymOrg =
+          org?.businessType?.toLowerCase().includes("gym") ||
+          org?.businessType?.toLowerCase().includes("fitness") ||
+          org?.industry?.toLowerCase().includes("gym") ||
+          org?.industry?.toLowerCase().includes("fitness") ||
+          input.standard?.toLowerCase().includes("gym") ||
+          input.standard?.toLowerCase().includes("fitness");
+        const nextNum = await this.sequence(tx, organisationId, isGymOrg ? "member_reg" : "student_roll");
+        roll = isGymOrg ? `GYM-${1000 + nextNum}` : String(1000 + nextNum);
       }
 
       // 3. Create Student Profile
@@ -268,6 +279,101 @@ export class StudentsService {
         },
         include: { person: true },
       });
+
+      // 4. Record Initial Payment & Invoice in the same fast transaction if paid now
+      if (input.initialPaymentAmountMinor && input.initialPaymentAmountMinor > 0) {
+        try {
+          const monthStr = input.admissionDate
+            ? (typeof input.admissionDate === "string"
+                ? (input.admissionDate as string).slice(0, 7)
+                : (input.admissionDate as Date).toISOString().slice(0, 7))
+            : new Date().toISOString().slice(0, 7);
+          const monthLabel = formatMonthLabel(monthStr);
+          const description = `Membership / Admission Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${monthLabel}]`;
+          const expectedTotalMinor = Math.max(input.feeAmountMinor, input.initialPaymentAmountMinor);
+          const invoiceCalc = calculateInvoice([
+            {
+              quantity: 1,
+              unitPriceMinor: expectedTotalMinor,
+              discountMinor: 0,
+              taxRateBps: 0,
+            },
+          ]);
+          const seq = await this.sequence(tx, organisationId, "invoice");
+          const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
+          const issueDate = input.admissionDate ? new Date(input.admissionDate) : new Date();
+
+          const newInvoice = await tx.invoice.create({
+            data: {
+              organisationId,
+              personId: person.id,
+              invoiceNumber,
+              issueDate,
+              dueDate: issueDate,
+              status: input.initialPaymentAmountMinor >= expectedTotalMinor ? "PAID" : "PARTIALLY_PAID",
+              currency: "INR",
+              subtotalMinor: invoiceCalc.subtotalMinor,
+              discountMinor: 0,
+              taxMinor: 0,
+              grandTotalMinor: invoiceCalc.grandTotalMinor,
+              paidTotalMinor: input.initialPaymentAmountMinor,
+              balanceDueMinor: Math.max(0, expectedTotalMinor - input.initialPaymentAmountMinor),
+              notes: `Fee Cycle: ${monthStr} (${monthLabel}) - Admission Payment`,
+              issuedAt: new Date(),
+              items: {
+                create: [
+                  {
+                    organisationId,
+                    description,
+                    quantity: 1,
+                    unitPriceMinor: expectedTotalMinor,
+                    discountMinor: 0,
+                    taxRateBps: 0,
+                    taxMinor: 0,
+                    lineTotalMinor: expectedTotalMinor,
+                    position: 1,
+                  },
+                ],
+              },
+            },
+          });
+
+          const pSeq = await this.sequence(tx, organisationId, "receipt");
+          const receiptNumber = `REC-${String(pSeq).padStart(6, "0")}`;
+          await tx.payment.create({
+            data: {
+              organisationId,
+              invoiceId: newInvoice.id,
+              personId: person.id,
+              recordedById: userId,
+              receiptNumber,
+              amountMinor: input.initialPaymentAmountMinor,
+              method: input.initialPaymentMethod || "UPI",
+              receivedAt: issueDate,
+              notes: `Paid at enrollment/admission for ${monthLabel}`,
+              status: "COMPLETED",
+            },
+          });
+
+          if (input.email) {
+            void this.sendReceiptEmail({
+              to: input.email,
+              studentName: input.displayName,
+              standard: student.standard || "General",
+              batch: student.batch,
+              receiptNumber,
+              monthLabel,
+              amountPaidMinor: input.initialPaymentAmountMinor,
+              balanceDueMinor: Math.max(0, expectedTotalMinor - input.initialPaymentAmountMinor),
+              totalFeeMinor: expectedTotalMinor,
+              paymentMethod: input.initialPaymentMethod || "UPI",
+              orgName: "CRMKaro",
+            }).catch((err) => console.error("Async receipt email error:", err));
+          }
+        } catch (initPayErr) {
+          console.error("Initial payment in createAdmission error:", initPayErr);
+        }
+      }
 
       await tx.auditLog.create({
         data: {
@@ -740,28 +846,26 @@ export class StudentsService {
         ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(waText)}`
         : null;
 
-      // 6. Send Email Receipt if email is present
+      // 6. Send Email Receipt asynchronously if email is present (non-blocking)
       const email = student.person.email;
       let emailSent = false;
       if (email) {
-        try {
-          await this.sendReceiptEmail({
-            to: email,
-            studentName: student.person.displayName,
-            standard: student.standard || "General",
-            batch: student.batch,
-            receiptNumber,
-            monthLabel,
-            amountPaidMinor: amountPaidNowMinor,
-            balanceDueMinor: newBalanceDue,
-            totalFeeMinor: invoice.grandTotalMinor,
-            paymentMethod: input.paymentMethod,
-            orgName,
-          });
-          emailSent = true;
-        } catch (e) {
+        emailSent = true;
+        void this.sendReceiptEmail({
+          to: email,
+          studentName: student.person.displayName,
+          standard: student.standard || "General",
+          batch: student.batch,
+          receiptNumber,
+          monthLabel,
+          amountPaidMinor: amountPaidNowMinor,
+          balanceDueMinor: newBalanceDue,
+          totalFeeMinor: invoice.grandTotalMinor,
+          paymentMethod: input.paymentMethod,
+          orgName,
+        }).catch((e) => {
           console.error("Failed to send receipt email:", e);
-        }
+        });
       }
 
       return {

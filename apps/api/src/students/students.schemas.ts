@@ -24,6 +24,8 @@ export const studentAdmissionSchema = z.object({
   feeAmountMinor: z.coerce.number().int().min(0).max(2_000_000_000).default(0),
   billingStartDate: z.coerce.date().default(() => new Date()),
   admissionDate: z.coerce.date().default(() => new Date()),
+  initialPaymentAmountMinor: z.coerce.number().int().min(0).max(2_000_000_000).optional(),
+  initialPaymentMethod: optionalText(60),
 });
 
 export const studentUpdateSchema = z.object({

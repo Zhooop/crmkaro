@@ -247,6 +247,7 @@ function StudentsContent() {
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
   const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
   const [formFeeFrequency, setFormFeeFrequency] = useState<"MONTHLY" | "QUARTERLY" | "ANNUAL">("MONTHLY");
+  const [formPlanMonths, setFormPlanMonths] = useState<number>(1);
   const [formFeeAmount, setFormFeeAmount] = useState("");
   const [admissionPaymentStatus, setAdmissionPaymentStatus] = useState<"PAID_NOW" | "PENDING">("PAID_NOW");
   const [admissionPaymentMethod, setAdmissionPaymentMethod] = useState<string>("UPI");
@@ -458,15 +459,21 @@ function StudentsContent() {
         finalNotes = finalNotes ? `${finalNotes}\n${termMetadata}` : termMetadata;
       }
 
+      const paidNowNum = admissionPaymentStatus === "PAID_NOW" ? Number(admissionAmountPaid || formFeeAmount || 0) : 0;
+      const initialPaymentMinor = paidNowNum > 0 ? Math.round(paidNowNum * 100) : undefined;
+
+      const addressPayload: Record<string, string> = {};
+      if (formStreet.trim()) addressPayload.street = formStreet.trim();
+      if (formCity.trim()) addressPayload.city = formCity.trim();
+      if (formState.trim()) addressPayload.state = formState.trim();
+      if (isGym && formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+
       const payload = {
         displayName: formName.trim(),
         primaryPhone: formPhone.trim() || undefined,
         alternatePhone: formAltPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
-        address:
-          formStreet || formCity || formState
-            ? { street: formStreet, city: formCity, state: formState }
-            : undefined,
+        address: Object.keys(addressPayload).length > 0 ? addressPayload : undefined,
         rollNumber: formRollNumber.trim() || undefined,
         standard: finalStandard,
         batch: finalBatch || undefined,
@@ -478,6 +485,8 @@ function StudentsContent() {
         admissionDate: formAdmissionDate,
         billingStartDate: formAdmissionDate,
         notes: finalNotes || undefined,
+        initialPaymentAmountMinor: initialPaymentMinor,
+        initialPaymentMethod: initialPaymentMinor ? admissionPaymentMethod : undefined,
       };
 
       const res = await authFetch(`${api}/students`, {
@@ -491,39 +500,19 @@ function StudentsContent() {
         throw new Error(data.message || (isGym ? "Failed to enroll member." : "Failed to create student admission."));
       }
 
-      // If Paid Now was selected, immediately collect the fee for this cycle so invoice is generated and marked PAID
-      if (admissionPaymentStatus === "PAID_NOW" && calculatedFeeAmount > 0) {
-        const paidNowNum = Number(admissionAmountPaid || formFeeAmount || 0);
-        if (paidNowNum > 0) {
-          const currentMonth = formAdmissionDate ? formAdmissionDate.slice(0, 7) : new Date().toISOString().slice(0, 7);
-          try {
-            await authFetch(`${api}/students/collect-fee`, {
-              method: "POST",
-              headers: { "content-type": "application/json" },
-              body: JSON.stringify({
-                studentProfileId: data.id,
-                month: currentMonth,
-                amountMinor: Math.round(paidNowNum * 100),
-                paymentMethod: admissionPaymentMethod,
-                notes: `Fee paid at enrollment/admission via ${admissionPaymentMethod}`,
-              }),
-            });
-          } catch (feeErr) {
-            console.error("Auto fee collection on admission error:", feeErr);
-          }
-        }
-      }
-
+      // Close modal immediately for instant, snappy user experience
       setAdmissionModalOpen(false);
       resetAdmissionForm();
-      loadStudents();
-      loadRecurringFees();
       showToast(
         isGym
           ? `Member ${data.person?.displayName || formName} enrolled successfully${admissionPaymentStatus === "PAID_NOW" ? " & fee recorded as PAID!" : "!"}`
           : `Student ${data.person?.displayName || formName} admitted successfully${admissionPaymentStatus === "PAID_NOW" ? " & fee recorded as PAID!" : "!"}`,
         "success"
       );
+
+      // Refresh data in background without blocking modal close
+      loadStudents();
+      loadRecurringFees();
     } catch (err) {
       setAdmissionError((err as Error).message);
     } finally {
@@ -539,6 +528,22 @@ function StudentsContent() {
     setFormStreet("");
     setFormCity("");
     setFormState("");
+
+    // Auto-generate Member ID / Reg No in Gym mode
+    if (isGym) {
+      const existingGymNums = students
+        .map((s) => {
+          const m = s.rollNumber?.match(/GYM-(\d+)/i);
+          return m ? parseInt(m[1], 10) : 0;
+        })
+        .filter((n) => !isNaN(n) && n > 0);
+      const nextGymId = existingGymNums.length > 0 ? Math.max(...existingGymNums) + 1 : 1001 + students.length;
+      setFormRollNumber(`GYM-${nextGymId}`);
+    } else {
+      setFormRollNumber("");
+    }
+
+    setFormPlanMonths(1);
     setFormStandard(isGym ? "General Gym (Weights & Cardio)" : "10th Standard");
     setCustomStandard("");
     setFormBatch(isGym ? "Full Day Flexible Access" : "Morning Batch");
@@ -571,6 +576,18 @@ function StudentsContent() {
     setFormGuardianPhone(std.guardianPhone || "");
     setFormGuardianRelation(std.guardianRelation || "Father");
     setFormFeeFrequency(std.feeFrequency || "MONTHLY");
+
+    const addrJson = (std.person.address || {}) as any;
+    let months = 1;
+    if (addrJson?.planValidityMonths) {
+      months = parseInt(addrJson.planValidityMonths, 10) || 1;
+    } else if (std.feeFrequency === "ANNUAL") {
+      months = 12;
+    } else if (std.feeFrequency === "QUARTERLY") {
+      months = 3;
+    }
+    setFormPlanMonths(months);
+
     setFormFeeAmount(((std.feeAmountMinor || 0) / 100).toString());
     setFormNotes(std.person.notes || "");
     setFormStatus(std.status || "ACTIVE");
@@ -594,21 +611,18 @@ function StudentsContent() {
     setEditError("");
 
     try {
-      const address =
-        formStreet.trim() || formCity.trim() || formState.trim()
-          ? {
-              street: formStreet.trim(),
-              city: formCity.trim(),
-              state: formState.trim(),
-            }
-          : undefined;
+      const addressPayload: Record<string, string> = {};
+      if (formStreet.trim()) addressPayload.street = formStreet.trim();
+      if (formCity.trim()) addressPayload.city = formCity.trim();
+      if (formState.trim()) addressPayload.state = formState.trim();
+      if (isGym && formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
 
       const payload = {
         displayName: formName.trim(),
         primaryPhone: formPhone.trim() || null,
         alternatePhone: formAltPhone.trim() || null,
         email: formEmail.trim() || null,
-        address,
+        address: Object.keys(addressPayload).length > 0 ? addressPayload : undefined,
         rollNumber: formRollNumber.trim() || null,
         standard: formStandard.trim(),
         batch: formBatch.trim() || null,
@@ -1410,7 +1424,11 @@ function StudentsContent() {
                           {formatMoney(std.feeAmountMinor, currency)}
                         </strong>
                         <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "lowercase" }}>
-                          /{std.feeFrequency}
+                          /{(() => {
+                            const valMonths = (std.person.address as any)?.planValidityMonths;
+                            if (valMonths) return valMonths === "1" ? "1 month" : `${valMonths} months`;
+                            return std.feeFrequency.toLowerCase();
+                          })()}
                         </div>
                       </td>
                       <td>
@@ -2561,11 +2579,11 @@ function StudentsContent() {
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
-                  {isGym ? "Member ID / Reg No" : "Student ID / Roll Number"}
+                  {isGym ? "Member ID / Reg No (Auto-Generated)" : "Student ID / Roll Number"}
                 </label>
                 <input
                   type="text"
-                  placeholder={isGym ? "e.g. GYM-101 (leave blank for auto)" : "e.g. STD-101 (leave blank for auto)"}
+                  placeholder={isGym ? "Auto-generated (e.g. GYM-1001)" : "e.g. STD-101 (leave blank for auto)"}
                   value={formRollNumber}
                   onChange={(e) => setFormRollNumber(e.target.value)}
                   style={{
@@ -2919,23 +2937,58 @@ function StudentsContent() {
                   <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
                     {isGym ? "Plan Validity / Cycle" : "Billing Frequency"}
                   </label>
-                  <select
-                    value={formFeeFrequency}
-                    onChange={(e) => setFormFeeFrequency(e.target.value as any)}
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      borderRadius: 8,
-                      border: "1px solid #fde047",
-                      fontSize: 13,
-                      background: "#ffffff",
-                      fontWeight: 600,
-                    }}
-                  >
-                    <option value="MONTHLY">{isGym ? "Monthly (1 Month)" : "Monthly"}</option>
-                    <option value="QUARTERLY">{isGym ? "Quarterly (3 Months)" : "Quarterly"}</option>
-                    <option value="ANNUAL">{isGym ? "Annual (12 Months)" : "Annual"}</option>
-                  </select>
+                  {isGym ? (
+                    <select
+                      value={formPlanMonths}
+                      onChange={(e) => {
+                        const m = parseInt(e.target.value, 10);
+                        setFormPlanMonths(m);
+                        if (m === 12) setFormFeeFrequency("ANNUAL");
+                        else if (m === 3) setFormFeeFrequency("QUARTERLY");
+                        else setFormFeeFrequency("MONTHLY");
+                      }}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #fde047",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value={1}>1 Month (Monthly)</option>
+                      <option value={2}>2 Months Plan</option>
+                      <option value={3}>3 Months (Quarterly)</option>
+                      <option value={4}>4 Months Plan</option>
+                      <option value={5}>5 Months Plan</option>
+                      <option value={6}>6 Months (Half-Yearly)</option>
+                      <option value={7}>7 Months Plan</option>
+                      <option value={8}>8 Months Plan</option>
+                      <option value={9}>9 Months Plan</option>
+                      <option value={10}>10 Months Plan</option>
+                      <option value={11}>11 Months Plan</option>
+                      <option value={12}>12 Months (1 Year / Annual)</option>
+                    </select>
+                  ) : (
+                    <select
+                      value={formFeeFrequency}
+                      onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+                      style={{
+                        width: "100%",
+                        padding: "9px 12px",
+                        borderRadius: 8,
+                        border: "1px solid #fde047",
+                        fontSize: 13,
+                        background: "#ffffff",
+                        fontWeight: 600,
+                      }}
+                    >
+                      <option value="MONTHLY">Monthly</option>
+                      <option value="QUARTERLY">Quarterly</option>
+                      <option value="ANNUAL">Annual</option>
+                    </select>
+                  )}
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
@@ -2943,7 +2996,7 @@ function StudentsContent() {
                   </label>
                   <input
                     type="number"
-                    placeholder={isGym ? "e.g. 1500" : "e.g. 500"}
+                    placeholder={isGym ? "1500" : "500"}
                     value={formFeeAmount}
                     onChange={(e) => {
                       setFormFeeAmount(e.target.value);
@@ -2959,6 +3012,8 @@ function StudentsContent() {
                       border: "1px solid #fde047",
                       fontSize: 13,
                       background: "#ffffff",
+                      MozAppearance: "textfield",
+                      appearance: "textfield",
                     }}
                   />
                 </div>
@@ -3210,7 +3265,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
                 <input
                   type="text"
-                  placeholder="e.g. 42 MG Road"
+                  placeholder=""
                   value={formStreet}
                   onChange={(e) => setFormStreet(e.target.value)}
                   style={{
@@ -3226,7 +3281,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>City</label>
                 <input
                   type="text"
-                  placeholder="e.g. Mumbai"
+                  placeholder=""
                   value={formCity}
                   onChange={(e) => setFormCity(e.target.value)}
                   style={{
@@ -3242,7 +3297,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>State</label>
                 <input
                   type="text"
-                  placeholder="e.g. Maharashtra"
+                  placeholder=""
                   value={formState}
                   onChange={(e) => setFormState(e.target.value)}
                   style={{
@@ -3652,23 +3707,58 @@ function StudentsContent() {
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
                   {isGym ? "Plan Cycle / Frequency" : "Billing Frequency"}
                 </label>
-                <select
-                  value={formFeeFrequency}
-                  onChange={(e) => setFormFeeFrequency(e.target.value as any)}
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid #fde047",
-                    fontSize: 13,
-                    background: "#ffffff",
-                    fontWeight: 600,
-                  }}
-                >
-                  <option value="MONTHLY">{isGym ? "Monthly (1 Month)" : "Monthly"}</option>
-                  <option value="QUARTERLY">{isGym ? "Quarterly (3 Months)" : "Quarterly"}</option>
-                  <option value="ANNUAL">{isGym ? "Annual (12 Months)" : "Annual"}</option>
-                </select>
+                {isGym ? (
+                  <select
+                    value={formPlanMonths}
+                    onChange={(e) => {
+                      const m = parseInt(e.target.value, 10);
+                      setFormPlanMonths(m);
+                      if (m === 12) setFormFeeFrequency("ANNUAL");
+                      else if (m === 3) setFormFeeFrequency("QUARTERLY");
+                      else setFormFeeFrequency("MONTHLY");
+                    }}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fde047",
+                      fontSize: 13,
+                      background: "#ffffff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <option value={1}>1 Month (Monthly)</option>
+                    <option value={2}>2 Months Plan</option>
+                    <option value={3}>3 Months (Quarterly)</option>
+                    <option value={4}>4 Months Plan</option>
+                    <option value={5}>5 Months Plan</option>
+                    <option value={6}>6 Months (Half-Yearly)</option>
+                    <option value={7}>7 Months Plan</option>
+                    <option value={8}>8 Months Plan</option>
+                    <option value={9}>9 Months Plan</option>
+                    <option value={10}>10 Months Plan</option>
+                    <option value={11}>11 Months Plan</option>
+                    <option value={12}>12 Months (1 Year / Annual)</option>
+                  </select>
+                ) : (
+                  <select
+                    value={formFeeFrequency}
+                    onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+                    style={{
+                      width: "100%",
+                      padding: "9px 12px",
+                      borderRadius: 8,
+                      border: "1px solid #fde047",
+                      fontSize: 13,
+                      background: "#ffffff",
+                      fontWeight: 600,
+                    }}
+                  >
+                    <option value="MONTHLY">Monthly</option>
+                    <option value="QUARTERLY">Quarterly</option>
+                    <option value="ANNUAL">Annual</option>
+                  </select>
+                )}
               </div>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
@@ -3676,7 +3766,7 @@ function StudentsContent() {
                 </label>
                 <input
                   type="number"
-                  placeholder={isGym ? "e.g. 1500" : "e.g. 5000"}
+                  placeholder={isGym ? "1500" : "5000"}
                   value={formFeeAmount}
                   onChange={(e) => setFormFeeAmount(e.target.value)}
                   required
@@ -3687,6 +3777,8 @@ function StudentsContent() {
                     border: "1px solid #fde047",
                     fontSize: 13,
                     background: "#ffffff",
+                    MozAppearance: "textfield",
+                    appearance: "textfield",
                   }}
                 />
               </div>
@@ -3700,7 +3792,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
                 <input
                   type="text"
-                  placeholder="e.g. 42 MG Road"
+                  placeholder=""
                   value={formStreet}
                   onChange={(e) => setFormStreet(e.target.value)}
                   style={{
@@ -3716,7 +3808,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>City</label>
                 <input
                   type="text"
-                  placeholder="e.g. Mumbai"
+                  placeholder=""
                   value={formCity}
                   onChange={(e) => setFormCity(e.target.value)}
                   style={{
@@ -3732,7 +3824,7 @@ function StudentsContent() {
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>State</label>
                 <input
                   type="text"
-                  placeholder="e.g. Maharashtra"
+                  placeholder=""
                   value={formState}
                   onChange={(e) => setFormState(e.target.value)}
                   style={{
@@ -4418,7 +4510,11 @@ function StudentsContent() {
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
                   <strong>{isGym ? "Membership Fee:" : "Fee Rate:"}</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
-                  {selectedStudent.feeFrequency.toLowerCase()}
+                  {(() => {
+                    const valMonths = (selectedStudent.person.address as any)?.planValidityMonths;
+                    if (valMonths) return valMonths === "1" ? "1 month" : `${valMonths} months`;
+                    return selectedStudent.feeFrequency.toLowerCase();
+                  })()}
                 </div>
                 <div>
                   <strong>{isGym ? "Joined On:" : "Enrolled On:"}</strong>{" "}
