@@ -523,6 +523,11 @@ export class StudentsService {
       await this.autoSyncStudents(tx, organisationId);
       const targetMonth = month || new Date().toISOString().slice(0, 7);
       const monthLabel = formatMonthLabel(targetMonth);
+      const parts = targetMonth.split("-").map(Number);
+      const yearNum = parts[0] || new Date().getFullYear();
+      const monthNum = parts[1] || (new Date().getMonth() + 1);
+      const targetMonthStart = new Date(yearNum, monthNum - 1, 1);
+      const targetMonthEnd = new Date(yearNum, monthNum, 0, 23, 59, 59, 999);
 
       // Fetch all active students
       const students = await tx.studentProfile.findMany({
@@ -538,10 +543,28 @@ export class StudentsService {
               displayName: true,
               primaryPhone: true,
               email: true,
+              address: true,
+              notes: true,
             },
           },
         },
       });
+
+      const personIds = students.map((s) => s.personId);
+      const allCompletedPayments = await tx.payment.findMany({
+        where: {
+          organisationId,
+          personId: { in: personIds },
+          status: "COMPLETED",
+        },
+        orderBy: { receivedAt: "desc" },
+      });
+      const paymentsByPerson = new Map<string, typeof allCompletedPayments>();
+      for (const p of allCompletedPayments) {
+        const arr = paymentsByPerson.get(p.personId) || [];
+        arr.push(p);
+        paymentsByPerson.set(p.personId, arr);
+      }
 
       // Fetch invoices for these students matching this cycle
       const invoices = await tx.invoice.findMany({
@@ -568,80 +591,119 @@ export class StudentsService {
           const feePlanAmount = std.feeAmountMinor || 0;
           totalExpectedMinor += feePlanAmount;
 
-          let inv = invoiceByPersonId.get(std.personId);
-          if (!inv && feePlanAmount > 0) {
-            try {
-              const seq = await this.sequence(tx, organisationId, "invoice");
-              const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
-              const description = `Tuition / Course Fee — ${std.standard}${std.batch ? ` (${std.batch})` : ""} [${monthLabel}]`;
-              inv = await tx.invoice.create({
-                data: {
-                  organisationId,
-                  personId: std.personId,
-                  invoiceNumber,
-                  issueDate: new Date(),
-                  dueDate: new Date(),
-                  status: "ISSUED",
-                  currency: "INR",
-                  subtotalMinor: feePlanAmount,
-                  discountMinor: 0,
-                  taxMinor: 0,
-                  grandTotalMinor: feePlanAmount,
-                  paidTotalMinor: 0,
-                  balanceDueMinor: feePlanAmount,
-                  notes: `Fee Cycle: ${targetMonth} (${monthLabel})`,
-                  issuedAt: new Date(),
-                  items: {
-                    create: [
-                      {
-                        organisationId,
-                        description,
-                        quantity: 1,
-                        unitPriceMinor: feePlanAmount,
-                        discountMinor: 0,
-                        taxRateBps: 0,
-                        taxMinor: 0,
-                        lineTotalMinor: feePlanAmount,
-                        position: 1,
-                      },
-                    ],
-                  },
-                },
-                include: { items: true, payments: true },
-              });
-              invoiceByPersonId.set(std.personId, inv);
-            } catch (err) {
-              console.error("Failed to auto-create cycle invoice:", err);
+          // Determine plan validity in months (1 to 12 months)
+          const addr = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+          let planMonths = 1;
+          if (addr.planValidityMonths) {
+            const parsed = parseInt(addr.planValidityMonths, 10);
+            if (!isNaN(parsed) && parsed > 0) planMonths = parsed;
+          } else if (std.feeFrequency === "ANNUAL") {
+            planMonths = 12;
+          } else if (std.feeFrequency === "QUARTERLY") {
+            planMonths = 3;
+          } else if (std.person.notes) {
+            const mMatch = std.person.notes.match(/(\d+)\s*(?:month|mahina|mahine)/i);
+            if (mMatch && mMatch[1]) {
+              const p = parseInt(mMatch[1], 10);
+              if (!isNaN(p) && p > 0 && p <= 12) planMonths = p;
             }
           }
+
+          const personPayments = paymentsByPerson.get(std.personId) || [];
+          // Check if any completed payment covers this target month
+          let coveringPayment: (typeof allCompletedPayments)[0] | null = null;
+          for (const p of personPayments) {
+            const pDate = new Date(p.receivedAt);
+            const pValidUntil = new Date(pDate);
+            pValidUntil.setMonth(pValidUntil.getMonth() + planMonths);
+            if (pDate <= targetMonthEnd && pValidUntil > targetMonthStart) {
+              coveringPayment = p;
+              break;
+            }
+          }
+
+          let inv = invoiceByPersonId.get(std.personId);
           let status: "PAID" | "PARTIALLY_PAID" | "PENDING" = "PENDING";
           let paidMinor = 0;
           let balanceMinor = feePlanAmount;
 
-          if (inv) {
-            // Align grandTotal with expected fee plan
-            const expectedTotal = Math.max(feePlanAmount, inv.grandTotalMinor);
-            paidMinor = inv.paidTotalMinor;
-            balanceMinor = Math.max(0, expectedTotal - paidMinor);
-
-            if (inv.grandTotalMinor < expectedTotal || inv.balanceDueMinor !== balanceMinor) {
-              await tx.invoice.update({
-                where: { id: inv.id },
-                data: {
-                  grandTotalMinor: expectedTotal,
-                  subtotalMinor: expectedTotal,
-                  balanceDueMinor: balanceMinor,
-                  status: balanceMinor <= 0 ? "PAID" : "PARTIALLY_PAID",
-                },
-              });
+          if (coveringPayment) {
+            // Target month is covered by multi-month plan payment!
+            status = "PAID";
+            paidMinor = feePlanAmount;
+            balanceMinor = 0;
+          } else {
+            // Target month is NOT covered by an advance payment: manage cycle invoice
+            if (!inv && feePlanAmount > 0) {
+              try {
+                const seq = await this.sequence(tx, organisationId, "invoice");
+                const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
+                const description = `Tuition / Course Fee — ${std.standard}${std.batch ? ` (${std.batch})` : ""} [${monthLabel}]`;
+                inv = await tx.invoice.create({
+                  data: {
+                    organisationId,
+                    personId: std.personId,
+                    invoiceNumber,
+                    issueDate: new Date(),
+                    dueDate: new Date(),
+                    status: "ISSUED",
+                    currency: "INR",
+                    subtotalMinor: feePlanAmount,
+                    discountMinor: 0,
+                    taxMinor: 0,
+                    grandTotalMinor: feePlanAmount,
+                    paidTotalMinor: 0,
+                    balanceDueMinor: feePlanAmount,
+                    notes: `Fee Cycle: ${targetMonth} (${monthLabel})`,
+                    issuedAt: new Date(),
+                    items: {
+                      create: [
+                        {
+                          organisationId,
+                          description,
+                          quantity: 1,
+                          unitPriceMinor: feePlanAmount,
+                          discountMinor: 0,
+                          taxRateBps: 0,
+                          taxMinor: 0,
+                          lineTotalMinor: feePlanAmount,
+                          position: 1,
+                        },
+                      ],
+                    },
+                  },
+                  include: { items: true, payments: true },
+                });
+                invoiceByPersonId.set(std.personId, inv);
+              } catch (err) {
+                console.error("Failed to auto-create cycle invoice:", err);
+              }
             }
 
-            if (balanceMinor <= 0 && paidMinor > 0) {
-              status = "PAID";
-            } else if (paidMinor > 0) {
-              status = "PARTIALLY_PAID";
-            } else {
-              status = "PENDING";
+            if (inv) {
+              const expectedTotal = Math.max(feePlanAmount, inv.grandTotalMinor);
+              paidMinor = inv.paidTotalMinor;
+              balanceMinor = Math.max(0, expectedTotal - paidMinor);
+
+              if (inv.grandTotalMinor < expectedTotal || inv.balanceDueMinor !== balanceMinor) {
+                await tx.invoice.update({
+                  where: { id: inv.id },
+                  data: {
+                    grandTotalMinor: expectedTotal,
+                    subtotalMinor: expectedTotal,
+                    balanceDueMinor: balanceMinor,
+                    status: balanceMinor <= 0 ? "PAID" : "PARTIALLY_PAID",
+                  },
+                });
+              }
+
+              if (balanceMinor <= 0 && paidMinor > 0) {
+                status = "PAID";
+              } else if (paidMinor > 0) {
+                status = "PARTIALLY_PAID";
+              } else {
+                status = "PENDING";
+              }
             }
           }
 
@@ -666,9 +728,9 @@ export class StudentsService {
             status,
             paidMinor,
             balanceMinor,
-            invoiceId: inv?.id || null,
+            invoiceId: inv?.id || coveringPayment?.invoiceId || null,
             invoiceNumber: inv?.invoiceNumber || null,
-            lastPaymentDate: inv?.payments[0]?.receivedAt || null,
+            lastPaymentDate: coveringPayment?.receivedAt || inv?.payments[0]?.receivedAt || null,
             whatsappUrl: waPhone
               ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(
                   `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n💰 *Total Fee Plan:* ₹${(feePlanAmount / 100).toLocaleString("en-IN")}\n💵 *Paid Amount:* ₹${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `⚠️ *Remaining Balance Due:* ₹${(balanceMinor / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid` : `✅ *Fee Status:* Fully Paid (Cleared)`}${inv?.id && balanceMinor > 0 ? `\n\n💳 *Pay Online (UPI / Card / NetBanking):*\n${(this.config.get("WEB_URL", { infer: true }) || "http://localhost:3000")}/pay/${inv.id}` : ""}`

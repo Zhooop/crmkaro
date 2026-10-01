@@ -167,6 +167,8 @@ export class DashboardService {
                 displayName: true,
                 primaryPhone: true,
                 alternatePhone: true,
+                address: true,
+                notes: true,
               },
             },
           },
@@ -190,21 +192,46 @@ export class DashboardService {
         });
         const thisMonthCollectedMinor = monthPaymentsAgg._sum.amountMinor ?? 0;
 
-        // Invoices matching this month's cycle
-        const monthInvoices = await tx.invoice.findMany({
+        const personIds = activeStudentsList.map((s) => s.personId);
+
+        // All completed payments for active students
+        const allCompletedPayments = await tx.payment.findMany({
           where: {
             organisationId,
-            notes: { contains: currentMonthKey },
+            personId: { in: personIds },
+            status: "COMPLETED",
           },
-          include: {
-            payments: { select: { amountMinor: true, receivedAt: true } },
-          },
+          orderBy: { receivedAt: "desc" },
+          include: { invoice: true },
         });
 
-        const invoiceByPerson = new Map<string, (typeof monthInvoices)[0]>();
-        for (const inv of monthInvoices) {
-          invoiceByPerson.set(inv.personId, inv);
+        const paymentsByPerson = new Map<string, typeof allCompletedPayments>();
+        for (const p of allCompletedPayments) {
+          const arr = paymentsByPerson.get(p.personId) || [];
+          arr.push(p);
+          paymentsByPerson.set(p.personId, arr);
         }
+
+        // Open invoices with remaining balance
+        const openInvoices = await tx.invoice.findMany({
+          where: {
+            organisationId,
+            personId: { in: personIds },
+            balanceDueMinor: { gt: 0 },
+          },
+          orderBy: { dueDate: "asc" },
+        });
+
+        const openInvoiceByPerson = new Map<string, (typeof openInvoices)[0]>();
+        for (const inv of openInvoices) {
+          if (!openInvoiceByPerson.has(inv.personId)) {
+            openInvoiceByPerson.set(inv.personId, inv);
+          }
+        }
+
+        const nowMs = now.getTime();
+        // 10-day advance reminder window
+        const tenDaysFromNowMs = nowMs + 10 * 24 * 60 * 60 * 1000;
 
         let totalExpectedMinor = 0;
         let totalPendingMinor = 0;
@@ -227,14 +254,34 @@ export class DashboardService {
           const feePlan = std.feeAmountMinor || 0;
           totalExpectedMinor += feePlan;
 
-          const inv = invoiceByPerson.get(std.personId);
-          const paid = inv ? inv.paidTotalMinor : 0;
-          const balance = inv ? Math.max(0, inv.grandTotalMinor - paid) : feePlan;
+          // Determine plan validity in months (1 to 12 months)
+          const addr = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+          let planMonths = 1;
+          if (addr.planValidityMonths) {
+            const parsed = parseInt(addr.planValidityMonths, 10);
+            if (!isNaN(parsed) && parsed > 0) planMonths = parsed;
+          } else if (std.feeFrequency === "ANNUAL") {
+            planMonths = 12;
+          } else if (std.feeFrequency === "QUARTERLY") {
+            planMonths = 3;
+          } else if (std.person.notes) {
+            const mMatch = std.person.notes.match(/(\d+)\s*(?:month|mahina|mahine)/i);
+            if (mMatch && mMatch[1]) {
+              const p = parseInt(mMatch[1], 10);
+              if (!isNaN(p) && p > 0 && p <= 12) planMonths = p;
+            }
+          }
 
-          if (balance > 0) {
+          const personPayments = paymentsByPerson.get(std.personId) || [];
+          const openInv = openInvoiceByPerson.get(std.personId);
+
+          // Real partial payment balance (e.g. paid ₹500 out of ₹1500)
+          if (openInv && openInv.paidTotalMinor > 0 && openInv.balanceDueMinor > 0) {
+            const paid = openInv.paidTotalMinor;
+            const balance = openInv.balanceDueMinor;
             totalPendingMinor += balance;
             pendingDuesList.push({
-              id: inv?.id || std.id,
+              id: openInv.id,
               studentProfileId: std.id,
               displayName: std.person.displayName,
               rollNumber: std.rollNumber,
@@ -244,8 +291,63 @@ export class DashboardService {
               guardianPhone: std.guardianPhone,
               pendingMinor: balance,
               paidMinor: paid,
-              status: paid > 0 ? "PARTIALLY_PAID" : "PENDING",
-              dueDate: inv?.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
+              status: "PARTIALLY_PAID",
+              dueDate: openInv.dueDate ? openInv.dueDate.toISOString().slice(0, 10) : null,
+            });
+            continue;
+          }
+
+          if (personPayments.length > 0 && personPayments[0]) {
+            // Case 2: Has completed payment. Check validity period based on plan duration!
+            const latestPay = personPayments[0];
+            const payDate = new Date(latestPay.receivedAt);
+            const validUntil = new Date(payDate);
+            validUntil.setMonth(validUntil.getMonth() + planMonths);
+
+            const validUntilMs = validUntil.getTime();
+            // If membership is still valid and not expiring within 10 days -> member is PAID & active!
+            if (validUntilMs > tenDaysFromNowMs) {
+              // Not due yet (e.g. paid for 3 months in July, currently in July/Aug/early Sept)
+              continue;
+            }
+
+            // Plan expires within 10 days or is already overdue -> renewal due!
+            const isExpiringSoon = validUntilMs > nowMs;
+            const dueDateStr = validUntil.toISOString().slice(0, 10);
+            totalPendingMinor += feePlan;
+            pendingDuesList.push({
+              id: openInv?.id || latestPay.invoiceId || std.id,
+              studentProfileId: std.id,
+              displayName: std.person.displayName,
+              rollNumber: std.rollNumber,
+              standard: std.standard,
+              batch: std.batch,
+              phone: std.person.primaryPhone,
+              guardianPhone: std.guardianPhone,
+              pendingMinor: feePlan,
+              paidMinor: 0,
+              status: isExpiringSoon ? "EXPIRING_SOON" : "OVERDUE",
+              dueDate: dueDateStr,
+            });
+          } else {
+            // Case 3: Never paid since enrollment
+            const admDate = std.admissionDate ? new Date(std.admissionDate) : now;
+            const dueDateStr = (openInv?.dueDate ? openInv.dueDate : admDate).toISOString().slice(0, 10);
+            const pendingAmount = openInv?.balanceDueMinor || feePlan;
+            totalPendingMinor += pendingAmount;
+            pendingDuesList.push({
+              id: openInv?.id || std.id,
+              studentProfileId: std.id,
+              displayName: std.person.displayName,
+              rollNumber: std.rollNumber,
+              standard: std.standard,
+              batch: std.batch,
+              phone: std.person.primaryPhone,
+              guardianPhone: std.guardianPhone,
+              pendingMinor: pendingAmount,
+              paidMinor: 0,
+              status: "PENDING",
+              dueDate: dueDateStr,
             });
           }
         }

@@ -534,7 +534,7 @@ function StudentsContent() {
       const existingGymNums = students
         .map((s) => {
           const m = s.rollNumber?.match(/GYM-(\d+)/i);
-          return m ? parseInt(m[1], 10) : 0;
+          return m && m[1] ? parseInt(m[1], 10) : 0;
         })
         .filter((n) => !isNaN(n) && n > 0);
       const nextGymId = existingGymNums.length > 0 ? Math.max(...existingGymNums) + 1 : 1001 + students.length;

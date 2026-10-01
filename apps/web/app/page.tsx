@@ -2132,12 +2132,36 @@ export default function HomePage() {
                               fontWeight: 700,
                               padding: "2px 7px",
                               borderRadius: 5,
-                              background: item.status === "PARTIALLY_PAID" ? "#fef3c7" : "#fef2f2",
-                              color: item.status === "PARTIALLY_PAID" ? "#b45309" : "#dc2626",
-                              border: `1px solid ${item.status === "PARTIALLY_PAID" ? "#fde68a" : "#fecaca"}`,
+                              background:
+                                item.status === "PARTIALLY_PAID"
+                                  ? "#fef3c7"
+                                  : item.status === "EXPIRING_SOON"
+                                  ? "#fffbeb"
+                                  : "#fef2f2",
+                              color:
+                                item.status === "PARTIALLY_PAID"
+                                  ? "#b45309"
+                                  : item.status === "EXPIRING_SOON"
+                                  ? "#d97706"
+                                  : "#dc2626",
+                              border: `1px solid ${
+                                item.status === "PARTIALLY_PAID"
+                                  ? "#fde68a"
+                                  : item.status === "EXPIRING_SOON"
+                                  ? "#fde68a"
+                                  : "#fecaca"
+                              }`,
                             }}
                           >
-                            {item.status === "PARTIALLY_PAID" ? "Partially Paid" : item.dueDate ? `Due ${item.dueDate}` : "Pending"}
+                            {item.status === "PARTIALLY_PAID"
+                              ? "Partially Paid"
+                              : item.status === "EXPIRING_SOON"
+                              ? (item.dueDate ? `Expiring ${item.dueDate}` : "Expiring Soon")
+                              : item.status === "OVERDUE"
+                              ? (item.dueDate ? `Overdue (${item.dueDate})` : "Overdue")
+                              : item.dueDate
+                              ? `Due ${item.dueDate}`
+                              : "Pending"}
                           </span>
                         </td>
                         <td style={{ padding: "8px 10px", textAlign: "right" }}>
