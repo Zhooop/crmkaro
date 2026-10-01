@@ -212,6 +212,31 @@ export class StudentsService {
   ) {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       // 1. Create or link Person
+      const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
+      let planMonths = 1;
+      if (addressJson.planValidityMonths) {
+        planMonths = parseInt(String(addressJson.planValidityMonths), 10) || 1;
+      } else if (input.feeFrequency === "QUARTERLY") {
+        planMonths = 3;
+      } else if (input.feeFrequency === "ANNUAL") {
+        planMonths = 12;
+      }
+
+      let resolvedFeeFrequency: FeeFrequency = (input.feeFrequency as FeeFrequency) || "MONTHLY";
+      if (planMonths === 3) resolvedFeeFrequency = "QUARTERLY";
+      else if (planMonths === 12) resolvedFeeFrequency = "ANNUAL";
+      else if (planMonths === 1) resolvedFeeFrequency = "MONTHLY";
+
+      const finalAddress = {
+        ...addressJson,
+        planValidityMonths: String(planMonths),
+        ...(input.guardianName ? { guardianName: input.guardianName.trim() } : {}),
+        ...(input.guardianPhone ? { guardianPhone: input.guardianPhone.trim() } : {}),
+        ...(input.guardianRelation ? { guardianRelation: input.guardianRelation.trim() } : {}),
+        ...(input.standard ? { standard: input.standard.trim() } : {}),
+        ...(input.batch ? { batch: input.batch.trim() } : {}),
+      };
+
       const person = await tx.person.create({
         data: {
           organisationId,
@@ -221,7 +246,7 @@ export class StudentsService {
           alternatePhone: input.alternatePhone || null,
           email: input.email || null,
           emailNormalised: normaliseEmail(input.email),
-          address: input.address ?? undefined,
+          address: finalAddress,
           notes: input.notes || null,
           types: {
             create: [
@@ -271,7 +296,7 @@ export class StudentsService {
           guardianName: input.guardianName?.trim() || null,
           guardianPhone: input.guardianPhone?.trim() || null,
           guardianRelation: input.guardianRelation?.trim() || null,
-          feeFrequency: input.feeFrequency as FeeFrequency,
+          feeFrequency: resolvedFeeFrequency,
           feeAmountMinor: input.feeAmountMinor,
           billingStartDate: input.billingStartDate,
           admissionDate: input.admissionDate,
@@ -289,7 +314,7 @@ export class StudentsService {
                 : (input.admissionDate as Date).toISOString().slice(0, 7))
             : new Date().toISOString().slice(0, 7);
           const monthLabel = formatMonthLabel(monthStr);
-          const description = `Membership / Admission Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${monthLabel}]`;
+          const description = `Membership / Admission Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${planMonths > 1 ? `${planMonths} Months Plan` : monthLabel}]`;
           const expectedTotalMinor = Math.max(input.feeAmountMinor, input.initialPaymentAmountMinor);
           const invoiceCalc = calculateInvoice([
             {
@@ -302,6 +327,8 @@ export class StudentsService {
           const seq = await this.sequence(tx, organisationId, "invoice");
           const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
           const issueDate = input.admissionDate ? new Date(input.admissionDate) : new Date();
+          const dueDate = new Date(issueDate);
+          dueDate.setMonth(dueDate.getMonth() + planMonths);
 
           const newInvoice = await tx.invoice.create({
             data: {
@@ -309,7 +336,7 @@ export class StudentsService {
               personId: person.id,
               invoiceNumber,
               issueDate,
-              dueDate: issueDate,
+              dueDate,
               status: input.initialPaymentAmountMinor >= expectedTotalMinor ? "PAID" : "PARTIALLY_PAID",
               currency: "INR",
               subtotalMinor: invoiceCalc.subtotalMinor,
@@ -318,7 +345,7 @@ export class StudentsService {
               grandTotalMinor: invoiceCalc.grandTotalMinor,
               paidTotalMinor: input.initialPaymentAmountMinor,
               balanceDueMinor: Math.max(0, expectedTotalMinor - input.initialPaymentAmountMinor),
-              notes: `Fee Cycle: ${monthStr} (${monthLabel}) - Admission Payment`,
+              notes: `Fee Cycle: ${planMonths > 1 ? `${planMonths} Months` : monthStr} (${monthLabel}) - Admission Payment`,
               issuedAt: new Date(),
               items: {
                 create: [

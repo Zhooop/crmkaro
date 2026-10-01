@@ -16,9 +16,13 @@ const personInclude = {
       rollNumber: true,
       standard: true,
       batch: true,
+      guardianName: true,
+      guardianPhone: true,
+      guardianRelation: true,
       feeAmountMinor: true,
       feeFrequency: true,
       admissionDate: true,
+      billingStartDate: true,
       status: true,
     },
   },
@@ -188,9 +192,17 @@ export class PeopleService {
         activities: { create: { organisationId, actorUserId: userId, action: "person.updated", summary: "Person profile updated" } },
       }, include: personInclude });
 
-      if (input.types && input.types.includes("STUDENT")) {
+      const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
+      const isStudent = (input.types && input.types.includes("STUDENT")) || (current && await tx.personTypeAssignment.count({ where: { personId: id, type: "STUDENT" } }) > 0);
+
+      if (isStudent || addressJson.guardianName || addressJson.admissionNo || addressJson.planValidityMonths) {
         const studentProfile = await tx.studentProfile.findFirst({ where: { personId: id, organisationId } });
-        const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
+        const planValidity = addressJson.planValidityMonths ? parseInt(String(addressJson.planValidityMonths), 10) : undefined;
+        let newFeeFreq: "MONTHLY" | "QUARTERLY" | "ANNUAL" | undefined = undefined;
+        if (planValidity === 3) newFeeFreq = "QUARTERLY";
+        else if (planValidity === 12) newFeeFreq = "ANNUAL";
+        else if (planValidity === 1) newFeeFreq = "MONTHLY";
+
         if (!studentProfile) {
           try {
             await tx.studentProfile.create({
@@ -201,27 +213,35 @@ export class PeopleService {
                 standard: addressJson.standard || "General",
                 batch: addressJson.batch || "Regular",
                 guardianName: addressJson.guardianName || null,
+                guardianPhone: addressJson.guardianPhone || null,
+                guardianRelation: addressJson.guardianRelation || null,
                 rollNumber: addressJson.admissionNo || null,
+                feeFrequency: newFeeFreq || "MONTHLY",
                 admissionDate: addressJson.admissionDate ? new Date(addressJson.admissionDate) : new Date(),
               },
             });
           } catch {}
-        } else if (addressJson.guardianName || addressJson.admissionNo || addressJson.standard || addressJson.batch) {
+        } else {
           await tx.studentProfile.update({
             where: { id: studentProfile.id },
             data: {
-              ...(addressJson.guardianName ? { guardianName: addressJson.guardianName } : {}),
-              ...(addressJson.admissionNo ? { rollNumber: addressJson.admissionNo } : {}),
-              ...(addressJson.standard ? { standard: addressJson.standard } : {}),
-              ...(addressJson.batch ? { batch: addressJson.batch } : {}),
+              ...(addressJson.guardianName !== undefined ? { guardianName: addressJson.guardianName || null } : {}),
+              ...(addressJson.guardianPhone !== undefined ? { guardianPhone: addressJson.guardianPhone || null } : {}),
+              ...(addressJson.guardianRelation !== undefined ? { guardianRelation: addressJson.guardianRelation || null } : {}),
+              ...(addressJson.admissionNo !== undefined ? { rollNumber: addressJson.admissionNo || null } : {}),
+              ...(addressJson.standard !== undefined ? { standard: addressJson.standard || "General" } : {}),
+              ...(addressJson.batch !== undefined ? { batch: addressJson.batch || null } : {}),
+              ...(addressJson.admissionDate ? { admissionDate: new Date(addressJson.admissionDate) } : {}),
+              ...(newFeeFreq ? { feeFrequency: newFeeFreq } : {}),
             },
           });
         }
       }
 
+      const refreshedPerson = await tx.person.findUnique({ where: { id }, include: personInclude }) || person;
       const duplicates = await tx.person.findMany({ where: this.duplicateWhere(organisationId, input.email ?? current.email, input.primaryPhone ?? current.primaryPhone, id), take: 10, select: { id: true, displayName: true, email: true, primaryPhone: true } });
       await tx.auditLog.create({ data: { organisationId, actorUserId: userId, action: "person.updated", entityType: "person", entityId: id } });
-      return { person, duplicateWarnings: duplicates };
+      return { person: refreshedPerson, duplicateWarnings: duplicates };
     });
   }
 

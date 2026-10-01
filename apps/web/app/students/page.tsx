@@ -293,6 +293,7 @@ function StudentsContent() {
             orgName: activeOrgEntry.organisation.name,
             userRole: activeOrgEntry.role?.name || "Admin",
             currency: activeOrgEntry.organisation.currency || "INR",
+            businessType: activeOrgEntry.organisation.businessType || undefined,
             ...(Array.isArray(srvs) && srvs.length > 0 ? { activeServices: srvs } : {}),
           });
         }
@@ -450,6 +451,13 @@ function StudentsContent() {
       let finalNotes = formNotes.trim();
       let calculatedFeeAmount = Math.round(Number(formFeeAmount) * 100) || 0;
       let finalFeeFrequency = formFeeFrequency;
+      if (formPlanMonths === 3) {
+        finalFeeFrequency = "QUARTERLY";
+      } else if (formPlanMonths === 12) {
+        finalFeeFrequency = "ANNUAL";
+      } else if (formPlanMonths === 1) {
+        finalFeeFrequency = "MONTHLY";
+      }
 
       if (!isGym && feePlanType === "TERM_INSTALLMENTS") {
         finalFeeFrequency = "QUARTERLY";
@@ -459,6 +467,11 @@ function StudentsContent() {
         finalNotes = finalNotes ? `${finalNotes}\n${termMetadata}` : termMetadata;
       }
 
+      const planTag = `[PLAN_VALIDITY:${formPlanMonths || 1}_MONTHS]`;
+      if (!finalNotes.includes("[PLAN_VALIDITY:")) {
+        finalNotes = finalNotes ? `${finalNotes}\n${planTag}` : planTag;
+      }
+
       const paidNowNum = admissionPaymentStatus === "PAID_NOW" ? Number(admissionAmountPaid || formFeeAmount || 0) : 0;
       const initialPaymentMinor = paidNowNum > 0 ? Math.round(paidNowNum * 100) : undefined;
 
@@ -466,7 +479,14 @@ function StudentsContent() {
       if (formStreet.trim()) addressPayload.street = formStreet.trim();
       if (formCity.trim()) addressPayload.city = formCity.trim();
       if (formState.trim()) addressPayload.state = formState.trim();
-      if (isGym && formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+      if (formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+      if (formGuardianName.trim()) addressPayload.guardianName = formGuardianName.trim();
+      if (formGuardianPhone.trim()) addressPayload.guardianPhone = formGuardianPhone.trim();
+      if (formGuardianRelation.trim()) addressPayload.guardianRelation = formGuardianRelation.trim();
+      if (formRollNumber.trim()) addressPayload.admissionNumber = formRollNumber.trim();
+      if (formAdmissionDate) addressPayload.admissionDate = formAdmissionDate;
+      if (finalStandard) addressPayload.standard = finalStandard;
+      if (finalBatch) addressPayload.batch = finalBatch;
 
       const payload = {
         displayName: formName.trim(),
@@ -615,7 +635,16 @@ function StudentsContent() {
       if (formStreet.trim()) addressPayload.street = formStreet.trim();
       if (formCity.trim()) addressPayload.city = formCity.trim();
       if (formState.trim()) addressPayload.state = formState.trim();
-      if (isGym && formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+      if (formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+      if (formGuardianName.trim()) addressPayload.guardianName = formGuardianName.trim();
+      if (formGuardianPhone.trim()) addressPayload.guardianPhone = formGuardianPhone.trim();
+      if (formGuardianRelation.trim()) addressPayload.guardianRelation = formGuardianRelation.trim();
+      if (formRollNumber.trim()) addressPayload.admissionNumber = formRollNumber.trim();
+
+      let editFeeFreq = formFeeFrequency;
+      if (formPlanMonths === 3) editFeeFreq = "QUARTERLY";
+      else if (formPlanMonths === 12) editFeeFreq = "ANNUAL";
+      else if (formPlanMonths === 1) editFeeFreq = "MONTHLY";
 
       const payload = {
         displayName: formName.trim(),
@@ -629,7 +658,7 @@ function StudentsContent() {
         guardianName: formGuardianName.trim() || null,
         guardianPhone: formGuardianPhone.trim() || null,
         guardianRelation: formGuardianRelation.trim() || null,
-        feeFrequency: formFeeFrequency,
+        feeFrequency: editFeeFreq,
         feeAmountMinor: Math.max(0, Math.round(Number(formFeeAmount || 0) * 100)),
         status: formStatus,
         notes: formNotes.trim() || null,
