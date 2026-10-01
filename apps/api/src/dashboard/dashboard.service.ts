@@ -47,6 +47,7 @@ export class DashboardService {
         tone?: "blue" | "emerald" | "amber" | "rose" | "purple" | "teal";
       }> = [];
       const notifications: DashboardNotification[] = [];
+      let academySummary: any = null;
       const todayDate = new Date();
       todayDate.setHours(0, 0, 0, 0);
 
@@ -156,9 +157,98 @@ export class DashboardService {
 
       // 5. Students & Tuition Academy Module
       if (services.has("students")) {
-        const studentCount = await tx.studentProfile.count({
+        const activeStudentsList = await tx.studentProfile.findMany({
           where: { organisationId, status: "ACTIVE" },
+          orderBy: [{ standard: "asc" }, { rollNumber: "asc" }],
+          include: {
+            person: {
+              select: {
+                id: true,
+                displayName: true,
+                primaryPhone: true,
+                alternatePhone: true,
+              },
+            },
+          },
         });
+
+        const studentCount = activeStudentsList.length;
+
+        const now = new Date();
+        const currentMonthKey = now.toISOString().slice(0, 7);
+        const currentMonthLabel = now.toLocaleString("en-US", { month: "long", year: "numeric" });
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+
+        // This month fee payments received
+        const monthPaymentsAgg = await tx.payment.aggregate({
+          where: {
+            organisationId,
+            receivedAt: { gte: startOfMonth, lte: endOfMonth },
+          },
+          _sum: { amountMinor: true },
+        });
+        const thisMonthCollectedMinor = monthPaymentsAgg._sum.amountMinor ?? 0;
+
+        // Invoices matching this month's cycle
+        const monthInvoices = await tx.invoice.findMany({
+          where: {
+            organisationId,
+            notes: { contains: currentMonthKey },
+          },
+          include: {
+            payments: { select: { amountMinor: true, receivedAt: true } },
+          },
+        });
+
+        const invoiceByPerson = new Map<string, (typeof monthInvoices)[0]>();
+        for (const inv of monthInvoices) {
+          invoiceByPerson.set(inv.personId, inv);
+        }
+
+        let totalExpectedMinor = 0;
+        let totalPendingMinor = 0;
+        const pendingDuesList: Array<{
+          id: string;
+          studentProfileId: string;
+          displayName: string;
+          rollNumber: string | null;
+          standard: string | null;
+          batch: string | null;
+          phone: string | null;
+          guardianPhone: string | null;
+          pendingMinor: number;
+          paidMinor: number;
+          status: string;
+          dueDate: string | null;
+        }> = [];
+
+        for (const std of activeStudentsList) {
+          const feePlan = std.feeAmountMinor || 0;
+          totalExpectedMinor += feePlan;
+
+          const inv = invoiceByPerson.get(std.personId);
+          const paid = inv ? inv.paidTotalMinor : 0;
+          const balance = inv ? Math.max(0, inv.grandTotalMinor - paid) : feePlan;
+
+          if (balance > 0) {
+            totalPendingMinor += balance;
+            pendingDuesList.push({
+              id: inv?.id || std.id,
+              studentProfileId: std.id,
+              displayName: std.person.displayName,
+              rollNumber: std.rollNumber,
+              standard: std.standard,
+              batch: std.batch,
+              phone: std.person.primaryPhone,
+              guardianPhone: std.guardianPhone,
+              pendingMinor: balance,
+              paidMinor: paid,
+              status: paid > 0 ? "PARTIALLY_PAID" : "PENDING",
+              dueDate: inv?.dueDate ? inv.dueDate.toISOString().slice(0, 10) : null,
+            });
+          }
+        }
 
         // Today's attendance
         const todayAttendance = await tx.attendanceRecord.findMany({
@@ -166,9 +256,23 @@ export class DashboardService {
           select: { status: true },
         });
         const presentToday = todayAttendance.filter((a) => a.status === "PRESENT").length;
+        const absentToday = todayAttendance.filter((a) => a.status === "ABSENT").length;
+        const attPct = studentCount > 0 ? Math.round((presentToday / studentCount) * 100) : 0;
+
+        academySummary = {
+          activeStudents: studentCount,
+          thisMonthCollectedMinor,
+          thisMonthPendingMinor: totalPendingMinor,
+          thisMonthExpectedMinor: totalExpectedMinor,
+          monthName: currentMonthLabel,
+          todayPresent: presentToday,
+          todayAbsent: absentToday,
+          attendancePercentage: attPct,
+          pendingDues: pendingDuesList.slice(0, 12),
+          totalPendingCount: pendingDuesList.length,
+        };
 
         if (todayAttendance.length > 0) {
-          const attPct = studentCount > 0 ? Math.round((presentToday / studentCount) * 100) : 0;
           cards.push({
             key: "students_attendance",
             label: "Today's Attendance",
@@ -345,6 +449,7 @@ export class DashboardService {
         notifications,
         transactions,
         activity,
+        academySummary,
         dateFilter: {
           startDate: query?.startDate || null,
           endDate: query?.endDate || null,

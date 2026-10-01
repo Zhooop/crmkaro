@@ -68,6 +68,31 @@ type Dashboard = {
     createdAt: string;
     metadata?: any;
   }>;
+  academySummary?: {
+    activeStudents: number;
+    thisMonthCollectedMinor: number;
+    thisMonthPendingMinor: number;
+    thisMonthExpectedMinor: number;
+    monthName: string;
+    todayPresent: number;
+    todayAbsent: number;
+    attendancePercentage: number;
+    pendingDues: Array<{
+      id: string;
+      studentProfileId: string;
+      displayName: string;
+      rollNumber: string | null;
+      standard: string | null;
+      batch: string | null;
+      phone: string | null;
+      guardianPhone: string | null;
+      pendingMinor: number;
+      paidMinor: number;
+      status: string;
+      dueDate: string | null;
+    }>;
+    totalPendingCount: number;
+  } | null;
   generatedAt: string;
 };
 
@@ -968,6 +993,30 @@ export default function HomePage() {
     year: "numeric",
   });
 
+  const isGymOrStudio = (() => {
+    const bt = (data?.organisation?.businessType || "").toLowerCase();
+    const on = (data?.organisation?.name || "").toLowerCase();
+    return (
+      bt.includes("gym") ||
+      bt.includes("fitness") ||
+      bt.includes("sports") ||
+      bt.includes("dance") ||
+      bt.includes("yoga") ||
+      bt.includes("club") ||
+      bt.includes("studio") ||
+      bt.includes("crossfit") ||
+      bt.includes("martial") ||
+      bt.includes("boxing") ||
+      on.includes("gym") ||
+      on.includes("fitness") ||
+      on.includes("crossfit") ||
+      on.includes("sports") ||
+      on.includes("dance") ||
+      on.includes("yoga") ||
+      on.includes("studio")
+    );
+  })();
+
   return (
     <AppShell
       currentPath="/"
@@ -1463,31 +1512,72 @@ export default function HomePage() {
 
       {/* 📊 Live Stat Cards */}
       <div className="stats-grid" style={{ marginBottom: 12 }}>
-        {data.cards.map((card, index) => {
-          const targetHref =
-            card.key === "total_members"
-              ? "/people"
-              : card.key === "total_received" || card.key === "total_due"
-              ? "/transactions"
-              : card.key === "active_groups"
-              ? "/groups"
-              : SERVICE_NAV_MAP[card.key]?.href || (card.key.startsWith("students") ? "/students" : undefined);
-          return (
+        {data.academySummary && datePreset === "all" ? (
+          <>
             <StatCard
-              key={card.key}
-              label={card.label}
-              value={
-                card.format === "money"
-                  ? money(card.value, data.organisation.currency)
-                  : new Intl.NumberFormat("en-IN").format(card.value)
-              }
-              change={card.detail}
-              icon={icons[card.key] ?? "reports"}
-              tone={(card.tone || ["blue", "teal", "amber", "rose", "purple"][index % 5]) as any}
-              onClick={targetHref ? () => router.push(targetHref) : undefined}
+              label={isGymOrStudio ? "Active Members" : "Active Students"}
+              value={new Intl.NumberFormat("en-IN").format(data.academySummary.activeStudents)}
+              change={`${data.academySummary.activeStudents} enrolled in roster`}
+              icon="student"
+              tone="blue"
+              onClick={() => router.push("/students")}
             />
-          );
-        })}
+            <StatCard
+              label={`Month Collection (${data.academySummary.monthName.split(" ")[0]})`}
+              value={money(data.academySummary.thisMonthCollectedMinor, data.organisation.currency)}
+              change="Fees collected this month"
+              icon="finance"
+              tone="emerald"
+              onClick={() => router.push("/students?tab=recurring-fees")}
+            />
+            <StatCard
+              label="This Month Pending"
+              value={money(data.academySummary.thisMonthPendingMinor, data.organisation.currency)}
+              change={
+                data.academySummary.totalPendingCount > 0
+                  ? `${data.academySummary.totalPendingCount} ${isGymOrStudio ? "members" : "students"} pending`
+                  : "All fees cleared"
+              }
+              icon="finance"
+              tone={data.academySummary.thisMonthPendingMinor > 0 ? "rose" : "teal"}
+              onClick={() => router.push("/students?tab=recurring-fees")}
+            />
+            <StatCard
+              label="Today's Attendance"
+              value={`${data.academySummary.todayPresent} / ${data.academySummary.activeStudents}`}
+              change={`${data.academySummary.attendancePercentage}% attendance recorded`}
+              icon="calendar"
+              tone="purple"
+              onClick={() => router.push("/students?tab=attendance")}
+            />
+          </>
+        ) : (
+          data.cards.map((card, index) => {
+            const targetHref =
+              card.key === "total_members"
+                ? "/people"
+                : card.key === "total_received" || card.key === "total_due"
+                ? "/transactions"
+                : card.key === "active_groups"
+                ? "/groups"
+                : SERVICE_NAV_MAP[card.key]?.href || (card.key.startsWith("students") ? "/students" : undefined);
+            return (
+              <StatCard
+                key={card.key}
+                label={card.label}
+                value={
+                  card.format === "money"
+                    ? money(card.value, data.organisation.currency)
+                    : new Intl.NumberFormat("en-IN").format(card.value)
+                }
+                change={card.detail}
+                icon={icons[card.key] ?? "reports"}
+                tone={(card.tone || ["blue", "teal", "amber", "rose", "purple"][index % 5]) as any}
+                onClick={targetHref ? () => router.push(targetHref) : undefined}
+              />
+            );
+          })
+        )}
       </div>
 
       {/* 📅 Category-Specific Schedule or Operations Hub */}
@@ -1807,6 +1897,274 @@ export default function HomePage() {
 
         return null;
       })()}
+
+      {/* 🎓 Academy Fee Dues & Pending Balances Widget */}
+      {data.academySummary && (
+        <div
+          className="academy-dues-widget"
+          style={{
+            background: "#ffffff",
+            borderRadius: 10,
+            border: "1px solid var(--line, #e2e8f0)",
+            boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+            padding: "16px 20px",
+            marginBottom: 14,
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "space-between",
+              alignItems: "center",
+              flexWrap: "wrap",
+              gap: 12,
+              marginBottom: 14,
+              paddingBottom: 12,
+              borderBottom: "1px solid #f1f5f9",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: 9,
+                  background: data.academySummary.thisMonthPendingMinor > 0 ? "#fef2f2" : "#f0fdf4",
+                  color: data.academySummary.thisMonthPendingMinor > 0 ? "#dc2626" : "#16a34a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                }}
+              >
+                <Icon name="finance" size={18} />
+              </div>
+              <div>
+                <h2
+                  style={{
+                    fontSize: 15.5,
+                    fontWeight: 800,
+                    margin: 0,
+                    color: "var(--ink)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                  }}
+                >
+                  <span>{isGymOrStudio ? "Member Fee Dues & Pending Balances" : "Student Fee Dues & Pending Balances"}</span>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: 12,
+                      background: data.academySummary.thisMonthPendingMinor > 0 ? "#fef2f2" : "#f0fdf4",
+                      color: data.academySummary.thisMonthPendingMinor > 0 ? "#dc2626" : "#16a34a",
+                      border: `1px solid ${data.academySummary.thisMonthPendingMinor > 0 ? "#fecaca" : "#bbf7d0"}`,
+                    }}
+                  >
+                    {data.academySummary.thisMonthPendingMinor > 0
+                      ? `₹${((data.academySummary.thisMonthPendingMinor) / 100).toLocaleString("en-IN")} Pending (${data.academySummary.totalPendingCount} ${isGymOrStudio ? "Members" : "Students"})`
+                      : "All Cleared ✓"}
+                  </span>
+                </h2>
+                <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
+                  Outstanding fee dues for <strong>{data.academySummary.monthName}</strong> — manual contact and follow-up list
+                </p>
+              </div>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <button
+                onClick={() => router.push("/students?action=new-admission")}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
+              >
+                <Icon name="plus" size={13} />
+                <span>{isGymOrStudio ? "New Member" : "New Student"}</span>
+              </button>
+              <button
+                onClick={() => router.push("/students?tab=recurring-fees")}
+                className="btn btn-secondary btn-sm"
+                style={{ fontSize: 12, padding: "5px 11px", color: "var(--brand)" }}
+              >
+                <span>View Full Fee Ledger →</span>
+              </button>
+            </div>
+          </div>
+
+          {data.academySummary.pendingDues.length === 0 ? (
+            <div
+              style={{
+                padding: "24px 20px",
+                textAlign: "center",
+                background: "#f0fdf4",
+                borderRadius: 8,
+                border: "1px dashed #bbf7d0",
+              }}
+            >
+              <div
+                style={{
+                  width: 36,
+                  height: 36,
+                  borderRadius: "50%",
+                  background: "#dcfce7",
+                  color: "#16a34a",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto 8px",
+                  fontWeight: 800,
+                  fontSize: 16,
+                }}
+              >
+                ✓
+              </div>
+              <strong style={{ fontSize: 13.5, color: "#166534", display: "block" }}>
+                All Fees Cleared for {data.academySummary.monthName}!
+              </strong>
+              <p style={{ fontSize: 12, color: "#15803d", margin: "3px 0 0" }}>
+                100% of expected fees have been collected for this cycle. No pending dues.
+              </p>
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
+                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Member" : "Student"}</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Plan & Slot" : "Standard & Batch"}</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>Contact (Manual Call)</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Pending Dues</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>Status</th>
+                    <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.academySummary.pendingDues.map((item) => {
+                    const contactPhone = item.guardianPhone || item.phone;
+                    return (
+                      <tr
+                        key={item.id}
+                        style={{ borderBottom: "1px solid #f8fafc", transition: "background 0.15s ease" }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <td style={{ padding: "8px 10px" }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                            <div
+                              style={{
+                                width: 32,
+                                height: 32,
+                                borderRadius: 8,
+                                background: "#f1f5f9",
+                                color: "var(--ink)",
+                                fontWeight: 750,
+                                fontSize: 12,
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "center",
+                                flexShrink: 0,
+                              }}
+                            >
+                              {item.displayName.slice(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
+                                {item.displayName}
+                              </strong>
+                              {item.rollNumber && (
+                                <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                                  ID #{item.rollNumber}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+                        <td style={{ padding: "8px 10px" }}>
+                          <div style={{ fontWeight: 600, color: "#334155" }}>
+                            {item.standard || "General"}
+                          </div>
+                          {item.batch && (
+                            <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                              {item.batch}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: "8px 10px" }}>
+                          {contactPhone ? (
+                            <a
+                              href={`tel:${contactPhone}`}
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 5,
+                                fontSize: 12,
+                                fontWeight: 650,
+                                color: "#1e40af",
+                                textDecoration: "none",
+                                background: "#eff6ff",
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                border: "1px solid #bfdbfe",
+                              }}
+                              title="Click to dial / call manually"
+                            >
+                              <span>📞 {contactPhone}</span>
+                            </a>
+                          ) : (
+                            <span style={{ color: "var(--muted)", fontSize: 11.5 }}>No Phone</span>
+                          )}
+                        </td>
+                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                          <strong style={{ fontSize: 13.5, color: "#dc2626" }}>
+                            ₹{((item.pendingMinor) / 100).toLocaleString("en-IN")}
+                          </strong>
+                          {item.paidMinor > 0 && (
+                            <div style={{ fontSize: 11, color: "#16a34a" }}>
+                              (₹{((item.paidMinor) / 100).toLocaleString("en-IN")} paid)
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: "8px 10px" }}>
+                          <span
+                            style={{
+                              fontSize: 11,
+                              fontWeight: 700,
+                              padding: "2px 7px",
+                              borderRadius: 5,
+                              background: item.status === "PARTIALLY_PAID" ? "#fef3c7" : "#fef2f2",
+                              color: item.status === "PARTIALLY_PAID" ? "#b45309" : "#dc2626",
+                              border: `1px solid ${item.status === "PARTIALLY_PAID" ? "#fde68a" : "#fecaca"}`,
+                            }}
+                          >
+                            {item.status === "PARTIALLY_PAID" ? "Partially Paid" : item.dueDate ? `Due ${item.dueDate}` : "Pending"}
+                          </span>
+                        </td>
+                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                          <button
+                            onClick={() => router.push(`/students?tab=recurring-fees`)}
+                            className="primary-button"
+                            style={{
+                              padding: "4px 10px",
+                              fontSize: 11.5,
+                              fontWeight: 700,
+                              borderRadius: 6,
+                              background: "#16a34a",
+                              borderColor: "#16a34a",
+                            }}
+                          >
+                            <span>Collect Fee →</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 2-Column Content Layout */}
       <div className="content-grid-2col" style={{ display: "grid", gridTemplateColumns: "1.15fr 0.85fr", gap: 14, alignItems: "start" }}>

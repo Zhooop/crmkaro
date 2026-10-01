@@ -825,8 +825,8 @@ function StudentsContent() {
       if (res.ok) {
         showToast(
           studentName
-            ? `✓ Marked ${studentName} as ${status}!`
-            : `✓ Attendance updated to ${status}!`,
+            ? `Marked ${studentName} as ${status}!`
+            : `Attendance updated to ${status}!`,
           "success",
         );
       } else {
@@ -878,7 +878,7 @@ function StudentsContent() {
         }),
       });
       if (res.ok) {
-        showToast(`✓ All ${records.length} students marked Present & saved!`, "success");
+        showToast(`All ${records.length} students marked Present & saved!`, "success");
       } else {
         showToast("Failed to save batch attendance.", "error");
         loadAttendance();
@@ -927,7 +927,7 @@ function StudentsContent() {
         }),
       });
       if (res.ok) {
-        showToast(`✓ All ${records.length} students marked Absent & saved!`, "success");
+        showToast(`All ${records.length} students marked Absent & saved!`, "success");
       } else {
         showToast("Failed to save batch attendance.", "error");
         loadAttendance();
@@ -1443,7 +1443,7 @@ function StudentsContent() {
                             onClick={() => handleOpenEdit(std)}
                             title="Edit student details & fee plan"
                           >
-                            ✏️ Edit
+                            Edit
                           </button>
                           <button
                             className="secondary-button"
@@ -1624,7 +1624,7 @@ function StudentsContent() {
                     transition: "all 0.15s ease",
                   }}
                 >
-                  ⚠️ Pending Dues ({recurringFeesData.pendingCount || 0})
+                  Pending Dues ({recurringFeesData.pendingCount || 0})
                 </button>
                 <button
                   type="button"
@@ -1641,7 +1641,7 @@ function StudentsContent() {
                     transition: "all 0.15s ease",
                   }}
                 >
-                  ✅ Fully Cleared / Paid ({recurringFeesData.paidCount || 0})
+                  Fully Cleared / Paid ({recurringFeesData.paidCount || 0})
                 </button>
               </div>
 
@@ -1853,7 +1853,7 @@ function StudentsContent() {
                         {item.status === "PAID" ? (
                           <div style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 8 }}>
                             <span style={{ fontSize: 12, color: "#047857", fontWeight: 750 }}>
-                              ✓ Received
+                              Received
                             </span>
                             {item.whatsappUrl && (
                               <a
@@ -2088,7 +2088,7 @@ function StudentsContent() {
                   borderColor: "#bbf7d0",
                 }}
               >
-                ✓ Mark All Present
+                Mark All Present
               </button>
               <button
                 type="button"
@@ -2104,7 +2104,7 @@ function StudentsContent() {
                   borderColor: "#fecaca",
                 }}
               >
-                ✕ Mark All Absent
+                Mark All Absent
               </button>
               <button
                 type="button"
@@ -2474,7 +2474,7 @@ function StudentsContent() {
       <Modal
         isOpen={admissionModalOpen}
         onClose={() => setAdmissionModalOpen(false)}
-        title={isGym ? "🏋️ New Member Admission & Package Enrollment" : "🎓 New Student Admission & Enrollment"}
+        title={isGym ? "New Member Admission & Package Enrollment" : "New Student Admission & Enrollment"}
         subtitle={isGym ? "Create member profile, gym package, workout slot, emergency contact, and fee plan." : "Create permanent student record, course batch, guardian contact, and recurring fee plan."}
         maxWidth={780}
       >
@@ -2646,12 +2646,12 @@ function StudentsContent() {
                         fontWeight: 650,
                       }}
                     >
-                      <option value="General Gym (Weights & Cardio)">🏋️ General Gym (Weights & Cardio)</option>
-                      <option value="Cardio & CrossFit / HIIT">⚡ Cardio & CrossFit / HIIT</option>
-                      <option value="Personal Training (1-on-1 PT)">🥊 Personal Training (1-on-1 PT)</option>
-                      <option value="Strength & Bodybuilding">💪 Strength & Bodybuilding</option>
-                      <option value="Yoga & Zumba Studio">🧘 Yoga & Zumba Studio</option>
-                      <option value="Custom Plan">✨ Custom Package Plan</option>
+                      <option value="General Gym (Weights & Cardio)">General Gym (Weights & Cardio)</option>
+                      <option value="Cardio & CrossFit / HIIT">Cardio & CrossFit / HIIT</option>
+                      <option value="Personal Training (1-on-1 PT)">Personal Training (1-on-1 PT)</option>
+                      <option value="Strength & Bodybuilding">Strength & Bodybuilding</option>
+                      <option value="Yoga & Zumba Studio">Yoga & Zumba Studio</option>
+                      <option value="Custom Plan">Custom Package Plan</option>
                     </select>
                   </div>
 
@@ -2672,12 +2672,12 @@ function StudentsContent() {
                         fontWeight: 600,
                       }}
                     >
-                      <option value="Full Day Flexible Access">🌅 Full Day Flexible Access (6 AM - 10 PM)</option>
-                      <option value="Morning Slot (6:00 AM - 10:00 AM)">🌄 Morning Slot (6:00 AM - 10:00 AM)</option>
-                      <option value="Afternoon Slot (12:00 PM - 4:00 PM)">☀️ Afternoon Slot (12:00 PM - 4:00 PM)</option>
-                      <option value="Evening Slot (5:00 PM - 10:00 PM)">🌇 Evening Slot (5:00 PM - 10:00 PM)</option>
-                      <option value="Night Slot (8:00 PM - 11:00 PM)">🌙 Night Slot (8:00 PM - 11:00 PM)</option>
-                      <option value="Weekend Only Access">🗓️ Weekend Only Access</option>
+                      <option value="Full Day Flexible Access">Full Day Flexible Access (6 AM - 10 PM)</option>
+                      <option value="Morning Slot (6:00 AM - 10:00 AM)">Morning Slot (6:00 AM - 10:00 AM)</option>
+                      <option value="Afternoon Slot (12:00 PM - 4:00 PM)">Afternoon Slot (12:00 PM - 4:00 PM)</option>
+                      <option value="Evening Slot (5:00 PM - 10:00 PM)">Evening Slot (5:00 PM - 10:00 PM)</option>
+                      <option value="Night Slot (8:00 PM - 11:00 PM)">Night Slot (8:00 PM - 11:00 PM)</option>
+                      <option value="Weekend Only Access">Weekend Only Access</option>
                     </select>
                   </div>
                 </div>
@@ -2907,7 +2907,7 @@ function StudentsContent() {
                       color: feePlanType === "TERM_INSTALLMENTS" ? "#ffffff" : "#854d0e",
                     }}
                   >
-                    📋 3-Term Installments (Term 1, 2, 3)
+                    3-Term Installments (Term 1, 2, 3)
                   </button>
                 </div>
               )}
@@ -2990,7 +2990,7 @@ function StudentsContent() {
                   {/* Term 1 */}
                   <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
                     <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
-                      📚 Term 1 (Admission)
+                      Term 1 (Admission)
                     </strong>
                     <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
                     <input
@@ -3013,7 +3013,7 @@ function StudentsContent() {
                   {/* Term 2 */}
                   <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
                     <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
-                      📖 Term 2 (Mid-Term)
+                      Term 2 (Mid-Term)
                     </strong>
                     <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
                     <input
@@ -3036,7 +3036,7 @@ function StudentsContent() {
                   {/* Term 3 */}
                   <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
                     <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
-                      🎓 Term 3 (Final Term)
+                      Term 3 (Final Term)
                     </strong>
                     <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
                     <input
@@ -3112,7 +3112,7 @@ function StudentsContent() {
                     color: admissionPaymentStatus === "PAID_NOW" ? "#ffffff" : "#166534",
                   }}
                 >
-                  ✅ Paid Now (Cleared)
+                  Paid Now (Cleared)
                 </button>
                 <button
                   type="button"
@@ -3128,7 +3128,7 @@ function StudentsContent() {
                     color: admissionPaymentStatus === "PENDING" ? "#ffffff" : "#9a3412",
                   }}
                 >
-                  ⏳ Pay Later (Pending Due)
+                  Pay Later (Pending Due)
                 </button>
               </div>
             </div>
@@ -3178,12 +3178,12 @@ function StudentsContent() {
                   </div>
                 </div>
                 <p style={{ margin: "8px 0 0", fontSize: 12, color: "#15803d" }}>
-                  ✓ <strong>Instant Cleared Status:</strong> An official invoice will be generated and marked <strong>PAID</strong> immediately upon saving!
+                  <strong>Instant Cleared Status:</strong> An official invoice will be generated and marked <strong>PAID</strong> immediately upon saving!
                 </p>
               </div>
             ) : (
               <div style={{ padding: "6px 0", fontSize: 12.5, color: "#9a3412" }}>
-                ⚠️ {isGym ? "Member" : "Student"} will be admitted with fee marked as <strong>PENDING DUE</strong>. You can collect fee or send reminder anytime from Upcoming Fees tab.
+                {isGym ? "Member" : "Student"} will be admitted with fee marked as <strong>PENDING DUE</strong>. You can collect fee or send reminder anytime from Upcoming Fees tab.
               </div>
             )}
           </div>
@@ -3300,7 +3300,7 @@ function StudentsContent() {
       <Modal
         isOpen={editModalOpen}
         onClose={() => setEditModalOpen(false)}
-        title={isGym ? `✏️ Edit Member: ${editingStudent?.person.displayName || "Profile"}` : `✏️ Edit Student: ${editingStudent?.person.displayName || "Profile"}`}
+        title={isGym ? `Edit Member: ${editingStudent?.person.displayName || "Profile"}` : `Edit Student: ${editingStudent?.person.displayName || "Profile"}`}
         subtitle={isGym ? "Update membership allocation, contact numbers, emergency contact, and fee plan." : "Update academic allocation, contact numbers, guardian information, and recurring fee plan."}
         maxWidth={780}
       >
@@ -3805,7 +3805,7 @@ function StudentsContent() {
       <Modal
         isOpen={collectFeeModalOpen}
         onClose={() => setCollectFeeModalOpen(false)}
-        title="💳 1-Click Student Fee Collection"
+        title="1-Click Student Fee Collection"
         subtitle="Record fee collection, generate official receipt, and advance rolling fee cycle."
         maxWidth={540}
       >
@@ -3956,7 +3956,7 @@ function StudentsContent() {
                   }}
                 />
                 <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, display: "block" }}>
-                  💡 If student is paying partially, enter the paid amount (e.g. ₹4,000). Remaining balance will stay pending.
+                  If student is paying partially, enter the paid amount (e.g. ₹4,000). Remaining balance will stay pending.
                 </span>
               </div>
 
@@ -4023,7 +4023,7 @@ function StudentsContent() {
                           gap: 4,
                         }}
                       >
-                        <span>WhatsApp 💬</span>
+                        <span>WhatsApp</span>
                       </a>
                     )}
                   </div>
@@ -4045,7 +4045,7 @@ function StudentsContent() {
                       fontWeight: 600,
                     }}
                   >
-                    <option value="RAZORPAY_ONLINE">⚡ Razorpay (Online Payment / UPI / Cards)</option>
+                    <option value="RAZORPAY_ONLINE">Razorpay (Online Payment / UPI / Cards)</option>
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="CASH">Cash</option>
                     <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
@@ -4204,9 +4204,7 @@ function StudentsContent() {
                           fontSize: 18,
                           fontWeight: 800,
                         }}
-                      >
-                        ✓
-                      </div>
+                      ><Icon name="check" size={18} /></div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: "#166534" }}>
                           Fee Status: PAID (Cleared)
@@ -4248,9 +4246,7 @@ function StudentsContent() {
                           justifyContent: "center",
                           fontSize: 18,
                         }}
-                      >
-                        ⚠️
-                      </div>
+                      ><Icon name="alertCircle" size={18} /></div>
                       <div>
                         <div style={{ fontSize: 14, fontWeight: 800, color: "#92400e" }}>
                           Fee Status: PENDING DUE
@@ -4297,7 +4293,7 @@ function StudentsContent() {
                         });
                       }}
                     >
-                      💳 Collect Due
+                      Collect Due
                     </button>
                   </div>
                 );
@@ -4329,9 +4325,7 @@ function StudentsContent() {
                         justifyContent: "center",
                         fontSize: 18,
                       }}
-                    >
-                      ⏳
-                    </div>
+                    ><Icon name="activity" size={18} /></div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 800, color: "#9a3412" }}>
                         Fee Status: PENDING / DUE
@@ -4376,7 +4370,7 @@ function StudentsContent() {
                       });
                     }}
                   >
-                    💳 Collect Fee
+                    Collect Fee
                   </button>
                 </div>
               );
@@ -4397,13 +4391,13 @@ function StudentsContent() {
                 {isGym ? "Contact & Emergency Details" : "Contact & Guardian"}
               </strong>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
-                <div>📱 <strong>{isGym ? "Member Phone:" : "Student Phone:"}</strong> {selectedStudent.person.primaryPhone || "—"}</div>
+                <div><strong>{isGym ? "Member Phone:" : "Student Phone:"}</strong> {selectedStudent.person.primaryPhone || "—"}</div>
                 <div>
-                  👤 <strong>{isGym ? "Emergency Contact:" : "Guardian Name:"}</strong> {selectedStudent.guardianName || "—"}{" "}
+                  <strong>{isGym ? "Emergency Contact:" : "Guardian Name:"}</strong> {selectedStudent.guardianName || "—"}{" "}
                   ({selectedStudent.guardianRelation || (isGym ? "Self" : "Guardian")})
                 </div>
-                <div>📞 <strong>{isGym ? "Emergency Mobile:" : "Guardian Mobile:"}</strong> {selectedStudent.guardianPhone || "—"}</div>
-                <div>✉️ <strong>Email:</strong> {selectedStudent.person.email || "—"}</div>
+                <div><strong>{isGym ? "Emergency Mobile:" : "Guardian Mobile:"}</strong> {selectedStudent.guardianPhone || "—"}</div>
+                <div><strong>Email:</strong> {selectedStudent.person.email || "—"}</div>
               </div>
             </div>
 
@@ -4423,11 +4417,11 @@ function StudentsContent() {
               </strong>
               <div style={{ fontSize: 13, display: "flex", flexDirection: "column", gap: 8 }}>
                 <div>
-                  💰 <strong>{isGym ? "Membership Fee:" : "Fee Rate:"}</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
+                  <strong>{isGym ? "Membership Fee:" : "Fee Rate:"}</strong> {formatMoney(selectedStudent.feeAmountMinor, currency)} /{" "}
                   {selectedStudent.feeFrequency.toLowerCase()}
                 </div>
                 <div>
-                  📅 <strong>{isGym ? "Joined On:" : "Enrolled On:"}</strong>{" "}
+                  <strong>{isGym ? "Joined On:" : "Enrolled On:"}</strong>{" "}
                   {new Date(selectedStudent.admissionDate).toLocaleDateString("en-IN")}
                 </div>
               </div>
@@ -4458,7 +4452,7 @@ function StudentsContent() {
                       letterSpacing: "0.04em",
                     }}
                   >
-                    <span>📋 Academic Term Installments Schedule</span>
+                    <span>Academic Term Installments Schedule</span>
                   </strong>
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
@@ -4512,7 +4506,7 @@ function StudentsContent() {
                                 }}
                                 title="Send WhatsApp Fee Reminder"
                               >
-                                📲 WhatsApp
+                                WhatsApp
                               </a>
                             )}
                           </div>
@@ -4540,7 +4534,7 @@ function StudentsContent() {
                 }}
                 onClick={() => handleOpenEdit(selectedStudent)}
               >
-                {isGym ? "✏️ Edit Member Profile" : "✏️ Edit Student Profile"}
+                {isGym ? "Edit Member Profile" : "Edit Student Profile"}
               </button>
               <button
                 className="secondary-button"

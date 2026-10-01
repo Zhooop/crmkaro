@@ -764,9 +764,9 @@ function PeopleContent() {
           }}
         >
           <div>
-            <strong>🎓 Enrolling a Student with Fees & Batch?</strong>
+            <strong>Enrolling a Student or Member with Fees & Plan?</strong>
             <p style={{ margin: "2px 0 0", color: "#3b82f6", fontSize: 11.5 }}>
-              Use the dedicated Student Admission portal to configure monthly/term fee plans, batch rosters & admission dates.
+              Use the dedicated Admissions & Packages portal to configure monthly/term fee plans, batch rosters & admission dates.
             </p>
           </div>
           <a
