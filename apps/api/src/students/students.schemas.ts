@@ -50,6 +50,8 @@ export const collectFeeSchema = z.object({
   studentProfileId: z.string().uuid(),
   month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"),
   amountMinor: z.coerce.number().int().min(0).max(2_000_000_000),
+  planMonths: z.coerce.number().int().min(1).max(36).default(1).optional(),
+  validFrom: z.coerce.date().optional(),
   paymentMethod: z.string().trim().min(1).max(60).default("UPI"),
   reference: optionalText(160),
   notes: optionalText(1000),

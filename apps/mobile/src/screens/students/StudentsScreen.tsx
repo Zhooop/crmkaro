@@ -27,7 +27,10 @@ type StudentProfile = {
   batch: string | null;
   guardianName: string | null;
   guardianPhone: string | null;
+  guardianRelation?: string | null;
   feeAmountMinor: number;
+  feeFrequency?: string;
+  planValidityMonths?: number;
   person: {
     id: string;
     displayName: string;
@@ -57,10 +60,27 @@ type AttendanceRecord = {
   status: "PRESENT" | "ABSENT" | "LEAVE" | "UNMARKED";
 };
 
-const STANDARDS_LIST = ["ALL", "9th Grade", "10th Standard", "11th Science", "12th Standard", "JEE / NEET"];
+const GYM_PACKAGES = ["ALL", "Strength Training", "Cardio + Weights", "CrossFit", "Personal Training", "Yoga / Zumba"];
+const ACADEMY_STANDARDS = ["ALL", "9th Grade", "10th Standard", "11th Science", "12th Standard", "JEE / NEET"];
+const GYM_SLOTS = ["Morning 6-8 AM", "Morning 8-10 AM", "Evening 5-7 PM", "Evening 7-9 PM", "All Day Access"];
+const ACADEMY_BATCHES = ["Morning Batch", "Evening Batch", "Weekend Batch"];
+const PLAN_MONTHS_OPTIONS = [1, 2, 3, 4, 5, 6, 12];
+const RELATION_OPTIONS = ["Self", "Father", "Mother", "Spouse", "Friend", "Other"];
 
 export function StudentsScreen() {
   const { activeOrg } = useAuth();
+  const bType = String(activeOrg?.businessType || "").toUpperCase();
+  const orgN = String(activeOrg?.name || "").toLowerCase();
+  const isGym =
+    bType === "FITNESS_STUDIO" ||
+    bType === "GYM" ||
+    orgN.includes("gym") ||
+    orgN.includes("fitness") ||
+    orgN.includes("crossfit") ||
+    orgN.includes("workout");
+
+  const standardsList = isGym ? GYM_PACKAGES : ACADEMY_STANDARDS;
+
   const [activeTab, setActiveTab] = useState<"directory" | "fees" | "attendance">("directory");
 
   // Tab 1: Directory
@@ -75,6 +95,7 @@ export function StudentsScreen() {
   const [selectedMonth, setSelectedMonth] = useState(todayYyyyMm);
   const [feesList, setFeesList] = useState<RecurringFeeItem[]>([]);
   const [collectStudent, setCollectStudent] = useState<RecurringFeeItem | null>(null);
+  const [collectPlanMonths, setCollectPlanMonths] = useState(1);
   const [collectAmount, setCollectAmount] = useState("");
   const [collectMethod, setCollectMethod] = useState<"UPI" | "CASH" | "BANK_TRANSFER">("UPI");
   const [collectBusy, setCollectBusy] = useState(false);
@@ -84,16 +105,39 @@ export function StudentsScreen() {
   const [selectedDate, setSelectedDate] = useState(todayYyyyMmDd);
   const [attendanceList, setAttendanceList] = useState<AttendanceRecord[]>([]);
 
-  // Admission Modal
+  // Admission Modal State
   const [isAdmissionOpen, setIsAdmissionOpen] = useState(false);
   const [formName, setFormName] = useState("");
   const [formPhone, setFormPhone] = useState("");
-  const [formStandard, setFormStandard] = useState("10th Standard");
-  const [formBatch, setFormBatch] = useState("Morning Batch");
-  const [formFee, setFormFee] = useState("2500");
+  const [formRollNumber, setFormRollNumber] = useState("");
+  const [formStandard, setFormStandard] = useState("");
+  const [formBatch, setFormBatch] = useState("");
+  const [formFee, setFormFee] = useState("1500");
+  const [formPlanMonths, setFormPlanMonths] = useState(3);
+  const [formAddress, setFormAddress] = useState("");
   const [formGuardianName, setFormGuardianName] = useState("");
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
+  const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
+  const [admissionPaymentStatus, setAdmissionPaymentStatus] = useState<"PAID_NOW" | "PENDING">("PAID_NOW");
+  const [admissionPaymentMethod, setAdmissionPaymentMethod] = useState<"UPI" | "CASH" | "BANK_TRANSFER">("UPI");
   const [admissionBusy, setAdmissionBusy] = useState(false);
+
+  const handleOpenAdmission = () => {
+    setFormName("");
+    setFormPhone("");
+    setFormRollNumber(isGym ? `GYM-${1000 + students.length + 1}` : `ST-${1000 + students.length + 1}`);
+    setFormStandard(isGym ? "Strength Training" : "10th Standard");
+    setFormBatch(isGym ? "Morning 6-8 AM" : "Morning Batch");
+    setFormFee(isGym ? "1500" : "2500");
+    setFormPlanMonths(isGym ? 3 : 1);
+    setFormAddress("");
+    setFormGuardianName("");
+    setFormGuardianPhone("");
+    setFormGuardianRelation(isGym ? "Self" : "Father");
+    setAdmissionPaymentStatus("PAID_NOW");
+    setAdmissionPaymentMethod("UPI");
+    setIsAdmissionOpen(true);
+  };
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -249,12 +293,12 @@ export function StudentsScreen() {
 
   const handleSaveAdmission = async () => {
     if (!formName.trim()) {
-      Alert.alert("Required", "Student name is required.");
+      Alert.alert("Required", isGym ? "Member name is required." : "Student name is required.");
       return;
     }
     const feeNum = Number(formFee);
     if (isNaN(feeNum) || feeNum <= 0) {
-      Alert.alert("Required", "Please enter a valid monthly fee.");
+      Alert.alert("Required", "Please enter a valid fee amount.");
       return;
     }
 
@@ -263,14 +307,22 @@ export function StudentsScreen() {
       const payload = {
         displayName: formName.trim(),
         primaryPhone: formPhone.trim() || undefined,
-        standard: formStandard.trim(),
+        standard: formStandard.trim() || (isGym ? "Strength Training" : "General"),
         batch: formBatch.trim() || undefined,
-        feeFrequency: "MONTHLY",
+        rollNumber: formRollNumber.trim() || undefined,
+        feeFrequency: formPlanMonths === 3 ? "QUARTERLY" : formPlanMonths === 12 ? "ANNUAL" : "MONTHLY",
         feeAmountMinor: Math.round(feeNum * 100),
+        planValidityMonths: formPlanMonths,
         guardianName: formGuardianName.trim() || undefined,
         guardianPhone: formGuardianPhone.trim() || undefined,
+        guardianRelation: formGuardianRelation.trim() || undefined,
         admissionDate: todayYyyyMmDd,
         billingStartDate: todayYyyyMmDd,
+        initialPaymentAmountMinor: admissionPaymentStatus === "PAID_NOW" ? Math.round(feeNum * 100) : 0,
+        initialPaymentMethod: admissionPaymentMethod,
+        address: formAddress.trim()
+          ? { addressLine1: formAddress.trim(), planValidityMonths: String(formPlanMonths) }
+          : { planValidityMonths: String(formPlanMonths) },
       };
 
       const res = await apiFetch("/students", {
@@ -280,19 +332,25 @@ export function StudentsScreen() {
 
       if (res.error) throw new Error(res.error);
 
-      Alert.alert("Admission Confirmed!", `${formName} has been enrolled!`);
+      Alert.alert(
+        isGym ? "Member Enrolled!" : "Admission Confirmed!",
+        `${formName} has been enrolled successfully!${admissionPaymentStatus === "PAID_NOW" ? " Initial fee recorded with invoice & receipt." : ""}`
+      );
       setIsAdmissionOpen(false);
       fetchStudents();
     } catch (err: any) {
       // Optimistic demo addition
       const newStd: StudentProfile = {
         id: `std-${Date.now()}`,
-        rollNumber: `A-${students.length + 101}`,
-        standard: formStandard.trim(),
-        batch: formBatch.trim(),
+        rollNumber: formRollNumber.trim() || (isGym ? `GYM-${1000 + students.length + 1}` : `A-${students.length + 101}`),
+        standard: formStandard.trim() || (isGym ? "Strength Training" : "10th Standard"),
+        batch: formBatch.trim() || (isGym ? "Morning 6-8 AM" : "Morning Batch"),
         guardianName: formGuardianName.trim() || null,
         guardianPhone: formGuardianPhone.trim() || null,
+        guardianRelation: formGuardianRelation.trim() || null,
         feeAmountMinor: Math.round(feeNum * 100),
+        feeFrequency: formPlanMonths === 3 ? "QUARTERLY" : formPlanMonths === 12 ? "ANNUAL" : "MONTHLY",
+        planValidityMonths: formPlanMonths,
         person: {
           id: `p-${Date.now()}`,
           displayName: formName.trim(),
@@ -301,7 +359,7 @@ export function StudentsScreen() {
         },
       };
       setStudents((prev) => [newStd, ...prev]);
-      Alert.alert("Admission Confirmed!", `${formName} has been enrolled!`);
+      Alert.alert(isGym ? "Member Enrolled!" : "Admission Confirmed!", `${formName} has been enrolled!`);
       setIsAdmissionOpen(false);
     } finally {
       setAdmissionBusy(false);
@@ -309,9 +367,22 @@ export function StudentsScreen() {
   };
 
   const handleOpenCollectModal = (item: RecurringFeeItem) => {
+    const std = students.find((s) => s.id === item.studentProfileId);
+    const months = std?.planValidityMonths || (std?.feeFrequency === "QUARTERLY" ? 3 : std?.feeFrequency === "ANNUAL" ? 12 : 1);
     setCollectStudent(item);
-    setCollectAmount((item.balanceMinor > 0 ? item.balanceMinor / 100 : item.feePlanAmountMinor / 100).toString());
+    setCollectPlanMonths(months);
+    const monthlyRate = std?.feeAmountMinor ? Math.round(std.feeAmountMinor / 100) : (item.feePlanAmountMinor > 0 ? Math.round(item.feePlanAmountMinor / 100) : 1500);
+    setCollectAmount((monthlyRate * months).toString());
     setCollectMethod("UPI");
+  };
+
+  const handleSelectCollectPlanMonths = (months: number) => {
+    setCollectPlanMonths(months);
+    if (collectStudent) {
+      const std = students.find((s) => s.id === collectStudent.studentProfileId);
+      const monthlyRate = std?.feeAmountMinor ? Math.round(std.feeAmountMinor / 100) : (collectStudent.feePlanAmountMinor > 0 ? Math.round(collectStudent.feePlanAmountMinor / 100) : 1500);
+      setCollectAmount((monthlyRate * months).toString());
+    }
   };
 
   const handleSaveCollectFee = async () => {
@@ -331,20 +402,28 @@ export function StudentsScreen() {
           month: selectedMonth,
           amountMinor: Math.round(num * 100),
           paymentMethod: collectMethod,
+          planMonths: collectPlanMonths,
         }),
       });
 
       if (res.error) throw new Error(res.error);
 
-      // Trigger WhatsApp receipt
-      const orgName = activeOrg?.name || "CRMKaro Academy";
-      const msg = `*FEE PAYMENT RECEIPT*\n------------------------------\n*Academy:* ${orgName}\n*Student:* ${collectStudent.displayName}\n*Cycle Month:* ${selectedMonth}\n*Amount Collected:* ₹${num.toLocaleString("en-IN")}\n*Mode:* ${collectMethod}\n*Status:* PAID\n------------------------------\nThank you!`;
+      // WhatsApp receipt without emojis
+      const orgName = activeOrg?.name || (isGym ? "Fitness Studio" : "CRMKaro Academy");
+      const [yearStr, monthStr] = selectedMonth.split("-");
+      const startDate = new Date(parseInt(yearStr, 10), parseInt(monthStr, 10) - 1, 1);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + collectPlanMonths);
+      endDate.setDate(endDate.getDate() - 1);
+      const periodLabel = `${startDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} to ${endDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} (${collectPlanMonths} Month${collectPlanMonths > 1 ? "s" : ""})`;
+
+      const msg = `*FEE PAYMENT RECEIPT*\n------------------------------\n*Organization:* ${orgName}\n*Student/Member:* ${collectStudent.displayName}\n*Covered Period:* ${periodLabel}\n*Amount Collected:* ₹${num.toLocaleString("en-IN")}\n*Mode:* ${collectMethod}\n*Status:* PAID\n------------------------------\nThank you!`;
       const phone = collectStudent.guardianPhone || collectStudent.primaryPhone;
       if (phone) {
         Linking.openURL(`https://wa.me/${phone.replace(/\D/g, "")}?text=${encodeURIComponent(msg)}`);
       }
 
-      Alert.alert("Fee Collected!", `₹${num} collected for ${collectStudent.displayName}!`);
+      Alert.alert("Fee Collected!", `₹${num.toLocaleString("en-IN")} collected for ${collectStudent.displayName} for ${collectPlanMonths} month(s).`);
       setCollectStudent(null);
       fetchRecurringFees();
     } catch {
@@ -352,11 +431,11 @@ export function StudentsScreen() {
       setFeesList((prev) =>
         prev.map((f) =>
           f.studentProfileId === collectStudent.studentProfileId
-            ? { ...f, status: "PAID", balanceMinor: 0, paidMinor: f.feePlanAmountMinor }
+            ? { ...f, status: "PAID", balanceMinor: 0, paidMinor: Math.round(num * 100) }
             : f
         )
       );
-      Alert.alert("Fee Collected!", `₹${num} collected for ${collectStudent.displayName}!`);
+      Alert.alert("Fee Collected!", `₹${num.toLocaleString("en-IN")} recorded for ${collectStudent.displayName}!`);
       setCollectStudent(null);
     } finally {
       setCollectBusy(false);
@@ -402,10 +481,10 @@ export function StudentsScreen() {
   return (
     <View style={styles.container}>
       <AppHeader
-        title="Students & Academy"
-        subtitle="Admissions, monthly recurring fees & daily attendance"
+        title={isGym ? "Gym & Fitness Studio" : "Students & Academy"}
+        subtitle={isGym ? "Members, validity cycles & check-in attendance" : "Admissions, monthly recurring fees & daily attendance"}
         rightAction={
-          <TouchableOpacity onPress={() => setIsAdmissionOpen(true)} style={styles.addBtn}>
+          <TouchableOpacity onPress={handleOpenAdmission} style={styles.addBtn}>
             <Icon name="Plus" size={18} color="#ffffff" />
           </TouchableOpacity>
         }
@@ -417,9 +496,9 @@ export function StudentsScreen() {
           onPress={() => setActiveTab("directory")}
           style={[styles.tabItem, activeTab === "directory" && styles.tabItemActive]}
         >
-          <Icon name="GraduationCap" size={16} color={activeTab === "directory" ? colors.brand : colors.muted} />
+          <Icon name={isGym ? "Users" : "GraduationCap"} size={16} color={activeTab === "directory" ? colors.brand : colors.muted} />
           <Text style={[styles.tabText, activeTab === "directory" && styles.tabTextActive]}>
-            Directory ({students.length})
+            {isGym ? "Members" : "Directory"} ({students.length})
           </Text>
         </TouchableOpacity>
 
@@ -429,7 +508,7 @@ export function StudentsScreen() {
         >
           <Icon name="DollarSign" size={16} color={activeTab === "fees" ? colors.brand : colors.muted} />
           <Text style={[styles.tabText, activeTab === "fees" && styles.tabTextActive]}>
-            Recurring Fees
+            {isGym ? "Membership Plans" : "Recurring Fees"}
           </Text>
         </TouchableOpacity>
 
@@ -439,7 +518,7 @@ export function StudentsScreen() {
         >
           <Icon name="Calendar" size={16} color={activeTab === "attendance" ? colors.brand : colors.muted} />
           <Text style={[styles.tabText, activeTab === "attendance" && styles.tabTextActive]}>
-            Attendance
+            {isGym ? "Check-in" : "Attendance"}
           </Text>
         </TouchableOpacity>
       </View>
@@ -451,7 +530,7 @@ export function StudentsScreen() {
             <View style={styles.searchBox}>
               <Icon name="Search" size={16} color={colors.muted} />
               <TextInput
-                placeholder="Search students, roll no, or phone…"
+                placeholder={isGym ? "Search members, ID, or phone…" : "Search students, roll no, or phone…"}
                 placeholderTextColor={colors.muted}
                 value={search}
                 onChangeText={setSearch}
@@ -464,9 +543,9 @@ export function StudentsScreen() {
               )}
             </View>
 
-            {/* Standard Filter Chips */}
+            {/* Standard / Package Filter Chips */}
             <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.standardsScroll}>
-              {STANDARDS_LIST.map((std) => (
+              {standardsList.map((std) => (
                 <TouchableOpacity
                   key={std}
                   onPress={() => setSelectedStandard(std)}
@@ -493,24 +572,49 @@ export function StudentsScreen() {
               />
             }
             contentContainerStyle={styles.list}
-            renderItem={({ item }) => (
-              <View style={styles.studentCard}>
-                <View style={styles.studentTopRow}>
-                  <View style={styles.rollBadge}>
-                    <Text style={styles.rollText}>{item.rollNumber || "ST"}</Text>
+            renderItem={({ item }) => {
+              const planMonths = item.planValidityMonths || (item.feeFrequency === "QUARTERLY" ? 3 : item.feeFrequency === "ANNUAL" ? 12 : 1);
+              return (
+                <View style={styles.studentCard}>
+                  <View style={styles.studentTopRow}>
+                    <View style={styles.rollBadge}>
+                      <Text style={styles.rollText}>{item.rollNumber || (isGym ? "GYM" : "ST")}</Text>
+                    </View>
+                    <View style={styles.studentInfo}>
+                      <View style={{ flexDirection: "row", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <Text style={styles.studentName}>{item.person.displayName}</Text>
+                        {item.rollNumber ? (
+                          <View style={styles.idChip}>
+                            <Text style={styles.idChipText}>{item.rollNumber}</Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text style={styles.studentClass}>
+                        {item.standard} • {item.batch || (isGym ? "Morning Access" : "Regular Batch")}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={styles.studentFee}>
+                        {formatRupees(item.feeAmountMinor)}
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.muted }}>
+                          {planMonths > 1 ? ` /${planMonths}mo` : "/mo"}
+                        </Text>
+                      </Text>
+                      {planMonths > 1 && (
+                        <View style={styles.planBadge}>
+                          <Text style={styles.planBadgeText}>{planMonths} Mo Plan</Text>
+                        </View>
+                      )}
+                    </View>
                   </View>
-                  <View style={styles.studentInfo}>
-                    <Text style={styles.studentName}>{item.person.displayName}</Text>
-                    <Text style={styles.studentClass}>{item.standard} • {item.batch || "Regular Batch"}</Text>
-                  </View>
-                  <Text style={styles.studentFee}>{formatRupees(item.feeAmountMinor)}/mo</Text>
-                </View>
 
-                {Boolean(item.guardianName) && (
-                  <Text style={styles.guardianText}>
-                    Parent: {item.guardianName} ({item.guardianPhone || "No Phone"})
-                  </Text>
-                )}
+                  {Boolean(item.guardianName) && (
+                    <Text style={styles.guardianText}>
+                      {isGym ? "Emergency: " : "Parent: "}{item.guardianName}
+                      {item.guardianPhone ? ` (${item.guardianPhone})` : ""}
+                      {item.guardianRelation ? ` • ${item.guardianRelation}` : ""}
+                    </Text>
+                  )}
 
                 {/* Direct Contact Actions */}
                 <View style={styles.contactRow}>
@@ -541,7 +645,8 @@ export function StudentsScreen() {
                   )}
                 </View>
               </View>
-            )}
+            );
+          }}
           />
         </>
       )}
@@ -692,12 +797,12 @@ export function StudentsScreen() {
         </View>
       )}
 
-      {/* Student Admission BottomSheet Modal */}
+      {/* Member / Student Admission BottomSheet Modal */}
       <BottomSheet
         visible={isAdmissionOpen}
         onClose={() => setIsAdmissionOpen(false)}
-        title="Student Admission"
-        subtitle="Enroll new student & configure monthly fee plan"
+        title={isGym ? "New Member Admission" : "Student Admission"}
+        subtitle={isGym ? "Enroll new member & configure membership fee plan" : "Enroll new student & configure monthly fee plan"}
         footer={
           <View style={styles.modalFooterRow}>
             <PrimaryButton
@@ -707,7 +812,7 @@ export function StudentsScreen() {
               style={{ flex: 1 }}
             />
             <PrimaryButton
-              title={admissionBusy ? "Enrolling…" : "Confirm Admission"}
+              title={admissionBusy ? "Enrolling…" : (isGym ? "Confirm Enrollment" : "Confirm Admission")}
               onPress={handleSaveAdmission}
               loading={admissionBusy}
               style={{ flex: 1 }}
@@ -715,95 +820,260 @@ export function StudentsScreen() {
           </View>
         }
       >
-        <View style={styles.formWrap}>
-          <Text style={styles.fieldLabel}>Student Full Name *</Text>
-          <TextInput
-            placeholder="e.g. Sahil Deshmukh"
-            placeholderTextColor={colors.muted}
-            value={formName}
-            onChangeText={setFormName}
-            style={styles.input}
-          />
+        <ScrollView showsVerticalScrollIndicator={false} style={styles.formScroll}>
+          <View style={styles.formWrap}>
+            {/* Section 1: Basic Info */}
+            <Text style={styles.fieldLabel}>{isGym ? "Member Full Name *" : "Student Full Name *"}</Text>
+            <TextInput
+              placeholder={isGym ? "e.g. Aryan Sharma" : "e.g. Sahil Deshmukh"}
+              placeholderTextColor={colors.muted}
+              value={formName}
+              onChangeText={setFormName}
+              style={styles.input}
+            />
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Student Phone</Text>
-              <TextInput
-                placeholder="e.g. 98765 43210"
-                placeholderTextColor={colors.muted}
-                keyboardType="phone-pad"
-                value={formPhone}
-                onChangeText={setFormPhone}
-                style={styles.input}
-              />
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{isGym ? "Primary Phone *" : "Student Phone"}</Text>
+                <TextInput
+                  placeholder="e.g. 98765 43210"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  value={formPhone}
+                  onChangeText={setFormPhone}
+                  style={styles.input}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{isGym ? "Member ID / Reg No" : "Roll Number"}</Text>
+                <TextInput
+                  placeholder={isGym ? "GYM-1001" : "ST-1001"}
+                  placeholderTextColor={colors.muted}
+                  value={formRollNumber}
+                  onChangeText={setFormRollNumber}
+                  style={styles.input}
+                />
+              </View>
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Class / Standard *</Text>
-              <TextInput
-                placeholder="e.g. 10th Standard"
-                placeholderTextColor={colors.muted}
-                value={formStandard}
-                onChangeText={setFormStandard}
-                style={styles.input}
-              />
-            </View>
-          </View>
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Batch / Section</Text>
-              <TextInput
-                placeholder="e.g. Morning Batch"
-                placeholderTextColor={colors.muted}
-                value={formBatch}
-                onChangeText={setFormBatch}
-                style={styles.input}
-              />
+            {/* Section 2: Package & Slot */}
+            <Text style={styles.fieldLabel}>{isGym ? "Membership Package *" : "Class / Standard *"}</Text>
+            <TextInput
+              placeholder={isGym ? "e.g. Strength Training" : "e.g. 10th Standard"}
+              placeholderTextColor={colors.muted}
+              value={formStandard}
+              onChangeText={setFormStandard}
+              style={styles.input}
+            />
+            {/* Quick Package Chips */}
+            <View style={styles.suggestionRow}>
+              {(isGym
+                ? ["Strength Training", "Cardio + Weights", "CrossFit", "Personal Training"]
+                : ["9th Grade", "10th Standard", "11th Science", "12th Standard"]
+              ).map((pkg) => (
+                <TouchableOpacity
+                  key={pkg}
+                  onPress={() => setFormStandard(pkg)}
+                  style={[styles.suggestionChip, formStandard === pkg && styles.suggestionChipActive]}
+                >
+                  <Text style={[styles.suggestionChipText, formStandard === pkg && styles.suggestionChipTextActive]}>
+                    {pkg}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Monthly Fee (₹) *</Text>
-              <TextInput
-                placeholder="e.g. 3000"
-                placeholderTextColor={colors.muted}
-                keyboardType="numeric"
-                value={formFee}
-                onChangeText={setFormFee}
-                style={styles.input}
-              />
-            </View>
-          </View>
 
-          <View style={styles.row}>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Guardian Name</Text>
-              <TextInput
-                placeholder="e.g. Father / Mother"
-                placeholderTextColor={colors.muted}
-                value={formGuardianName}
-                onChangeText={setFormGuardianName}
-                style={styles.input}
-              />
+            <Text style={styles.fieldLabel}>{isGym ? "Workout Slot / Batch" : "Batch / Section"}</Text>
+            <TextInput
+              placeholder={isGym ? "e.g. Morning 6-8 AM" : "e.g. Morning Batch"}
+              placeholderTextColor={colors.muted}
+              value={formBatch}
+              onChangeText={setFormBatch}
+              style={styles.input}
+            />
+            {/* Quick Slot Chips */}
+            <View style={styles.suggestionRow}>
+              {(isGym
+                ? ["Morning 6-8 AM", "Morning 8-10 AM", "Evening 5-7 PM", "Evening 7-9 PM", "All Day"]
+                : ["Morning Batch", "Evening Batch", "Weekend Batch"]
+              ).map((slot) => (
+                <TouchableOpacity
+                  key={slot}
+                  onPress={() => setFormBatch(slot)}
+                  style={[styles.suggestionChip, formBatch === slot && styles.suggestionChipActive]}
+                >
+                  <Text style={[styles.suggestionChipText, formBatch === slot && styles.suggestionChipTextActive]}>
+                    {slot}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Guardian Phone</Text>
-              <TextInput
-                placeholder="e.g. 98223 34455"
-                placeholderTextColor={colors.muted}
-                keyboardType="phone-pad"
-                value={formGuardianPhone}
-                onChangeText={setFormGuardianPhone}
-                style={styles.input}
-              />
+
+            {/* Section 3: Fee & Validity Plan */}
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{isGym ? "Membership Fee (₹) *" : "Monthly Fee (₹) *"}</Text>
+                <TextInput
+                  placeholder="e.g. 1500"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="numeric"
+                  value={formFee}
+                  onChangeText={setFormFee}
+                  style={styles.input}
+                />
+              </View>
             </View>
+
+            {/* Plan Validity Selector */}
+            <Text style={styles.fieldLabel}>Plan Validity / Cycle</Text>
+            <View style={styles.planSelectorRow}>
+              {PLAN_MONTHS_OPTIONS.map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => setFormPlanMonths(m)}
+                  style={[styles.planChip, formPlanMonths === m && styles.planChipActive]}
+                >
+                  <Text style={[styles.planChipText, formPlanMonths === m && styles.planChipTextActive]}>
+                    {m === 12 ? "1 Year" : `${m} Mo`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            <View style={styles.planInfoBanner}>
+              <Text style={styles.planInfoText}>
+                {formPlanMonths} Month{formPlanMonths > 1 ? "s" : ""} Validity Plan
+                {formPlanMonths === 3 ? " · Renews quarterly · Next due date will be after 3 months" : ""}
+                {formPlanMonths === 12 ? " · Full annual membership" : ""}
+                {formPlanMonths === 1 ? " · Renews every month" : ""}
+              </Text>
+            </View>
+
+            {/* Section 4: Initial Payment at Admission */}
+            <Text style={styles.fieldLabel}>Admission Payment Status</Text>
+            <View style={styles.paymentToggleRow}>
+              <TouchableOpacity
+                onPress={() => setAdmissionPaymentStatus("PAID_NOW")}
+                style={[
+                  styles.paymentToggleBtn,
+                  admissionPaymentStatus === "PAID_NOW" && styles.paymentToggleBtnActive,
+                ]}
+              >
+                <Icon
+                  name="CheckCircle2"
+                  size={14}
+                  color={admissionPaymentStatus === "PAID_NOW" ? colors.emerald : colors.muted}
+                />
+                <Text
+                  style={[
+                    styles.paymentToggleText,
+                    admissionPaymentStatus === "PAID_NOW" && styles.paymentToggleTextActive,
+                  ]}
+                >
+                  Paid Now (Issue Receipt)
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setAdmissionPaymentStatus("PENDING")}
+                style={[
+                  styles.paymentToggleBtn,
+                  admissionPaymentStatus === "PENDING" && { backgroundColor: "#fff1f2", borderColor: "#fecdd3" },
+                ]}
+              >
+                <Icon
+                  name="Clock"
+                  size={14}
+                  color={admissionPaymentStatus === "PENDING" ? colors.danger : colors.muted}
+                />
+                <Text
+                  style={[
+                    styles.paymentToggleText,
+                    admissionPaymentStatus === "PENDING" && { color: colors.danger, fontWeight: "800" },
+                  ]}
+                >
+                  Pay Later / Dues
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {admissionPaymentStatus === "PAID_NOW" && (
+              <View style={{ marginTop: 4 }}>
+                <Text style={styles.fieldLabel}>Payment Mode</Text>
+                <View style={styles.methodRow}>
+                  {(["UPI", "CASH", "BANK_TRANSFER"] as const).map((m) => (
+                    <TouchableOpacity
+                      key={m}
+                      onPress={() => setAdmissionPaymentMethod(m)}
+                      style={[styles.methodChip, admissionPaymentMethod === m && styles.methodChipActive]}
+                    >
+                      <Text style={[styles.methodChipText, admissionPaymentMethod === m && styles.methodChipTextActive]}>
+                        {m === "BANK_TRANSFER" ? "Bank Transfer" : m}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {/* Section 5: Emergency Contact */}
+            <View style={styles.row}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{isGym ? "Emergency Contact Name" : "Guardian Name"}</Text>
+                <TextInput
+                  placeholder="e.g. Ramesh Sharma"
+                  placeholderTextColor={colors.muted}
+                  value={formGuardianName}
+                  onChangeText={setFormGuardianName}
+                  style={styles.input}
+                />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.fieldLabel}>{isGym ? "Emergency Phone" : "Guardian Phone"}</Text>
+                <TextInput
+                  placeholder="e.g. 98223 34455"
+                  placeholderTextColor={colors.muted}
+                  keyboardType="phone-pad"
+                  value={formGuardianPhone}
+                  onChangeText={setFormGuardianPhone}
+                  style={styles.input}
+                />
+              </View>
+            </View>
+
+            <Text style={styles.fieldLabel}>Relation</Text>
+            <View style={styles.suggestionRow}>
+              {RELATION_OPTIONS.map((rel) => (
+                <TouchableOpacity
+                  key={rel}
+                  onPress={() => setFormGuardianRelation(rel)}
+                  style={[styles.suggestionChip, formGuardianRelation === rel && styles.suggestionChipActive]}
+                >
+                  <Text style={[styles.suggestionChipText, formGuardianRelation === rel && styles.suggestionChipTextActive]}>
+                    {rel}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Section 6: Address (Optional) */}
+            <Text style={styles.fieldLabel}>Address (Optional)</Text>
+            <TextInput
+              placeholder="e.g. Flat 302, Galaxy Heights, Linking Road"
+              placeholderTextColor={colors.muted}
+              value={formAddress}
+              onChangeText={setFormAddress}
+              style={[styles.input, { height: 60 }]}
+              multiline
+            />
           </View>
-        </View>
+        </ScrollView>
       </BottomSheet>
 
       {/* Collect Fee Modal */}
       <BottomSheet
         visible={Boolean(collectStudent)}
         onClose={() => setCollectStudent(null)}
-        title="Collect Monthly Fee"
+        title="Collect Fee & Renewal"
         subtitle={collectStudent ? `${collectStudent.displayName} (${selectedMonth})` : ""}
         footer={
           <View style={styles.modalFooterRow}>
@@ -824,6 +1094,52 @@ export function StudentsScreen() {
       >
         {collectStudent && (
           <View style={styles.formWrap}>
+            <Text style={styles.fieldLabel}>Select Duration / Renewal Cycle</Text>
+            <View style={styles.methodRow}>
+              {[1, 2, 3, 6, 12].map((m) => (
+                <TouchableOpacity
+                  key={m}
+                  onPress={() => handleSelectCollectPlanMonths(m)}
+                  style={[
+                    styles.methodChip,
+                    collectPlanMonths === m && styles.methodChipActive,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.methodChipText,
+                      collectPlanMonths === m && styles.methodChipTextActive,
+                    ]}
+                  >
+                    {m === 1 ? "1 Mo" : `${m} Mo`}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {(() => {
+              const [y, mStr] = selectedMonth.split("-");
+              const sDate = new Date(parseInt(y, 10), parseInt(mStr, 10) - 1, 1);
+              const eDate = new Date(sDate);
+              eDate.setMonth(eDate.getMonth() + collectPlanMonths);
+              eDate.setDate(eDate.getDate() - 1);
+              const nextDue = new Date(sDate);
+              nextDue.setMonth(nextDue.getMonth() + collectPlanMonths);
+              return (
+                <View style={styles.collectPreviewNote}>
+                  <Text style={styles.collectPreviewText}>
+                    Covers {collectPlanMonths} Month{collectPlanMonths > 1 ? "s" : ""} (
+                    {sDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })} to{" "}
+                    {eDate.toLocaleDateString("en-IN", { month: "short", year: "numeric" })})
+                  </Text>
+                  <Text style={styles.collectNextDueText}>
+                    Next fee due: {nextDue.toLocaleDateString("en-IN", { month: "short", year: "numeric" })}
+                  </Text>
+                </View>
+              );
+            })()}
+
+            <Text style={styles.fieldLabel}>Total Amount (₹)</Text>
             <View style={styles.amountInputWrap}>
               <Text style={styles.rupeeSymbol}>₹</Text>
               <TextInput
@@ -1279,5 +1595,152 @@ const styles = StyleSheet.create({
   },
   methodChipTextActive: {
     color: colors.brand,
+  },
+  idChip: {
+    paddingHorizontal: 6,
+    paddingVertical: 1,
+    borderRadius: radius.sm,
+    backgroundColor: colors.brandLight,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+  },
+  idChipText: {
+    fontSize: 10.5,
+    fontWeight: "800",
+    color: colors.brand,
+  },
+  planBadge: {
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    marginTop: 2,
+  },
+  planBadgeText: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#1d4ed8",
+  },
+  formScroll: {
+    maxHeight: 500,
+  },
+  suggestionRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 2,
+    marginBottom: spacing.xs,
+  },
+  suggestionChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  suggestionChipActive: {
+    backgroundColor: colors.brandLight,
+    borderColor: colors.brand,
+  },
+  suggestionChipText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  suggestionChipTextActive: {
+    color: colors.brand,
+  },
+  planSelectorRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 6,
+    marginTop: 4,
+  },
+  planChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  planChipActive: {
+    backgroundColor: colors.brandLight,
+    borderColor: colors.brand,
+  },
+  planChipText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  planChipTextActive: {
+    color: colors.brand,
+    fontWeight: "800",
+  },
+  planInfoBanner: {
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    padding: spacing.sm,
+    borderRadius: radius.md,
+    marginTop: spacing.xs,
+  },
+  planInfoText: {
+    fontSize: 11.5,
+    color: "#1d4ed8",
+    fontWeight: "700",
+    lineHeight: 16,
+  },
+  paymentToggleRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    marginTop: 4,
+  },
+  paymentToggleBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 10,
+    borderRadius: radius.lg,
+    borderWidth: 1,
+    borderColor: colors.line,
+    backgroundColor: colors.surface,
+  },
+  paymentToggleBtnActive: {
+    backgroundColor: colors.emeraldLight,
+    borderColor: colors.emeraldBorder,
+  },
+  paymentToggleText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  paymentToggleTextActive: {
+    color: colors.emerald,
+    fontWeight: "800",
+  },
+  collectPreviewNote: {
+    backgroundColor: "#eff6ff",
+    borderWidth: 1,
+    borderColor: "#bfdbfe",
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    marginVertical: spacing.xs,
+    gap: 2,
+  },
+  collectPreviewText: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#1d4ed8",
+  },
+  collectNextDueText: {
+    fontSize: 11,
+    fontWeight: "600",
+    color: "#1e40af",
   },
 });

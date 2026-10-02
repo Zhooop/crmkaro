@@ -640,6 +640,11 @@ export class StudentsService {
           // Check if any completed payment covers this target month
           let coveringPayment: (typeof allCompletedPayments)[0] | null = null;
           for (const p of personPayments) {
+            const pNotes = (p.notes || "").toLowerCase();
+            if (pNotes.includes(targetMonth.toLowerCase()) || pNotes.includes(monthLabel.toLowerCase())) {
+              coveringPayment = p;
+              break;
+            }
             const pDate = new Date(p.receivedAt);
             const pValidUntil = new Date(pDate);
             pValidUntil.setMonth(pValidUntil.getMonth() + planMonths);
@@ -655,7 +660,7 @@ export class StudentsService {
           let balanceMinor = feePlanAmount;
 
           if (coveringPayment) {
-            // Target month is covered by multi-month plan payment!
+            // Target month is covered by multi-month plan payment
             status = "PAID";
             paidMinor = feePlanAmount;
             balanceMinor = 0;
@@ -760,7 +765,7 @@ export class StudentsService {
             lastPaymentDate: coveringPayment?.receivedAt || inv?.payments[0]?.receivedAt || null,
             whatsappUrl: waPhone
               ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(
-                  `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n💰 *Total Fee Plan:* ₹${(feePlanAmount / 100).toLocaleString("en-IN")}\n💵 *Paid Amount:* ₹${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `⚠️ *Remaining Balance Due:* ₹${(balanceMinor / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid` : `✅ *Fee Status:* Fully Paid (Cleared)`}${inv?.id && balanceMinor > 0 ? `\n\n💳 *Pay Online (UPI / Card / NetBanking):*\n${(this.config.get("WEB_URL", { infer: true }) || "http://localhost:3000")}/pay/${inv.id}` : ""}`
+                  `Dear Guardian / Student,\nFee payment status for *${std.person.displayName}* (${std.standard}${std.batch ? ` - ${std.batch}` : ""}) for *${monthLabel}*:\n\n*Total Fee Plan:* INR ${(feePlanAmount / 100).toLocaleString("en-IN")}\n*Paid Amount:* INR ${(paidMinor / 100).toLocaleString("en-IN")}\n${balanceMinor > 0 ? `*Remaining Balance Due:* INR ${(balanceMinor / 100).toLocaleString("en-IN")}\n*Fee Status:* Partially Paid` : `*Fee Status:* Fully Paid (Cleared)`}${inv?.id && balanceMinor > 0 ? `\n\n*Pay Online (UPI / Card / NetBanking):*\n${(this.config.get("WEB_URL", { infer: true }) || "http://localhost:3000")}/pay/${inv.id}` : ""}`
                 )}`
               : null,
           };
@@ -793,8 +798,25 @@ export class StudentsService {
       });
       if (!student) throw new NotFoundException("Student not found.");
 
-      const monthLabel = formatMonthLabel(input.month);
-      const description = `Tuition / Course Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${monthLabel}]`;
+      const planMonths = Math.max(1, input.planMonths || 1);
+      const safeMonth = input.month || new Date().toISOString().slice(0, 7);
+      const startParts = safeMonth.split("-");
+      const startYear = parseInt(startParts[0] || "2026", 10);
+      const startMonthIndex = parseInt(startParts[1] || "1", 10) - 1;
+      const endMonthDate = new Date(startYear, startMonthIndex + planMonths - 1, 1);
+      const endMonthStr = `${endMonthDate.getFullYear()}-${String(endMonthDate.getMonth() + 1).padStart(2, "0")}`;
+      const startMonthLabel = formatMonthLabel(safeMonth);
+      const endMonthLabel = formatMonthLabel(endMonthStr);
+      const cycleLabel = planMonths > 1 ? `${startMonthLabel} to ${endMonthLabel} (${planMonths} Months)` : startMonthLabel;
+
+      const stdName = student.standard || "General";
+      const orgType = (student.organisation.businessType || student.organisation.industry || "").toLowerCase();
+      const isGym =
+        orgType.includes("gym") ||
+        orgType.includes("fitness") ||
+        stdName.toLowerCase().includes("gym") ||
+        stdName.toLowerCase().includes("member");
+      const description = `${isGym ? "Membership Fee Renewal" : "Tuition / Course Fee"} — ${stdName}${student.batch ? ` (${student.batch})` : ""} [${cycleLabel}]`;
 
       // 1. Check if invoice already exists for this cycle
       let existingInvoice = await tx.invoice.findFirst({
@@ -807,12 +829,16 @@ export class StudentsService {
       });
 
       let invoice = existingInvoice;
-      const feePlanAmountMinor = student.feeAmountMinor || 0;
-      const amountPaidNowMinor = input.amountMinor || feePlanAmountMinor;
-      const expectedTotalMinor = Math.max(feePlanAmountMinor, existingInvoice?.grandTotalMinor || 0, amountPaidNowMinor);
+      const monthlyFeePlanAmountMinor = student.feeAmountMinor || 0;
+      const expectedTotalMinor = Math.max(
+        monthlyFeePlanAmountMinor * planMonths,
+        existingInvoice?.grandTotalMinor || 0,
+        input.amountMinor || 0,
+      );
+      const amountPaidNowMinor = input.amountMinor || expectedTotalMinor;
 
       if (!invoice) {
-        // Create new invoice with full monthly fee plan amount
+        // Create new invoice with full fee plan amount for the selected duration
         const invoiceCalc = calculateInvoice([
           {
             quantity: 1,
@@ -825,7 +851,8 @@ export class StudentsService {
         const seq = await this.sequence(tx, organisationId, "invoice");
         const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
         const issueDate = input.receivedAt || new Date();
-        const dueDate = issueDate;
+        const dueDate = new Date(issueDate);
+        dueDate.setMonth(dueDate.getMonth() + planMonths);
 
         invoice = await tx.invoice.create({
           data: {
@@ -842,7 +869,7 @@ export class StudentsService {
             grandTotalMinor: invoiceCalc.grandTotalMinor,
             paidTotalMinor: 0,
             balanceDueMinor: invoiceCalc.grandTotalMinor,
-            notes: `Fee Cycle: ${input.month} (${monthLabel}). ${input.notes || ""}`.trim(),
+            notes: `Fee Cycle: ${input.month} (${cycleLabel}). ${input.notes || ""}`.trim(),
             issuedAt: new Date(),
             items: {
               create: [
@@ -890,7 +917,7 @@ export class StudentsService {
           method: input.paymentMethod,
           reference: input.reference || null,
           receivedAt: input.receivedAt || new Date(),
-          notes: `Paid for ${monthLabel}. ${input.notes || ""}`.trim(),
+          notes: `Paid for ${cycleLabel}. ${input.notes || ""}`.trim(),
           status: "COMPLETED",
         },
       });
@@ -910,32 +937,51 @@ export class StudentsService {
         include: { items: true, payments: true, person: true },
       });
 
-      // 4. Log Activity
+      // 4. Update Person address planValidityMonths so directory & cards stay consistent
+      try {
+        const currentAddress = (student.person.address && typeof student.person.address === "object"
+          ? student.person.address
+          : {}) as Record<string, any>;
+        const updatedAddress = {
+          ...currentAddress,
+          planValidityMonths: String(planMonths),
+        };
+        await tx.person.update({
+          where: { id: student.personId },
+          data: {
+            address: updatedAddress,
+          },
+        });
+      } catch (addrErr) {
+        console.error("Failed to update person address planValidityMonths:", addrErr);
+      }
+
+      // 5. Log Activity (clean, no emojis)
       await tx.personActivity.create({
         data: {
           organisationId,
           personId: student.personId,
           actorUserId: userId,
           action: "student.fee_paid",
-          summary: `Fee collected ₹${(amountPaidNowMinor / 100).toFixed(0)} for ${monthLabel} via ${input.paymentMethod} (Receipt: ${receiptNumber}, Balance Due: ₹${(newBalanceDue / 100).toFixed(0)})`,
+          summary: `Fee collected INR ${(amountPaidNowMinor / 100).toFixed(0)} for ${cycleLabel} via ${input.paymentMethod} (Receipt: ${receiptNumber}, Balance Due: INR ${(newBalanceDue / 100).toFixed(0)})`,
         },
       });
 
-      // 5. Generate WhatsApp text with accurate balance and status
+      // 6. Generate WhatsApp text (clean formal text, no emojis)
       const phone = student.guardianPhone || student.person.primaryPhone || "";
       const waPhone = formatWhatsAppPhone(phone);
       const orgName = student.organisation.name || "Academy";
       const remainingText = newBalanceDue > 0
-        ? `⚠️ *Remaining Balance Due:* ₹${(newBalanceDue / 100).toLocaleString("en-IN")}\n📊 *Fee Status:* Partially Paid`
-        : `✅ *Fee Status:* Paid in Full (Cleared)`;
+        ? `*Remaining Balance Due:* INR ${(newBalanceDue / 100).toLocaleString("en-IN")}\n*Fee Status:* Partially Paid`
+        : `*Fee Status:* Paid in Full`;
 
-      const waText = `Dear Guardian / Student,\nFee payment received successfully for *${student.person.displayName}* (${student.standard}${student.batch ? ` - ${student.batch}` : ""}).\n\n📌 *Receipt No:* ${receiptNumber}\n📅 *Billing Cycle:* ${monthLabel}\n💰 *Amount Paid Now:* ₹${(amountPaidNowMinor / 100).toLocaleString("en-IN")}\n💳 *Payment Mode:* ${input.paymentMethod}\n💵 *Total Monthly Fee:* ₹${(invoice.grandTotalMinor / 100).toLocaleString("en-IN")}\n${remainingText}\n\nThank you,\n*${orgName}*`;
+      const waText = `Dear Member / Student,\nFee payment received successfully for *${student.person.displayName}* (${student.standard}${student.batch ? ` - ${student.batch}` : ""}).\n\n*Receipt No:* ${receiptNumber}\n*Billing Plan:* ${cycleLabel}\n*Amount Paid:* INR ${(amountPaidNowMinor / 100).toLocaleString("en-IN")}\n*Payment Mode:* ${input.paymentMethod}\n${remainingText}\n\nThank you,\n*${orgName}*`;
 
       const whatsappUrl = waPhone
         ? `https://api.whatsapp.com/send?phone=${waPhone}&text=${encodeURIComponent(waText)}`
         : null;
 
-      // 6. Send Email Receipt asynchronously if email is present (non-blocking)
+      // 7. Send Email Receipt asynchronously if email is present (non-blocking)
       const email = student.person.email;
       let emailSent = false;
       if (email) {
@@ -946,7 +992,7 @@ export class StudentsService {
           standard: student.standard || "General",
           batch: student.batch,
           receiptNumber,
-          monthLabel,
+          monthLabel: cycleLabel,
           amountPaidMinor: amountPaidNowMinor,
           balanceDueMinor: newBalanceDue,
           totalFeeMinor: invoice.grandTotalMinor,
@@ -961,7 +1007,7 @@ export class StudentsService {
         invoice: updatedInvoice,
         payment,
         receiptNumber,
-        monthLabel,
+        monthLabel: cycleLabel,
         amountPaidMinor: amountPaidNowMinor,
         balanceDueMinor: newBalanceDue,
         totalFeeMinor: invoice.grandTotalMinor,

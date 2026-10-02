@@ -284,7 +284,7 @@ const styles = StyleSheet.create({
   },
   logoutText: {
     fontSize: 13.5,
-    fontWeight: "750",
+    fontWeight: "700",
     color: colors.danger,
   },
 });

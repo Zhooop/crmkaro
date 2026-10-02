@@ -71,6 +71,8 @@ type Person = {
     guardianName?: string;
     admissionNumber?: string;
     admissionDate?: string;
+    guardianRelation?: string;
+    guardianPhone?: string;
     planValidityMonths?: string;
   } | null;
   notes: string | null;
@@ -506,6 +508,92 @@ function PeopleContent() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3500);
   };
+
+  // Renewal / Collect Next Fees Modal state
+  const [renewalModalOpen, setRenewalModalOpen] = useState(false);
+  const [renewalPerson, setRenewalPerson] = useState<Person | null>(null);
+  const [renewalPlanMonths, setRenewalPlanMonths] = useState<number>(1);
+  const [renewalAmount, setRenewalAmount] = useState<string>("1000");
+  const [renewalMethod, setRenewalMethod] = useState<string>("UPI");
+  const [renewalReference, setRenewalReference] = useState<string>("");
+  const [renewalNotes, setRenewalNotes] = useState<string>("");
+  const [renewalBusy, setRenewalBusy] = useState<boolean>(false);
+
+  function openRenewalModal(person: Person) {
+    setRenewalPerson(person);
+    const details = getPersonFeeDetails(person);
+    const initialMonths = details.planMonths > 0 ? details.planMonths : 1;
+    setRenewalPlanMonths(initialMonths);
+    const baseAmt = details.feeAmountMinor > 0 ? details.feeAmountMinor / 100 : 1000;
+    setRenewalAmount((baseAmt * initialMonths).toString());
+    setRenewalMethod("UPI");
+    setRenewalReference("");
+    setRenewalNotes("");
+    setRenewalModalOpen(true);
+  }
+
+  async function handleSaveRenewal(e: FormEvent) {
+    e.preventDefault();
+    if (!renewalPerson) return;
+    const num = Number(renewalAmount);
+    if (isNaN(num) || num <= 0) {
+      showToast("Please enter a valid renewal fee amount.", "error");
+      return;
+    }
+
+    setRenewalBusy(true);
+    try {
+      const details = getPersonFeeDetails(renewalPerson);
+      let startMonth = new Date().toISOString().slice(0, 7);
+      if (details.validUntilDate && details.validUntilDate.getTime() > Date.now()) {
+        const nextDate = new Date(details.validUntilDate);
+        nextDate.setDate(nextDate.getDate() + 1);
+        startMonth = nextDate.toISOString().slice(0, 7);
+      }
+
+      if (renewalPerson.studentProfile?.id) {
+        const res = await authFetch(`${api}/students/collect-fee`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            studentProfileId: renewalPerson.studentProfile.id,
+            month: startMonth,
+            amountMinor: Math.round(num * 100),
+            planMonths: renewalPlanMonths,
+            paymentMethod: renewalMethod,
+            reference: renewalReference.trim() || undefined,
+            notes: renewalNotes.trim() || undefined,
+          }),
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.message || "Failed to record renewal payment.");
+        }
+      } else {
+        const currentAddr = (renewalPerson.address && typeof renewalPerson.address === "object"
+          ? renewalPerson.address
+          : {}) as Record<string, any>;
+        const updatedAddr = {
+          ...currentAddr,
+          planValidityMonths: String(renewalPlanMonths),
+        };
+        await authFetch(`${api}/people/${renewalPerson.id}`, {
+          method: "PATCH",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ address: updatedAddr }),
+        });
+      }
+
+      showToast(`Renewal payment of INR ${num} recorded! Plan extended by ${renewalPlanMonths} ${renewalPlanMonths === 1 ? "month" : "months"}.`, "success");
+      setRenewalModalOpen(false);
+      loadPeople();
+    } catch (err) {
+      showToast((err as Error).message || "Failed to complete renewal.", "error");
+    } finally {
+      setRenewalBusy(false);
+    }
+  }
 
   async function handleQuickUpdatePlanValidity(personId: string, months: number) {
     try {
@@ -1355,10 +1443,10 @@ function PeopleContent() {
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
-                { type: "MEMBER" as PersonType, label: "🤝 Member" },
-                { type: "STUDENT" as PersonType, label: "🎓 Student / Learner" },
-                { type: "CUSTOMER" as PersonType, label: "💼 Customer / Client" },
-                { type: "EMPLOYEE" as PersonType, label: "👔 Staff / Employee" },
+                { type: "MEMBER" as PersonType, label: "Member" },
+                { type: "STUDENT" as PersonType, label: "Student / Learner" },
+                { type: "CUSTOMER" as PersonType, label: "Customer / Client" },
+                { type: "EMPLOYEE" as PersonType, label: "Staff / Employee" },
               ].map(({ type, label }) => {
                 const checked = formTypes.includes(type);
                 return (
@@ -1663,7 +1751,7 @@ function PeopleContent() {
             {/* Plan Validity Months */}
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5, color: "#854d0e" }}>
-                ⏱️ Plan Validity / Cycle
+                Plan Validity / Cycle
               </label>
               <select
                 value={formPlanMonths}
@@ -1718,7 +1806,7 @@ function PeopleContent() {
             {/* Package / Standard */}
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
-                🏋️ Membership Package / Standard
+                Membership Package / Standard
               </label>
               <input
                 type="text"
@@ -1739,7 +1827,7 @@ function PeopleContent() {
             {/* Workout Slot / Batch */}
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
-                🕒 Workout Slot / Batch
+                Workout Slot / Batch
               </label>
               <input
                 type="text"
@@ -2270,7 +2358,7 @@ function PeopleContent() {
             gap: 6,
           }}
         >
-          <span>🔴 Pending Fees</span>
+          <span>Pending Fees</span>
           <span
             style={{
               background: feeFilter === "PENDING" ? "#dc2626" : "#fee2e2",
@@ -2303,7 +2391,7 @@ function PeopleContent() {
             gap: 6,
           }}
         >
-          <span>🟢 Paid Fees</span>
+          <span>Paid Fees</span>
           <span
             style={{
               background: feeFilter === "PAID" ? "#059669" : "#d1fae5",
@@ -2336,7 +2424,7 @@ function PeopleContent() {
             gap: 6,
           }}
         >
-          <span>🟡 Upcoming Fees (10-Day Window)</span>
+          <span>Upcoming Fees (10-Day)</span>
           <span
             style={{
               background: feeFilter === "UPCOMING" ? "#d97706" : "#fef3c7",
@@ -2511,7 +2599,7 @@ function PeopleContent() {
                                       borderRadius: 4,
                                     }}
                                   >
-                                    🏋️ {feeDetails.standard}
+                                    {feeDetails.standard}
                                   </span>
                                 )}
                                 {feeDetails.batch && (
@@ -2525,7 +2613,7 @@ function PeopleContent() {
                                       borderRadius: 4,
                                     }}
                                   >
-                                    🕒 {feeDetails.batch}
+                                    Slot: {feeDetails.batch}
                                   </span>
                                 )}
                               </div>
@@ -2558,7 +2646,7 @@ function PeopleContent() {
                         {feeDetails.hasFeePlan ? (
                           <div>
                             <div style={{ fontWeight: 700, color: "var(--ink)", display: "flex", alignItems: "center", gap: 4, fontSize: 12.5 }}>
-                              <span>⏱️ {feeDetails.planLabel}</span>
+                              <span>{feeDetails.planLabel}</span>
                             </div>
                             <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2 }}>
                               {feeDetails.feeAmountMinor > 0 ? (
@@ -2589,7 +2677,7 @@ function PeopleContent() {
                                   cursor: "pointer",
                                 }}
                               >
-                                {feeDetails.planMonths === 3 ? "✓ 3 Mo" : "Set 3 Mo"}
+                                {feeDetails.planMonths === 3 ? "3 Mo" : "Set 3M"}
                               </button>
                               <button
                                 type="button"
@@ -2610,7 +2698,7 @@ function PeopleContent() {
                                   cursor: "pointer",
                                 }}
                               >
-                                {feeDetails.planMonths === 1 ? "✓ 1 Mo" : "1 Mo"}
+                                {feeDetails.planMonths === 1 ? "1 Mo" : "Set 1M"}
                               </button>
                             </div>
                           </div>
@@ -2686,6 +2774,30 @@ function PeopleContent() {
                       </td>
                       <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
                         <div className="table-actions">
+                          {feeDetails.hasFeePlan && (
+                            <button
+                              type="button"
+                              onClick={() => openRenewalModal(person)}
+                              style={{
+                                padding: "4px 9px",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                color: "#1d4ed8",
+                                background: "#eff6ff",
+                                border: "1px solid #bfdbfe",
+                                borderRadius: 6,
+                                cursor: "pointer",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 4,
+                                marginRight: 4,
+                              }}
+                              title="Collect Next Fees / Renew Plan"
+                            >
+                              <Icon name="finance" size={13} />
+                              <span>Collect / Renew</span>
+                            </button>
+                          )}
                           <button
                             className="btn-icon"
                             title="Edit Details"
@@ -2782,7 +2894,6 @@ function PeopleContent() {
                 >
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
-                      <span style={{ fontSize: 16 }}>💳</span>
                       <strong style={{ fontSize: 13.5, color: "var(--ink)" }}>Fee Plan & Payment Details</strong>
                     </div>
                     <span
@@ -2803,7 +2914,7 @@ function PeopleContent() {
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
                     <div>
                       <small style={{ color: "var(--muted)", display: "block" }}>Plan Validity (Months)</small>
-                      <strong style={{ color: "var(--ink)", fontSize: 13 }}>⏱️ {feeInfo.planLabel}</strong>
+                      <strong style={{ color: "var(--ink)", fontSize: 13 }}>{feeInfo.planLabel}</strong>
                       {feeInfo.feeAmountMinor > 0 && (
                         <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
                           ₹{(feeInfo.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
@@ -2856,11 +2967,11 @@ function PeopleContent() {
                     </div>
                   </div>
 
-                  {/* ⚡ Quick Plan Validity Switcher inside Drawer */}
+                  {/* Change Plan Validity inside Drawer */}
                   <div style={{ marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${feeInfo.statusBadgeBorder}` }}>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 6 }}>
                       <small style={{ color: "#475569", fontWeight: 700, fontSize: 11 }}>
-                        ⚡ Change / Fix Plan Validity:
+                        Change Plan Validity:
                       </small>
                       <span style={{ fontSize: 11, color: "var(--muted)" }}>
                         Current: <strong>{feeInfo.planLabel}</strong>
@@ -2891,26 +3002,29 @@ function PeopleContent() {
                             transition: "all 0.15s ease",
                           }}
                         >
-                          {feeInfo.planMonths === opt.months ? `✓ ${opt.label}` : opt.label}
+                          {opt.label}
                         </button>
                       ))}
                     </div>
                   </div>
 
                   <div style={{ marginTop: 14, paddingTop: 10, borderTop: `1px solid ${feeInfo.statusBadgeBorder}`, display: "flex", gap: 8 }}>
-                    <a
-                      href={`/quick-collect?personId=${detailPerson.id}&amount=${feeInfo.feeAmountMinor > 0 ? feeInfo.feeAmountMinor / 100 : ""}`}
+                    <button
+                      type="button"
+                      onClick={() => openRenewalModal(detailPerson)}
                       className="btn btn-primary btn-sm"
-                      style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 700 }}
+                      style={{ flex: 1, justifyContent: "center", fontSize: 12, fontWeight: 700, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
-                      ⚡ Collect Fee / Renew
-                    </a>
+                      <Icon name="finance" size={14} />
+                      <span>Collect Next Fees / Renew</span>
+                    </button>
                     <a
                       href={`/finance?action=new-invoice&personId=${detailPerson.id}`}
                       className="btn btn-secondary btn-sm"
-                      style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 650 }}
+                      style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 650, display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
-                      📄 New Invoice
+                      <Icon name="file" size={14} />
+                      <span>New Invoice</span>
                     </a>
                   </div>
                 </div>
@@ -3605,6 +3719,223 @@ function PeopleContent() {
         </form>
       </Modal>
 
+      {/* Renewal / Collect Next Fees Modal */}
+      <Modal
+        isOpen={renewalModalOpen}
+        onClose={() => setRenewalModalOpen(false)}
+        title="Collect Next Fees / Renew Plan"
+        subtitle="Extend membership validity and record renewal payment"
+      >
+        {renewalPerson && (() => {
+          const details = getPersonFeeDetails(renewalPerson);
+          const monthlyRate = details.feeAmountMinor > 0 ? details.feeAmountMinor / 100 : 1000;
+
+          // Calculate dates
+          let startDate = new Date();
+          if (details.validUntilDate && details.validUntilDate.getTime() > Date.now()) {
+            startDate = new Date(details.validUntilDate);
+            startDate.setDate(startDate.getDate() + 1);
+          }
+          const endDate = new Date(startDate);
+          endDate.setMonth(endDate.getMonth() + renewalPlanMonths);
+
+          const startStr = startDate.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+          const endStr = endDate.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+
+          const reminderDate = new Date(endDate);
+          reminderDate.setDate(reminderDate.getDate() - 10);
+          const reminderStr = reminderDate.toLocaleDateString("en-IN", {
+            day: "2-digit",
+            month: "short",
+            year: "numeric",
+          });
+
+          return (
+            <form onSubmit={handleSaveRenewal}>
+              {/* Member summary banner */}
+              <div
+                style={{
+                  padding: "12px 14px",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
+                  borderRadius: 8,
+                  marginBottom: 14,
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div>
+                    <strong style={{ fontSize: 14, color: "var(--ink)" }}>{renewalPerson.displayName}</strong>
+                    <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 2 }}>
+                      {details.memberId ? `ID: ${details.memberId}` : ""}
+                      {details.standard ? ` · ${details.standard}` : ""}
+                      {details.batch ? ` · Slot: ${details.batch}` : ""}
+                    </div>
+                  </div>
+                  <span
+                    style={{
+                      fontSize: 11,
+                      fontWeight: 750,
+                      padding: "2px 8px",
+                      borderRadius: 4,
+                      background: details.statusBadgeBg,
+                      color: details.statusBadgeColor,
+                      border: `1px solid ${details.statusBadgeBorder}`,
+                    }}
+                  >
+                    {details.statusBadgeLabel}
+                  </span>
+                </div>
+                {details.validUntilStr && (
+                  <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 8, paddingTop: 8, borderTop: "1px dashed #cbd5e1" }}>
+                    Previous Expiry Date: <strong>{details.validUntilStr}</strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Plan duration selector */}
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 6 }}>
+                  Renewal Duration / Plan
+                </label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { m: 1, label: "1 Month" },
+                    { m: 2, label: "2 Months" },
+                    { m: 3, label: "3 Months" },
+                    { m: 6, label: "6 Months" },
+                    { m: 12, label: "12 Months" },
+                  ].map((opt) => {
+                    const active = renewalPlanMonths === opt.m;
+                    return (
+                      <button
+                        key={opt.m}
+                        type="button"
+                        onClick={() => {
+                          setRenewalPlanMonths(opt.m);
+                          setRenewalAmount((monthlyRate * opt.m).toString());
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 6,
+                          border: active ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
+                          background: active ? "#eff6ff" : "#ffffff",
+                          color: active ? "#1d4ed8" : "#334155",
+                          fontSize: 12,
+                          fontWeight: active ? 750 : 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Live Date Calculation Card */}
+              <div
+                style={{
+                  padding: "10px 14px",
+                  background: "#f0fdf4",
+                  border: "1px solid #bbf7d0",
+                  borderRadius: 8,
+                  marginBottom: 14,
+                  fontSize: 12,
+                  color: "#166534",
+                }}
+              >
+                <div>
+                  <strong>New Validity Period:</strong> {startStr} to {endStr} ({renewalPlanMonths}{" "}
+                  {renewalPlanMonths === 1 ? "month" : "months"})
+                </div>
+                <div style={{ fontSize: 11, color: "#15803d", marginTop: 3 }}>
+                  Next Due Alert: <strong>{reminderStr}</strong> (10 days in advance)
+                </div>
+              </div>
+
+              {/* Amount to collect */}
+              <div className="form-group" style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
+                  Amount to Collect (INR) *
+                </label>
+                <input
+                  type="number"
+                  value={renewalAmount}
+                  onChange={(e) => setRenewalAmount(e.target.value)}
+                  required
+                  style={{
+                    width: "100%",
+                    padding: "9px 12px",
+                    borderRadius: 8,
+                    border: "1px solid #cbd5e1",
+                    fontSize: 14,
+                    fontWeight: 700,
+                  }}
+                />
+              </div>
+
+              {/* Payment mode & reference */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>Payment Mode</label>
+                  <select
+                    value={renewalMethod}
+                    onChange={(e) => setRenewalMethod(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
+                  >
+                    <option value="UPI">UPI / QR Code</option>
+                    <option value="CASH">Cash Payment</option>
+                    <option value="BANK_TRANSFER">Bank Transfer / NEFT</option>
+                    <option value="CARD">Debit / Credit Card</option>
+                    <option value="CHEQUE">Cheque</option>
+                  </select>
+                </div>
+                <div className="form-group" style={{ margin: 0 }}>
+                  <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>Reference / Txn ID</label>
+                  <input
+                    type="text"
+                    placeholder="UTR or Receipt No (Optional)"
+                    value={renewalReference}
+                    onChange={(e) => setRenewalReference(e.target.value)}
+                    style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
+                  />
+                </div>
+              </div>
+
+              {/* Notes */}
+              <div className="form-group" style={{ marginBottom: 16 }}>
+                <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>Notes / Remarks (Optional)</label>
+                <input
+                  type="text"
+                  placeholder="e.g. Paid in full for 2 months"
+                  value={renewalNotes}
+                  onChange={(e) => setRenewalNotes(e.target.value)}
+                  style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13 }}
+                />
+              </div>
+
+              {/* Footer buttons */}
+              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+                <button type="button" className="btn btn-secondary" onClick={() => setRenewalModalOpen(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={renewalBusy} style={{ padding: "9px 20px", fontWeight: 700 }}>
+                  {renewalBusy ? "Saving Renewal..." : `Collect INR ${Number(renewalAmount) || 0} & Extend Validity`}
+                </button>
+              </div>
+            </form>
+          );
+        })()}
+      </Modal>
+
       {/* Toast Notification */}
       {toast && (
         <div
@@ -3625,7 +3956,6 @@ function PeopleContent() {
             gap: 10,
           }}
         >
-          <span>{toast.type === "success" ? "✓" : "⚠"}</span>
           <span>{toast.message}</span>
         </div>
       )}

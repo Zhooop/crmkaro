@@ -528,13 +528,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     backgroundColor: colors.surfaceMuted,
-    borderRadius: radius.xs,
+    borderRadius: radius.sm,
     borderWidth: 1,
     borderColor: colors.line,
   },
   selectAllText: {
     fontSize: 11,
-    fontWeight: "750",
+    fontWeight: "700",
     color: colors.brand,
   },
   fixedBottomBar: {

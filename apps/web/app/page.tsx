@@ -2519,7 +2519,7 @@ export default function HomePage() {
             </SectionCard>
           </div>
 
-          {/* 🕒 Live Activity Stream */}
+          {/* Live Activity Stream */}
           <SectionCard
             title="Live Workspace Activity"
             subtitle="Real-time operational audit timeline"

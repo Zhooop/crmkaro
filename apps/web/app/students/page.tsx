@@ -208,6 +208,7 @@ function StudentsContent() {
   // Fee Collection Modal
   const [collectFeeModalOpen, setCollectFeeModalOpen] = useState(false);
   const [collectFeeStudent, setCollectFeeStudent] = useState<RecurringFeeItem | null>(null);
+  const [collectPlanMonths, setCollectPlanMonths] = useState<number>(1);
   const [collectAmount, setCollectAmount] = useState("");
   const [collectMethod, setCollectMethod] = useState("UPI");
   const [collectReference, setCollectReference] = useState("");
@@ -744,9 +745,11 @@ function StudentsContent() {
   // 1-Click Fee Collection Modal Open
   function openCollectFeeModal(item: RecurringFeeItem) {
     setCollectFeeStudent(item);
-    setCollectAmount(
-      (item.balanceMinor > 0 ? item.balanceMinor / 100 : item.feePlanAmountMinor / 100).toString(),
-    );
+    const initialMonths = item.feeFrequency === "QUARTERLY" ? 3 : item.feeFrequency === "ANNUAL" ? 12 : 1;
+    setCollectPlanMonths(initialMonths);
+    const monthlyRate = item.feePlanAmountMinor > 0 ? item.feePlanAmountMinor / 100 : 0;
+    const initialAmt = item.balanceMinor > 0 ? item.balanceMinor / 100 : (monthlyRate * initialMonths);
+    setCollectAmount(initialAmt.toString());
     setCollectMethod("UPI");
     setCollectReference("");
     setCollectNotes("");
@@ -769,6 +772,7 @@ function StudentsContent() {
         studentProfileId: collectFeeStudent.studentProfileId,
         month: collectFeeStudent.cycleMonth,
         amountMinor: Math.round(amountNum * 100),
+        planMonths: collectPlanMonths,
         paymentMethod: collectMethod,
         reference: collectReference.trim() || undefined,
         notes: collectNotes.trim() || undefined,
@@ -4059,6 +4063,66 @@ function StudentsContent() {
               </div>
 
               <div className="form-group" style={{ marginBottom: 14 }}>
+                <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 6 }}>
+                  Renewal / Plan Duration
+                </label>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+                  {[
+                    { m: 1, label: "1 Month" },
+                    { m: 2, label: "2 Months" },
+                    { m: 3, label: "3 Months" },
+                    { m: 6, label: "6 Months" },
+                    { m: 12, label: "12 Months" },
+                  ].map((opt) => {
+                    const active = collectPlanMonths === opt.m;
+                    return (
+                      <button
+                        key={opt.m}
+                        type="button"
+                        onClick={() => {
+                          setCollectPlanMonths(opt.m);
+                          const monthlyRate =
+                            collectFeeStudent.feePlanAmountMinor > 0
+                              ? collectFeeStudent.feePlanAmountMinor / 100
+                              : 0;
+                          if (monthlyRate > 0) {
+                            setCollectAmount((monthlyRate * opt.m).toString());
+                          }
+                        }}
+                        style={{
+                          padding: "6px 14px",
+                          borderRadius: 6,
+                          border: active ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
+                          background: active ? "#eff6ff" : "#ffffff",
+                          color: active ? "#1d4ed8" : "#334155",
+                          fontSize: 12,
+                          fontWeight: active ? 750 : 600,
+                          cursor: "pointer",
+                        }}
+                      >
+                        {opt.label}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: "8px 12px",
+                    borderRadius: 7,
+                    background: "#f0fdf4",
+                    border: "1px solid #bbf7d0",
+                    fontSize: 12,
+                    color: "#166534",
+                  }}
+                >
+                  <strong>Validity Extension:</strong> {collectPlanMonths}{" "}
+                  {collectPlanMonths === 1 ? "month" : "months"} starting from{" "}
+                  {collectFeeStudent.cycleMonthLabel}. Advance period will be automatically marked as covered.
+                </div>
+              </div>
+
+              <div className="form-group" style={{ marginBottom: 14 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
                   Amount to Collect (₹) *
                 </label>
@@ -4241,7 +4305,7 @@ function StudentsContent() {
                 >
                   {collectingFee
                     ? "Recording Payment…"
-                    : `Record Payment of ${formatMoney(Number(collectAmount) * 100 || 0, currency)}`}
+                    : `Record Payment of ${formatMoney(Number(collectAmount) * 100 || 0, currency)} (${collectPlanMonths} Mo Plan)`}
                 </button>
               </div>
             </form>
