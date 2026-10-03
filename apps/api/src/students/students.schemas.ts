@@ -12,7 +12,7 @@ export const studentAdmissionSchema = z.object({
   primaryPhone: optionalText(32),
   alternatePhone: optionalText(32),
   email: z.string().trim().email().max(320).optional().nullable(),
-  address: z.record(z.string(), z.string().trim().max(300)).optional().nullable(),
+  address: z.record(z.string(), z.any()).optional().nullable(),
   notes: optionalText(5000),
   rollNumber: optionalText(40),
   standard: z.string().trim().min(1).max(100),
@@ -26,6 +26,7 @@ export const studentAdmissionSchema = z.object({
   admissionDate: z.coerce.date().default(() => new Date()),
   initialPaymentAmountMinor: z.coerce.number().int().min(0).max(2_000_000_000).optional(),
   initialPaymentMethod: optionalText(60),
+  selectedMonths: z.array(z.string().regex(/^\d{4}-\d{2}$/)).optional(),
 });
 
 export const studentUpdateSchema = z.object({

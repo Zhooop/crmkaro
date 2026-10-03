@@ -123,6 +123,31 @@ export function StudentsScreen() {
   const [admissionPaymentStatus, setAdmissionPaymentStatus] = useState<"PAID_NOW" | "PENDING">("PAID_NOW");
   const [admissionPaymentMethod, setAdmissionPaymentMethod] = useState<"UPI" | "CASH" | "BANK_TRANSFER">("UPI");
   const [admissionBusy, setAdmissionBusy] = useState(false);
+  const [admissionYear, setAdmissionYear] = useState<number>(new Date().getFullYear());
+  const [admissionSelectedMonths, setAdmissionSelectedMonths] = useState<string[]>([new Date().toISOString().slice(0, 7)]);
+
+  const toggleAdmissionMonth = (yyyyMm: string) => {
+    setAdmissionSelectedMonths((prev) => {
+      const exists = prev.includes(yyyyMm);
+      const next = exists ? prev.filter((m) => m !== yyyyMm) : [...prev, yyyyMm].sort();
+      const count = Math.max(1, next.length);
+      setFormPlanMonths(count);
+      return next;
+    });
+  };
+
+  const quickSelectAdmissionMonths = (count: number) => {
+    const now = new Date();
+    const startM = now.getFullYear() === admissionYear ? now.getMonth() + 1 : 1;
+    const months: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const d = new Date(admissionYear, (startM - 1) + i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push(ym);
+    }
+    setAdmissionSelectedMonths(months.sort());
+    setFormPlanMonths(count);
+  };
 
   const handleOpenAdmission = () => {
     setFormName("");
@@ -132,6 +157,8 @@ export function StudentsScreen() {
     setFormBatch(isGym ? "Morning 6-8 AM" : "Morning Batch");
     setFormFee(isGym ? "1500" : "2500");
     setFormPlanMonths(isGym ? 3 : 1);
+    setAdmissionYear(new Date().getFullYear());
+    setAdmissionSelectedMonths([new Date().toISOString().slice(0, 7)]);
     setFormAddress("");
     setFormGuardianName("");
     setFormGuardianPhone("");
@@ -322,9 +349,12 @@ export function StudentsScreen() {
         billingStartDate: todayYyyyMmDd,
         initialPaymentAmountMinor: admissionPaymentStatus === "PAID_NOW" ? Math.round(feeNum * 100) : 0,
         initialPaymentMethod: admissionPaymentMethod,
-        address: formAddress.trim()
-          ? { addressLine1: formAddress.trim(), planValidityMonths: String(formPlanMonths) }
-          : { planValidityMonths: String(formPlanMonths) },
+        selectedMonths: admissionSelectedMonths,
+        address: {
+          ...(formAddress.trim() ? { addressLine1: formAddress.trim() } : {}),
+          planValidityMonths: String(admissionSelectedMonths.length || formPlanMonths),
+          paidMonths: admissionSelectedMonths,
+        },
       };
 
       const res = await apiFetch("/students", {
@@ -378,19 +408,6 @@ export function StudentsScreen() {
       });
     }
 
-    const isTarget =
-      std?.person?.displayName?.toLowerCase().includes("himanshu") ||
-      std?.person?.displayName?.toLowerCase().includes("pushpaindu") ||
-      std?.rollNumber === "1001" ||
-      std?.rollNumber === "1002" ||
-      std?.rollNumber === "GYM-1001" ||
-      std?.rollNumber === "GYM-1002";
-
-    if (isTarget) {
-      paidSet.add("2026-01");
-      paidSet.add("2026-02");
-      paidSet.add("2026-03");
-    }
 
     feesList.forEach((f) => {
       if (f.studentProfileId === studentProfileId && f.status === "PAID") {
@@ -981,29 +998,132 @@ export function StudentsScreen() {
               </View>
             </View>
 
-            {/* Plan Validity Selector */}
-            <Text style={styles.fieldLabel}>Plan Validity / Cycle</Text>
-            <View style={styles.planSelectorRow}>
-              {PLAN_MONTHS_OPTIONS.map((m) => (
-                <TouchableOpacity
-                  key={m}
-                  onPress={() => setFormPlanMonths(m)}
-                  style={[styles.planChip, formPlanMonths === m && styles.planChipActive]}
-                >
-                  <Text style={[styles.planChipText, formPlanMonths === m && styles.planChipTextActive]}>
-                    {m === 12 ? "1 Year" : `${m} Mo`}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-            <View style={styles.planInfoBanner}>
-              <Text style={styles.planInfoText}>
-                {formPlanMonths} Month{formPlanMonths > 1 ? "s" : ""} Validity Plan
-                {formPlanMonths === 3 ? " · Renews quarterly · Next due date will be after 3 months" : ""}
-                {formPlanMonths === 12 ? " · Full annual membership" : ""}
-                {formPlanMonths === 1 ? " · Renews every month" : ""}
-              </Text>
-            </View>
+            {/* 12-Month Plan Validity & Fee Calendar */}
+            {(() => {
+              const now = new Date();
+              const currentYyyyMm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+              const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+              const selectedSorted = [...admissionSelectedMonths].sort();
+              const selectedLabels = selectedSorted.map((ym) => {
+                const [y, m] = ym.split("-");
+                const idx = parseInt(m, 10) - 1;
+                return `${monthNames[idx] || m} ${y}`;
+              });
+
+              return (
+                <View style={{ marginBottom: spacing.md }}>
+                  {/* Header & Year Switcher */}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                    <Text style={styles.fieldLabel}>12-Month Plan Validity Calendar</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => setAdmissionYear((y) => y - 1)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>&lt; {admissionYear - 1}</Text>
+                      </TouchableOpacity>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.brandLight }}>
+                        <Text style={{ fontSize: 12, fontWeight: "800", color: colors.brand }}>{admissionYear}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setAdmissionYear((y) => y + 1)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>{admissionYear + 1} &gt;</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  {/* Quick Select Buttons */}
+                  <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginBottom: spacing.sm }}>
+                    {[
+                      { count: 1, label: "+1 Mo" },
+                      { count: 2, label: "+2 Mo" },
+                      { count: 3, label: "+3 Mo" },
+                      { count: 6, label: "+6 Mo" },
+                      { count: 12, label: "+1 Yr" },
+                    ].map((opt) => (
+                      <TouchableOpacity
+                        key={opt.count}
+                        onPress={() => quickSelectAdmissionMonths(opt.count)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "650", color: colors.ink }}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {admissionSelectedMonths.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => {
+                          setAdmissionSelectedMonths([]);
+                          setFormPlanMonths(1);
+                        }}
+                        style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fff1f2", marginLeft: "auto" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "650", color: "#b91c1c" }}>Clear</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {/* 12 Months Grid */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: spacing.sm }}>
+                    {monthNames.map((mName, idx) => {
+                      const mNum = String(idx + 1).padStart(2, "0");
+                      const yyyyMm = `${admissionYear}-${mNum}`;
+                      const isCurrent = yyyyMm === currentYyyyMm;
+                      const isSelected = admissionSelectedMonths.includes(yyyyMm);
+
+                      let bg = "#ffffff";
+                      let bColor = colors.lineLight;
+                      let txtColor = colors.ink;
+                      if (isSelected) {
+                        bg = "#eff6ff";
+                        bColor = colors.brand;
+                        txtColor = colors.brand;
+                      } else if (isCurrent) {
+                        bg = "#fffbeb";
+                        bColor = "#f59e0b";
+                        txtColor = "#92400e";
+                      }
+
+                      return (
+                        <TouchableOpacity
+                          key={yyyyMm}
+                          onPress={() => toggleAdmissionMonth(yyyyMm)}
+                          style={{
+                            width: "23%",
+                            paddingVertical: 7,
+                            paddingHorizontal: 4,
+                            borderRadius: radius.md,
+                            backgroundColor: bg,
+                            borderWidth: isSelected ? 2 : 1,
+                            borderColor: bColor,
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ fontSize: 11.5, fontWeight: "750", color: txtColor }}>{mName}</Text>
+                          {isSelected ? (
+                            <Text style={{ fontSize: 8.5, fontWeight: "800", color: colors.brand, marginTop: 2 }}>MARKED</Text>
+                          ) : isCurrent ? (
+                            <Text style={{ fontSize: 8.5, fontWeight: "800", color: "#92400e", marginTop: 2 }}>CURRENT</Text>
+                          ) : (
+                            <Text style={{ fontSize: 8.5, color: colors.muted, marginTop: 2 }}>Select</Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
+
+                  {/* Selected Months Summary */}
+                  <View style={{ padding: spacing.sm, borderRadius: radius.md, backgroundColor: admissionSelectedMonths.length > 0 ? "#eff6ff" : "#fffbeb", borderWidth: 1, borderColor: admissionSelectedMonths.length > 0 ? "#bfdbfe" : "#fde68a" }}>
+                    <Text style={{ fontSize: 11.5, fontWeight: "700", color: admissionSelectedMonths.length > 0 ? colors.brand : "#92400e" }}>
+                      {admissionSelectedMonths.length > 0
+                        ? `Marked Validity (${admissionSelectedMonths.length} Months): ${selectedLabels.join(", ")}`
+                        : "No months marked. Click on one or more months above."}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })()}
 
             {/* Section 4: Initial Payment at Admission */}
             <Text style={styles.fieldLabel}>Admission Payment Status</Text>

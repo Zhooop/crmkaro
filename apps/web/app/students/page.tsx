@@ -267,6 +267,46 @@ function StudentsContent() {
   const [admissionBusy, setAdmissionBusy] = useState(false);
   const [admissionError, setAdmissionError] = useState("");
 
+  // 12-Month Calendar Grid state for Admission Enrollment
+  const [admissionYear, setAdmissionYear] = useState<number>(new Date().getFullYear());
+  const [admissionSelectedMonths, setAdmissionSelectedMonths] = useState<string[]>(() => {
+    const now = new Date();
+    const cur = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    return [cur];
+  });
+
+  function toggleAdmissionMonth(yyyyMm: string) {
+    setAdmissionSelectedMonths((prev) => {
+      const exists = prev.includes(yyyyMm);
+      const next = exists ? prev.filter((m) => m !== yyyyMm) : [...prev, yyyyMm].sort();
+      const count = Math.max(1, next.length);
+      setFormPlanMonths(count);
+      if (count === 3) setFormFeeFrequency("QUARTERLY");
+      else if (count === 12) setFormFeeFrequency("ANNUAL");
+      else setFormFeeFrequency("MONTHLY");
+      return next;
+    });
+    // NOTE: NEVER auto-calculate or change formFeeAmount or admissionAmountPaid! Amount is 100% manual entry.
+  }
+
+  function quickSelectAdmissionMonths(count: number) {
+    const now = new Date();
+    const startM = now.getFullYear() === admissionYear ? now.getMonth() + 1 : 1;
+    const months: string[] = [];
+    for (let i = 0; i < count; i++) {
+      const d = new Date(admissionYear, (startM - 1) + i, 1);
+      const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      months.push(ym);
+    }
+    const sorted = months.sort();
+    setAdmissionSelectedMonths(sorted);
+    setFormPlanMonths(count);
+    if (count === 3) setFormFeeFrequency("QUARTERLY");
+    else if (count === 12) setFormFeeFrequency("ANNUAL");
+    else setFormFeeFrequency("MONTHLY");
+    // NOTE: NEVER auto-calculate or change formFeeAmount or admissionAmountPaid! Amount is 100% manual entry.
+  }
+
   // Toast
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
 
@@ -414,6 +454,14 @@ function StudentsContent() {
     }
   }, [searchParams]);
 
+  useEffect(() => {
+    if (isGym) {
+      setFormStandard((prev) => (!prev || prev === "10th Standard" ? "General Gym (Weights & Cardio)" : prev));
+      setFormBatch((prev) => (!prev || prev === "Morning Batch" ? "Full Day Flexible Access" : prev));
+      setFormGuardianRelation((prev) => (prev === "Father" ? "Self" : prev));
+    }
+  }, [isGym]);
+
   // Fetch full student profile for drawer
   async function handleOpenDetail(student: StudentProfile) {
     setSelectedStudent(student);
@@ -438,15 +486,15 @@ function StudentsContent() {
     }
 
     let finalStandard = formStandard.trim();
-    if (isGym && (finalStandard === "Custom Plan" || !finalStandard)) {
-      finalStandard = customStandard.trim() || "General Gym";
+    if (isGym && (finalStandard === "Custom Plan" || !finalStandard || finalStandard === "10th Standard" || finalStandard === "General")) {
+      finalStandard = customStandard.trim() || "General Gym (Weights & Cardio)";
     } else if (!finalStandard) {
-      finalStandard = isGym ? "General Gym" : "General";
+      finalStandard = isGym ? "General Gym (Weights & Cardio)" : "General";
     }
 
     let finalBatch = formBatch.trim();
-    if (isGym && !finalBatch) {
-      finalBatch = "General Flexible Access";
+    if (isGym && (!finalBatch || finalBatch === "Morning Batch" || finalBatch === "Regular")) {
+      finalBatch = "Full Day Flexible Access";
     }
 
     setAdmissionBusy(true);
@@ -479,11 +527,12 @@ function StudentsContent() {
       const paidNowNum = admissionPaymentStatus === "PAID_NOW" ? Number(admissionAmountPaid || formFeeAmount || 0) : 0;
       const initialPaymentMinor = paidNowNum > 0 ? Math.round(paidNowNum * 100) : undefined;
 
-      const addressPayload: Record<string, string> = {};
+      const addressPayload: Record<string, any> = {};
       if (formStreet.trim()) addressPayload.street = formStreet.trim();
       if (formCity.trim()) addressPayload.city = formCity.trim();
       if (formState.trim()) addressPayload.state = formState.trim();
       if (formPlanMonths) addressPayload.planValidityMonths = String(formPlanMonths);
+      if (admissionSelectedMonths.length > 0) addressPayload.paidMonths = admissionSelectedMonths;
       if (formGuardianName.trim()) addressPayload.guardianName = formGuardianName.trim();
       if (formGuardianPhone.trim()) addressPayload.guardianPhone = formGuardianPhone.trim();
       if (formGuardianRelation.trim()) addressPayload.guardianRelation = formGuardianRelation.trim();
@@ -498,6 +547,7 @@ function StudentsContent() {
         alternatePhone: formAltPhone.trim() || undefined,
         email: formEmail.trim() || undefined,
         address: Object.keys(addressPayload).length > 0 ? addressPayload : undefined,
+        selectedMonths: admissionSelectedMonths.length > 0 ? admissionSelectedMonths : undefined,
         rollNumber: formRollNumber.trim() || undefined,
         standard: finalStandard,
         batch: finalBatch || undefined,
@@ -568,6 +618,10 @@ function StudentsContent() {
     }
 
     setFormPlanMonths(1);
+    setAdmissionYear(new Date().getFullYear());
+    const now = new Date();
+    const curYm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    setAdmissionSelectedMonths([curYm]);
     setFormStandard(isGym ? "General Gym (Weights & Cardio)" : "10th Standard");
     setCustomStandard("");
     setFormBatch(isGym ? "Full Day Flexible Access" : "Morning Batch");
@@ -755,19 +809,7 @@ function StudentsContent() {
       });
     }
 
-    const isTarget =
-      std?.person?.displayName?.toLowerCase().includes("himanshu") ||
-      std?.person?.displayName?.toLowerCase().includes("pushpaindu") ||
-      std?.rollNumber === "1001" ||
-      std?.rollNumber === "1002" ||
-      std?.rollNumber === "GYM-1001" ||
-      std?.rollNumber === "GYM-1002";
 
-    if (isTarget) {
-      paidSet.add("2026-01");
-      paidSet.add("2026-02");
-      paidSet.add("2026-03");
-    }
 
     const items = recurringFeesData?.items || [];
     items.forEach((f) => {
@@ -2628,7 +2670,7 @@ function StudentsContent() {
                 color: "var(--ink)",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -2638,7 +2680,7 @@ function StudentsContent() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member Full Name *" : "Student Full Name *"}
                 </label>
                 <input
@@ -2649,7 +2691,9 @@ function StudentsContent() {
                   required
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
                     fontSize: 13,
@@ -2657,7 +2701,7 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member Mobile Number *" : "Student Mobile Number"}
                 </label>
                 <input
@@ -2668,7 +2712,9 @@ function StudentsContent() {
                   required={isGym}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
                     fontSize: 13,
@@ -2679,7 +2725,7 @@ function StudentsContent() {
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member ID / Reg No (Auto-Generated)" : "Student ID / Roll Number"}
                 </label>
                 <input
@@ -2689,7 +2735,9 @@ function StudentsContent() {
                   onChange={(e) => setFormRollNumber(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
                     fontSize: 13,
@@ -2697,7 +2745,7 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   Email ID (Optional)
                 </label>
                 <input
@@ -2707,7 +2755,9 @@ function StudentsContent() {
                   onChange={(e) => setFormEmail(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
                     fontSize: 13,
@@ -2734,7 +2784,7 @@ function StudentsContent() {
                 color: "#1e40af",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -2748,7 +2798,7 @@ function StudentsContent() {
               <div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                       Membership Plan / Package *
                     </label>
                     <select
@@ -2757,7 +2807,9 @@ function StudentsContent() {
                       required
                       style={{
                         width: "100%",
-                        padding: "9px 12px",
+                        height: 40,
+                        boxSizing: "border-box",
+                        padding: "8px 12px",
                         borderRadius: 8,
                         border: "1px solid #cbd5e1",
                         fontSize: 13,
@@ -2775,7 +2827,7 @@ function StudentsContent() {
                   </div>
 
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                       Workout Slot / Timing Shift
                     </label>
                     <select
@@ -2783,7 +2835,9 @@ function StudentsContent() {
                       onChange={(e) => setFormBatch(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "9px 12px",
+                        height: 40,
+                        boxSizing: "border-box",
+                        padding: "8px 12px",
                         borderRadius: 8,
                         border: "1px solid #cbd5e1",
                         fontSize: 13,
@@ -2803,7 +2857,7 @@ function StudentsContent() {
 
                 {formStandard === "Custom Plan" && (
                   <div className="form-group" style={{ marginTop: 12, marginBottom: 0 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                       Custom Plan Name *
                     </label>
                     <input
@@ -2814,7 +2868,9 @@ function StudentsContent() {
                       required
                       style={{
                         width: "100%",
-                        padding: "9px 12px",
+                        height: 40,
+                        boxSizing: "border-box",
+                        padding: "8px 12px",
                         borderRadius: 8,
                         border: "1px solid #cbd5e1",
                         fontSize: 13,
@@ -2827,7 +2883,7 @@ function StudentsContent() {
             ) : (
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                     Class / Course / Standard *
                   </label>
                   <input
@@ -2838,7 +2894,9 @@ function StudentsContent() {
                     required
                     style={{
                       width: "100%",
-                      padding: "9px 12px",
+                      height: 40,
+                      boxSizing: "border-box",
+                      padding: "8px 12px",
                       borderRadius: 8,
                       border: "1px solid #cbd5e1",
                       fontSize: 13,
@@ -2847,7 +2905,7 @@ function StudentsContent() {
                   />
                 </div>
                 <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                     Batch Timing / Shift
                   </label>
                   <input
@@ -2857,7 +2915,9 @@ function StudentsContent() {
                     onChange={(e) => setFormBatch(e.target.value)}
                     style={{
                       width: "100%",
-                      padding: "9px 12px",
+                      height: 40,
+                      boxSizing: "border-box",
+                      padding: "8px 12px",
                       borderRadius: 8,
                       border: "1px solid #cbd5e1",
                       fontSize: 13,
@@ -2886,7 +2946,7 @@ function StudentsContent() {
                 color: isGym ? "#334155" : "#166534",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -2899,7 +2959,7 @@ function StudentsContent() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
                   {isGym ? "Contact Person Name" : "Guardian Name"}
                 </label>
                 <input
@@ -2909,7 +2969,9 @@ function StudentsContent() {
                   onChange={(e) => setFormGuardianName(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
@@ -2918,7 +2980,7 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
                   {isGym ? "Emergency Mobile" : "Guardian Mobile *"}
                 </label>
                 <input
@@ -2928,7 +2990,9 @@ function StudentsContent() {
                   onChange={(e) => setFormGuardianPhone(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
@@ -2937,13 +3001,17 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>Relation</label>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
+                  Relation
+                </label>
                 <select
                   value={formGuardianRelation}
                   onChange={(e) => setFormGuardianRelation(e.target.value)}
                   style={{
                     width: "100%",
-                    padding: "9px 12px",
+                    height: 40,
+                    boxSizing: "border-box",
+                    padding: "8px 12px",
                     borderRadius: 8,
                     border: isGym ? "1px solid #cbd5e1" : "1px solid #86efac",
                     fontSize: 13,
@@ -3000,7 +3068,7 @@ function StudentsContent() {
                     type="button"
                     onClick={() => setFeePlanType("MONTHLY")}
                     style={{
-                      padding: "3px 10px",
+                      padding: "4px 12px",
                       borderRadius: 6,
                       border: "none",
                       fontSize: 11.5,
@@ -3016,7 +3084,7 @@ function StudentsContent() {
                     type="button"
                     onClick={() => setFeePlanType("TERM_INSTALLMENTS")}
                     style={{
-                      padding: "3px 10px",
+                      padding: "4px 12px",
                       borderRadius: 6,
                       border: "none",
                       fontSize: 11.5,
@@ -3033,110 +3101,406 @@ function StudentsContent() {
             </div>
 
             {isGym || feePlanType === "MONTHLY" ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
-                    {isGym ? "Plan Validity / Cycle" : "Billing Frequency"}
-                  </label>
-                  {isGym ? (
-                    <select
-                      value={formPlanMonths}
-                      onChange={(e) => {
-                        const m = parseInt(e.target.value, 10);
-                        setFormPlanMonths(m);
-                        if (m === 12) setFormFeeFrequency("ANNUAL");
-                        else if (m === 3) setFormFeeFrequency("QUARTERLY");
-                        else setFormFeeFrequency("MONTHLY");
-                      }}
+              (() => {
+                const now = new Date();
+                const currentYyyyMm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                const monthLabels = [
+                  { short: "Jan", full: "January" },
+                  { short: "Feb", full: "February" },
+                  { short: "Mar", full: "March" },
+                  { short: "Apr", full: "April" },
+                  { short: "May", full: "May" },
+                  { short: "Jun", full: "June" },
+                  { short: "Jul", full: "July" },
+                  { short: "Aug", full: "August" },
+                  { short: "Sep", full: "September" },
+                  { short: "Oct", full: "October" },
+                  { short: "Nov", full: "November" },
+                  { short: "Dec", full: "December" },
+                ];
+
+                const selectedSorted = [...admissionSelectedMonths].sort();
+                const selectedLabels = selectedSorted.map((ym) => {
+                  const [y, m] = ym.split("-");
+                  const idx = parseInt(m || "1", 10) - 1;
+                  return `${monthLabels[idx]?.short || m || ""} ${y || ""}`;
+                });
+
+                return (
+                  <div>
+                    {/* 12-Month Calendar Header & Year Switcher */}
+                    <div
                       style={{
-                        width: "100%",
-                        padding: "9px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #fde047",
-                        fontSize: 13,
-                        background: "#ffffff",
-                        fontWeight: 600,
+                        display: "flex",
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        marginBottom: 10,
+                        paddingBottom: 8,
+                        borderBottom: "1px solid #fef08a",
                       }}
                     >
-                      <option value={1}>1 Month (Monthly)</option>
-                      <option value={2}>2 Months Plan</option>
-                      <option value={3}>3 Months (Quarterly)</option>
-                      <option value={4}>4 Months Plan</option>
-                      <option value={5}>5 Months Plan</option>
-                      <option value={6}>6 Months (Half-Yearly)</option>
-                      <option value={7}>7 Months Plan</option>
-                      <option value={8}>8 Months Plan</option>
-                      <option value={9}>9 Months Plan</option>
-                      <option value={10}>10 Months Plan</option>
-                      <option value={11}>11 Months Plan</option>
-                      <option value={12}>12 Months (1 Year / Annual)</option>
-                    </select>
-                  ) : (
-                    <select
-                      value={formFeeFrequency}
-                      onChange={(e) => setFormFeeFrequency(e.target.value as any)}
+                      <div>
+                        <label style={{ fontSize: 13, fontWeight: 750, color: "#854d0e", display: "block" }}>
+                          12-Month Plan Validity & Fee Calendar
+                        </label>
+                        <span style={{ fontSize: 11.5, color: "#a16207" }}>
+                          {isGym
+                            ? "Click months to mark membership validity. Selected months automatically set the Plan Validity & Cycle."
+                            : "Click months to mark fee coverage. Selected months automatically set the billing validity cycle."}
+                        </span>
+                      </div>
+
+                      {/* Year Switcher */}
+                      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => setAdmissionYear((y) => y - 1)}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #fde047",
+                            background: "#ffffff",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            color: "#854d0e",
+                          }}
+                        >
+                          &lt; {admissionYear - 1}
+                        </button>
+                        <span
+                          style={{
+                            fontSize: 13,
+                            fontWeight: 800,
+                            padding: "4px 10px",
+                            background: "#fef9c3",
+                            color: "#854d0e",
+                            borderRadius: 6,
+                            border: "1px solid #fde047",
+                          }}
+                        >
+                          Year {admissionYear}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => setAdmissionYear((y) => y + 1)}
+                          style={{
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            border: "1px solid #fde047",
+                            background: "#ffffff",
+                            fontSize: 12,
+                            fontWeight: 700,
+                            cursor: "pointer",
+                            color: "#854d0e",
+                          }}
+                        >
+                          {admissionYear + 1} &gt;
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Select Buttons */}
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: "#854d0e" }}>Quick Mark:</span>
+                      {[
+                        { count: 1, label: "+ 1 Month" },
+                        { count: 2, label: "+ 2 Months" },
+                        { count: 3, label: "+ 3 Months (Quarterly)" },
+                        { count: 6, label: "+ 6 Months (Half-Year)" },
+                        { count: 12, label: "+ 12 Months (1 Year)" },
+                      ].map((opt) => (
+                        <button
+                          key={opt.count}
+                          type="button"
+                          onClick={() => quickSelectAdmissionMonths(opt.count)}
+                          style={{
+                            padding: "4px 9px",
+                            borderRadius: 6,
+                            border: "1px solid #fde047",
+                            background: "#ffffff",
+                            fontSize: 11,
+                            fontWeight: 650,
+                            cursor: "pointer",
+                            color: "#854d0e",
+                          }}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                      {admissionSelectedMonths.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAdmissionSelectedMonths([]);
+                            setFormPlanMonths(1);
+                            setFormFeeFrequency("MONTHLY");
+                          }}
+                          style={{
+                            padding: "4px 9px",
+                            borderRadius: 6,
+                            border: "1px solid #fecaca",
+                            background: "#fff1f2",
+                            fontSize: 11,
+                            fontWeight: 650,
+                            cursor: "pointer",
+                            color: "#b91c1c",
+                            marginLeft: "auto",
+                          }}
+                        >
+                          Clear Marked
+                        </button>
+                      )}
+                    </div>
+
+                    {/* 12 Months Grid */}
+                    <div
                       style={{
-                        width: "100%",
-                        padding: "9px 12px",
-                        borderRadius: 8,
-                        border: "1px solid #fde047",
-                        fontSize: 13,
-                        background: "#ffffff",
-                        fontWeight: 600,
+                        display: "grid",
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: 8,
+                        marginBottom: 14,
                       }}
                     >
-                      <option value="MONTHLY">Monthly</option>
-                      <option value="QUARTERLY">Quarterly</option>
-                      <option value="ANNUAL">Annual</option>
-                    </select>
-                  )}
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
-                    {isGym ? "Membership Fee (₹) *" : "Monthly Fee (₹) *"}
-                  </label>
-                  <input
-                    type="number"
-                    name="membership_fee_amount_manual"
-                    autoComplete="new-password"
-                    autoCorrect="off"
-                    data-lpignore="true"
-                    data-form-type="other"
-                    placeholder={isGym ? "Enter membership fee (e.g. 2000)" : "Enter fee amount"}
-                    value={formFeeAmount}
-                    onChange={(e) => setFormFeeAmount(e.target.value)}
-                    required
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      borderRadius: 8,
-                      border: "1px solid #fde047",
-                      fontSize: 13,
-                      background: "#ffffff",
-                      MozAppearance: "textfield",
-                      appearance: "textfield",
-                    }}
-                  />
-                </div>
-                <div className="form-group" style={{ margin: 0 }}>
-                  <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
-                    {isGym ? "Joining Date" : "Admission Date"}
-                  </label>
-                  <input
-                    type="date"
-                    value={formAdmissionDate}
-                    onChange={(e) => setFormAdmissionDate(e.target.value)}
-                    style={{
-                      width: "100%",
-                      padding: "9px 12px",
-                      borderRadius: 8,
-                      border: "1px solid #fde047",
-                      fontSize: 13,
-                      background: "#ffffff",
-                    }}
-                  />
-                </div>
-              </div>
+                      {monthLabels.map((item, idx) => {
+                        const mNumStr = String(idx + 1).padStart(2, "0");
+                        const yyyyMm = `${admissionYear}-${mNumStr}`;
+                        const isCurrent = yyyyMm === currentYyyyMm;
+                        const isSelected = admissionSelectedMonths.includes(yyyyMm);
+
+                        let bg = "#ffffff";
+                        let border = "1px solid #cbd5e1";
+                        let textColor = "#1e293b";
+                        let shadow = "none";
+
+                        if (isSelected) {
+                          bg = "#eff6ff";
+                          border = "2px solid #2563eb";
+                          textColor = "#1d4ed8";
+                          shadow = "0 2px 6px rgba(37, 99, 235, 0.15)";
+                        } else if (isCurrent) {
+                          bg = "#fffbeb";
+                          border = "1.5px solid #f59e0b";
+                          textColor = "#92400e";
+                        }
+
+                        return (
+                          <div
+                            key={yyyyMm}
+                            onClick={() => toggleAdmissionMonth(yyyyMm)}
+                            style={{
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              background: bg,
+                              border,
+                              boxShadow: shadow,
+                              cursor: "pointer",
+                              display: "flex",
+                              flexDirection: "column",
+                              justifyContent: "space-between",
+                              minHeight: 52,
+                              transition: "all 0.15s ease",
+                              userSelect: "none",
+                              boxSizing: "border-box",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 750, color: textColor }}>
+                                {item.short} {admissionYear}
+                              </span>
+                              {isCurrent && !isSelected && (
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 800,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                    border: "1px solid #fde68a",
+                                    padding: "1px 4px",
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  CURRENT
+                                </span>
+                              )}
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4 }}>
+                              <span
+                                style={{
+                                  fontSize: 10.5,
+                                  fontWeight: 750,
+                                  color: isSelected ? "#2563eb" : "#94a3b8",
+                                }}
+                              >
+                                {isSelected ? "Marked" : "Select"}
+                              </span>
+                              {isSelected && (
+                                <span style={{ fontSize: 10, fontWeight: 800, color: "#2563eb" }}>
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Marked Months & Validity Summary Banner */}
+                    {admissionSelectedMonths.length > 0 ? (
+                      <div
+                        style={{
+                          padding: "10px 14px",
+                          background: "#eff6ff",
+                          border: "1px solid #bfdbfe",
+                          borderRadius: 8,
+                          marginBottom: 14,
+                          display: "flex",
+                          justifyContent: "space-between",
+                          alignItems: "center",
+                          flexWrap: "wrap",
+                          gap: 8,
+                        }}
+                      >
+                        <div>
+                          <div style={{ fontSize: 12, fontWeight: 750, color: "#1d4ed8" }}>
+                            Marked {admissionSelectedMonths.length} Month{admissionSelectedMonths.length > 1 ? "s" : ""}: {selectedLabels.join(", ")}
+                          </div>
+                          <div style={{ fontSize: 11.5, color: "#3b82f6", marginTop: 2 }}>
+                            Plan Validity: <strong>{admissionSelectedMonths.length} Month{admissionSelectedMonths.length > 1 ? "s" : ""}</strong> ({admissionSelectedMonths.length === 3 ? "Quarterly" : admissionSelectedMonths.length === 6 ? "Half-Yearly" : admissionSelectedMonths.length === 12 ? "Annual" : `${admissionSelectedMonths.length} Months Plan`}) · Saved to member profile & fee cycle
+                          </div>
+                        </div>
+                        <span
+                          style={{
+                            fontSize: 11.5,
+                            fontWeight: 800,
+                            padding: "3px 10px",
+                            borderRadius: 6,
+                            background: "#2563eb",
+                            color: "#ffffff",
+                          }}
+                        >
+                          {admissionSelectedMonths.length} Month Cycle
+                        </span>
+                      </div>
+                    ) : (
+                      <div
+                        style={{
+                          padding: "8px 12px",
+                          background: "#fffbeb",
+                          border: "1px dashed #fde68a",
+                          borderRadius: 8,
+                          marginBottom: 14,
+                          fontSize: 12,
+                          color: "#92400e",
+                        }}
+                      >
+                        No months marked yet. Click any month or use Quick Mark buttons above to set the plan validity cycle.
+                      </div>
+                    )}
+
+                    {/* Manual Fee and Date Inputs Row */}
+                    <div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 12, alignItems: "start" }}>
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                            {isGym ? "Total Membership Fee (₹) *" : "Total Fee Amount (₹) *"}
+                          </label>
+                          <input
+                            type="number"
+                            name="membership_fee_amount_manual"
+                            autoComplete="new-password"
+                            autoCorrect="off"
+                            data-lpignore="true"
+                            data-form-type="other"
+                            placeholder={isGym ? "Enter membership fee (e.g. 5000)" : "Enter fee amount"}
+                            value={formFeeAmount}
+                            onChange={(e) => setFormFeeAmount(e.target.value)}
+                            required
+                            style={{
+                              width: "100%",
+                              height: 40,
+                              boxSizing: "border-box",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              border: "1px solid #fde047",
+                              fontSize: 13,
+                              background: "#ffffff",
+                              MozAppearance: "textfield",
+                              appearance: "textfield",
+                            }}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                            {isGym ? "Joining Date" : "Admission Date"}
+                          </label>
+                          <input
+                            type="date"
+                            value={formAdmissionDate}
+                            onChange={(e) => setFormAdmissionDate(e.target.value)}
+                            style={{
+                              width: "100%",
+                              height: 40,
+                              boxSizing: "border-box",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              border: "1px solid #fde047",
+                              fontSize: 13,
+                              background: "#ffffff",
+                            }}
+                          />
+                        </div>
+
+                        <div className="form-group" style={{ margin: 0 }}>
+                          <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
+                            Plan Validity / Cycle
+                          </label>
+                          <select
+                            value={formPlanMonths}
+                            onChange={(e) => {
+                              const count = parseInt(e.target.value, 10);
+                              setFormPlanMonths(count);
+                              if (count === 12) setFormFeeFrequency("ANNUAL");
+                              else if (count === 3) setFormFeeFrequency("QUARTERLY");
+                              else setFormFeeFrequency("MONTHLY");
+                              quickSelectAdmissionMonths(count);
+                            }}
+                            style={{
+                              width: "100%",
+                              height: 40,
+                              boxSizing: "border-box",
+                              padding: "8px 12px",
+                              borderRadius: 8,
+                              border: "1px solid #fde047",
+                              fontSize: 13,
+                              background: "#ffffff",
+                              fontWeight: 650,
+                              color: "#854d0e",
+                            }}
+                          >
+                            <option value={1}>1 Month (Monthly)</option>
+                            <option value={2}>2 Months Plan</option>
+                            <option value={3}>3 Months (Quarterly)</option>
+                            <option value={4}>4 Months Plan</option>
+                            <option value={5}>5 Months Plan</option>
+                            <option value={6}>6 Months (Half-Yearly)</option>
+                            <option value={7}>7 Months Plan</option>
+                            <option value={8}>8 Months Plan</option>
+                            <option value={9}>9 Months Plan</option>
+                            <option value={10}>10 Months Plan</option>
+                            <option value={11}>11 Months Plan</option>
+                            <option value={12}>12 Months (1 Year / Annual)</option>
+                          </select>
+                        </div>
+                      </div>
+                      <div style={{ fontSize: 11, color: "#a16207", marginTop: 6 }}>
+                        Manual Fee: Enter agreed amount. No automatic multiplication or hidden charges.
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()
             ) : (
               <div>
                 <p style={{ margin: "0 0 10px", fontSize: 12, color: "#713f12" }}>
@@ -3144,71 +3508,71 @@ function StudentsContent() {
                 </p>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
                   {/* Term 1 */}
-                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
-                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                  <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 8 }}>
                       Term 1 (Admission)
                     </strong>
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Amount (₹)</label>
                     <input
                       type="number"
                       value={term1Amount}
                       onChange={(e) => setTerm1Amount(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 8, boxSizing: "border-box" }}
                     />
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Due Date</label>
                     <input
                       type="date"
                       value={term1DueDate}
                       onChange={(e) => setTerm1DueDate(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12, boxSizing: "border-box" }}
                     />
                   </div>
 
                   {/* Term 2 */}
-                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
-                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                  <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 8 }}>
                       Term 2 (Mid-Term)
                     </strong>
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Amount (₹)</label>
                     <input
                       type="number"
                       value={term2Amount}
                       onChange={(e) => setTerm2Amount(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 8, boxSizing: "border-box" }}
                     />
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Due Date</label>
                     <input
                       type="date"
                       value={term2DueDate}
                       onChange={(e) => setTerm2DueDate(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12, boxSizing: "border-box" }}
                     />
                   </div>
 
                   {/* Term 3 */}
-                  <div style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #fde047" }}>
-                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 6 }}>
+                  <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #fde047" }}>
+                    <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 8 }}>
                       Term 3 (Final Term)
                     </strong>
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Amount (₹)</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Amount (₹)</label>
                     <input
                       type="number"
                       value={term3Amount}
                       onChange={(e) => setTerm3Amount(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "6px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 6 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12.5, marginBottom: 8, boxSizing: "border-box" }}
                     />
-                    <label style={{ fontSize: 11, color: "#713f12", display: "block" }}>Due Date</label>
+                    <label style={{ fontSize: 11.5, fontWeight: 600, color: "#713f12", display: "block", marginBottom: 4 }}>Due Date</label>
                     <input
                       type="date"
                       value={term3DueDate}
                       onChange={(e) => setTerm3DueDate(e.target.value)}
                       required
-                      style={{ width: "100%", padding: "5px 8px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 11.5 }}
+                      style={{ width: "100%", height: 38, padding: "6px 10px", borderRadius: 6, border: "1px solid #cbd5e1", fontSize: 12, boxSizing: "border-box" }}
                     />
                   </div>
                 </div>
@@ -3241,7 +3605,7 @@ function StudentsContent() {
                 color: admissionPaymentStatus === "PAID_NOW" ? "#166534" : "#9a3412",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "space-between",
@@ -3293,13 +3657,17 @@ function StudentsContent() {
               <div>
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Payment Mode *</label>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
+                      Payment Mode *
+                    </label>
                     <select
                       value={admissionPaymentMethod}
                       onChange={(e) => setAdmissionPaymentMethod(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "9px 12px",
+                        height: 40,
+                        boxSizing: "border-box",
+                        padding: "8px 12px",
                         borderRadius: 8,
                         border: "1px solid #86efac",
                         fontSize: 13,
@@ -3314,7 +3682,9 @@ function StudentsContent() {
                     </select>
                   </div>
                   <div className="form-group" style={{ margin: 0 }}>
-                    <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Amount Received (₹) *</label>
+                    <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
+                      Amount Received (₹) *
+                    </label>
                     <input
                       type="number"
                       name="admission_amount_received_manual"
@@ -3322,12 +3692,14 @@ function StudentsContent() {
                       autoCorrect="off"
                       data-lpignore="true"
                       data-form-type="other"
-                      placeholder="Enter amount received (e.g. 2000)"
+                      placeholder="Enter amount received (e.g. 5000)"
                       value={admissionAmountPaid}
                       onChange={(e) => setAdmissionAmountPaid(e.target.value)}
                       style={{
                         width: "100%",
-                        padding: "9px 12px",
+                        height: 40,
+                        boxSizing: "border-box",
+                        padding: "8px 12px",
                         borderRadius: 8,
                         border: "1px solid #86efac",
                         fontSize: 13,
@@ -3339,17 +3711,17 @@ function StudentsContent() {
                   </div>
                 </div>
                 <p style={{ margin: "8px 0 0", fontSize: 12, color: "#15803d" }}>
-                  <strong>Instant Cleared Status:</strong> An official invoice will be generated and marked <strong>PAID</strong> immediately upon saving!
+                  <strong>Instant Cleared Status:</strong> An official invoice will be generated and marked <strong>PAID</strong> immediately upon saving.
                 </p>
               </div>
             ) : (
-              <div style={{ padding: "6px 0", fontSize: 12.5, color: "#9a3412" }}>
+              <div style={{ padding: "8px 12px", background: "#fff7ed", borderRadius: 8, border: "1px solid #ffedd5", fontSize: 12.5, color: "#9a3412" }}>
                 {isGym ? "Member" : "Student"} will be admitted with fee marked as <strong>PENDING DUE</strong>. You can collect fee or send reminder anytime from Upcoming Fees tab.
               </div>
             )}
           </div>
 
-          {/* Section 5: Address */}
+          {/* Section 6: Address */}
           <div style={{ marginBottom: 18 }}>
             <div
               style={{
@@ -3358,7 +3730,7 @@ function StudentsContent() {
                 color: "var(--ink)",
                 textTransform: "uppercase",
                 letterSpacing: "0.04em",
-                marginBottom: 10,
+                marginBottom: 12,
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
@@ -3368,14 +3740,18 @@ function StudentsContent() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  Street Address
+                </label>
                 <input
                   type="text"
-                  placeholder=""
+                  placeholder="e.g. Flat 101, Galaxy Heights"
                   value={formStreet}
                   onChange={(e) => setFormStreet(e.target.value)}
                   style={{
                     width: "100%",
+                    height: 40,
+                    boxSizing: "border-box",
                     padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
@@ -3384,14 +3760,18 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>City</label>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  City
+                </label>
                 <input
                   type="text"
-                  placeholder=""
+                  placeholder="e.g. Mumbai"
                   value={formCity}
                   onChange={(e) => setFormCity(e.target.value)}
                   style={{
                     width: "100%",
+                    height: 40,
+                    boxSizing: "border-box",
                     padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
@@ -3400,14 +3780,18 @@ function StudentsContent() {
                 />
               </div>
               <div className="form-group" style={{ margin: 0 }}>
-                <label style={{ fontSize: 12, color: "var(--muted)" }}>State</label>
+                <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
+                  State
+                </label>
                 <input
                   type="text"
-                  placeholder=""
+                  placeholder="e.g. Maharashtra"
                   value={formState}
                   onChange={(e) => setFormState(e.target.value)}
                   style={{
                     width: "100%",
+                    height: 40,
+                    boxSizing: "border-box",
                     padding: "8px 12px",
                     borderRadius: 8,
                     border: "1px solid #cbd5e1",
@@ -3419,17 +3803,19 @@ function StudentsContent() {
           </div>
 
           {/* Action Buttons in Sticky Modal Footer */}
-          <div className="modal-sticky-footer">
+          <div className="modal-sticky-footer" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
             <button
               type="button"
               className="secondary-button"
               onClick={() => setAdmissionModalOpen(false)}
               style={{
-                padding: "9px 18px",
+                height: 40,
+                padding: "0 18px",
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 650,
                 cursor: "pointer",
+                boxSizing: "border-box",
               }}
             >
               Cancel
@@ -3439,12 +3825,14 @@ function StudentsContent() {
               className="primary-button"
               disabled={admissionBusy}
               style={{
-                padding: "9px 22px",
+                height: 40,
+                padding: "0 22px",
                 borderRadius: 8,
                 fontSize: 13,
                 fontWeight: 700,
                 boxShadow: "0 4px 12px rgba(37, 99, 235, 0.25)",
                 cursor: "pointer",
+                boxSizing: "border-box",
               }}
             >
               {admissionBusy

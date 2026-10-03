@@ -155,18 +155,7 @@ export function getPersonFeeDetails(person: Person): PersonFeeDetails {
     }
   }
 
-  // Heuristic for existing 3-month members (Pushpaindu 1001, Himanshu 1002, etc.)
-  const isTarget3MonthUser =
-    person.displayName.toLowerCase().includes("himanshu") ||
-    person.displayName.toLowerCase().includes("pushpaindu") ||
-    profile?.rollNumber === "1001" ||
-    profile?.rollNumber === "1002" ||
-    profile?.rollNumber === "GYM-1001" ||
-    profile?.rollNumber === "GYM-1002";
 
-  if (planMonths === 1 && isTarget3MonthUser) {
-    planMonths = 3;
-  }
 
   const feeAmountMinor = profile?.feeAmountMinor || invoices[0]?.grandTotalMinor || 0;
   const latestPayment = payments[0] || null;
@@ -240,12 +229,26 @@ export function getPersonFeeDetails(person: Person): PersonFeeDetails {
       statusBadgeBg = "#fef3c7";
       statusBadgeBorder = "#fde68a";
     } else if (latestPayment || (latestInvoice && latestInvoice.paidTotalMinor > 0)) {
-      const baseDate = latestPayment
-        ? new Date(latestPayment.receivedAt)
-        : new Date(latestInvoice?.dueDate || person.createdAt || Date.now());
+      if (Array.isArray(addr.paidMonths) && addr.paidMonths.length > 0) {
+        const sorted = [...addr.paidMonths].filter((m: string) => typeof m === "string" && /^\d{4}-\d{2}$/.test(m)).sort();
+        if (sorted.length > 0) {
+          const lastMonth = sorted[sorted.length - 1];
+          const [yStr, mStr] = lastMonth.split("-");
+          const y = parseInt(yStr, 10);
+          const m = parseInt(mStr, 10);
+          validUntilDate = new Date(y, m, 0); // Last calendar day of the last paid month
+        }
+      }
 
-      validUntilDate = new Date(baseDate);
-      validUntilDate.setMonth(validUntilDate.getMonth() + planMonths);
+      if (!validUntilDate) {
+        const baseDate = latestPayment
+          ? new Date(latestPayment.receivedAt)
+          : new Date(rawAdmissionDate || person.createdAt || Date.now());
+
+        validUntilDate = new Date(baseDate);
+        validUntilDate.setMonth(validUntilDate.getMonth() + planMonths);
+      }
+
       validUntilStr = validUntilDate.toLocaleDateString("en-IN", {
         day: "2-digit",
         month: "short",
@@ -328,19 +331,6 @@ export function getPersonPaidMonths(person: Person, currentYear?: number): Set<s
     });
   }
 
-  const isTarget =
-    person.displayName.toLowerCase().includes("himanshu") ||
-    person.displayName.toLowerCase().includes("pushpaindu") ||
-    person.studentProfile?.rollNumber === "1001" ||
-    person.studentProfile?.rollNumber === "1002" ||
-    person.studentProfile?.rollNumber === "GYM-1001" ||
-    person.studentProfile?.rollNumber === "GYM-1002";
-
-  if (isTarget) {
-    paidSet.add("2026-01");
-    paidSet.add("2026-02");
-    paidSet.add("2026-03");
-  }
 
   const invoices = person.invoices || [];
   invoices.forEach((inv) => {

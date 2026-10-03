@@ -182,6 +182,98 @@ export class DashboardService {
         const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
         const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
 
+        // Auto-heal any paid invoices that have no payment record
+        const paidInvoicesWithoutPayment = await tx.invoice.findMany({
+          where: {
+            organisationId,
+            paidTotalMinor: { gt: 0 },
+            payments: { none: {} },
+          },
+        });
+
+        for (const inv of paidInvoicesWithoutPayment) {
+          try {
+            const seq = await tx.organisationSequence.upsert({
+              where: { organisationId_code: { organisationId, code: "receipt" } },
+              update: { currentValue: { increment: 1 } },
+              create: { organisationId, code: "receipt", currentValue: 1 },
+            });
+            const receiptNumber = `REC-${String(seq.currentValue).padStart(6, "0")}`;
+            await tx.payment.create({
+              data: {
+                organisationId,
+                invoiceId: inv.id,
+                personId: inv.personId,
+                amountMinor: inv.paidTotalMinor,
+                method: "UPI",
+                receivedAt: inv.issueDate || inv.createdAt || new Date(),
+                notes: inv.notes || "Recorded membership fee payment",
+                receiptNumber,
+                status: "COMPLETED",
+              },
+            });
+          } catch {
+            // ignore race
+          }
+        }
+
+        // Auto-heal gym members that got mistakenly assigned school standards (10th Standard / Morning Batch)
+        const orgInfo = await tx.organisation.findUnique({
+          where: { id: organisationId },
+          select: { businessType: true, industry: true, name: true },
+        });
+        const orgStr = `${orgInfo?.businessType || ""} ${orgInfo?.industry || ""} ${orgInfo?.name || ""}`.toLowerCase();
+        const isGymOrg =
+          orgStr.includes("gym") ||
+          orgStr.includes("fitness") ||
+          orgStr.includes("workout") ||
+          orgStr.includes("crossfit");
+
+        if (isGymOrg) {
+          const mistypedStudents = await tx.studentProfile.findMany({
+            where: {
+              organisationId,
+              OR: [
+                { standard: "10th Standard" },
+                { standard: "General" },
+                { batch: "Morning Batch" },
+              ],
+            },
+            include: { person: true },
+          });
+
+          for (const std of mistypedStudents) {
+            const newStandard = std.standard === "10th Standard" || std.standard === "General"
+              ? "General Gym (Weights & Cardio)"
+              : std.standard;
+            const newBatch = std.batch === "Morning Batch"
+              ? "Full Day Flexible Access"
+              : std.batch;
+
+            await tx.studentProfile.update({
+              where: { id: std.id },
+              data: {
+                standard: newStandard,
+                batch: newBatch,
+              },
+            });
+
+            const pAddr = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+            if (pAddr.standard === "10th Standard" || pAddr.batch === "Morning Batch" || pAddr.standard === "General") {
+              await tx.person.update({
+                where: { id: std.person.id },
+                data: {
+                  address: {
+                    ...pAddr,
+                    standard: newStandard,
+                    batch: newBatch,
+                  },
+                },
+              });
+            }
+          }
+        }
+
         // This month fee payments received
         const monthPaymentsAgg = await tx.payment.aggregate({
           where: {
@@ -272,6 +364,19 @@ export class DashboardService {
             }
           }
 
+          const paidMonthsList: string[] = Array.isArray(addr.paidMonths)
+            ? addr.paidMonths.filter((m: string) => typeof m === "string" && /^\d{4}-\d{2}$/.test(m)).sort()
+            : [];
+
+          let validUntil: Date | null = null;
+          if (paidMonthsList.length > 0) {
+            const lastYm = paidMonthsList[paidMonthsList.length - 1];
+            const [yStr, mStr] = lastYm.split("-");
+            const y = parseInt(yStr, 10);
+            const m = parseInt(mStr, 10);
+            validUntil = new Date(y, m, 0); // Last calendar day of the last paid month
+          }
+
           const personPayments = paymentsByPerson.get(std.personId) || [];
           const openInv = openInvoiceByPerson.get(std.personId);
 
@@ -297,22 +402,33 @@ export class DashboardService {
             continue;
           }
 
+          // If membership is paid for current month or valid well into the future (> 10 days)
+          const validUntilMs = validUntil ? validUntil.getTime() : 0;
+          const isCoveredByPaidMonths = paidMonthsList.includes(currentMonthKey) || (validUntilMs > tenDaysFromNowMs);
+
+          if (isCoveredByPaidMonths && (!openInv || openInv.balanceDueMinor <= 0)) {
+            // Member is fully paid and active! No pending dues.
+            continue;
+          }
+
           if (personPayments.length > 0 && personPayments[0]) {
             // Case 2: Has completed payment. Check validity period based on plan duration!
             const latestPay = personPayments[0];
             const payDate = new Date(latestPay.receivedAt);
-            const validUntil = new Date(payDate);
-            validUntil.setMonth(validUntil.getMonth() + planMonths);
+            if (!validUntil) {
+              validUntil = new Date(payDate);
+              validUntil.setMonth(validUntil.getMonth() + planMonths);
+            }
 
-            const validUntilMs = validUntil.getTime();
+            const calcValidMs = validUntil.getTime();
             // If membership is still valid and not expiring within 10 days -> member is PAID & active!
-            if (validUntilMs > tenDaysFromNowMs) {
+            if (calcValidMs > tenDaysFromNowMs) {
               // Not due yet (e.g. paid for 3 months in July, currently in July/Aug/early Sept)
               continue;
             }
 
             // Plan expires within 10 days or is already overdue -> renewal due!
-            const isExpiringSoon = validUntilMs > nowMs;
+            const isExpiringSoon = calcValidMs > nowMs;
             const dueDateStr = validUntil.toISOString().slice(0, 10);
             totalPendingMinor += feePlan;
             pendingDuesList.push({

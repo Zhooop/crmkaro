@@ -108,6 +108,95 @@ export class StudentsService {
         // ignore race
       }
     }
+
+    // Auto-heal any paid invoices that have no payment record
+    const paidInvoicesWithoutPayment = await tx.invoice.findMany({
+      where: {
+        organisationId,
+        paidTotalMinor: { gt: 0 },
+        payments: { none: {} },
+      },
+      include: { person: true },
+    });
+
+    for (const inv of paidInvoicesWithoutPayment) {
+      try {
+        const pSeq = await this.sequence(tx, organisationId, "receipt");
+        const receiptNumber = `REC-${String(pSeq).padStart(6, "0")}`;
+        await tx.payment.create({
+          data: {
+            organisationId,
+            invoiceId: inv.id,
+            personId: inv.personId,
+            amountMinor: inv.paidTotalMinor,
+            method: "UPI",
+            receivedAt: inv.issueDate || inv.createdAt || new Date(),
+            notes: inv.notes || "Recorded membership fee payment",
+            receiptNumber,
+            status: "COMPLETED",
+          },
+        });
+      } catch {
+        // ignore race
+      }
+    }
+
+    // Auto-heal gym members that got mistakenly assigned school standards (10th Standard / Morning Batch)
+    const org = await tx.organisation.findUnique({
+      where: { id: organisationId },
+      select: { businessType: true, industry: true, name: true },
+    });
+    const orgText = `${org?.businessType || ""} ${org?.industry || ""} ${org?.name || ""}`.toLowerCase();
+    const isGymOrg =
+      orgText.includes("gym") ||
+      orgText.includes("fitness") ||
+      orgText.includes("workout") ||
+      orgText.includes("crossfit");
+
+    if (isGymOrg) {
+      const mistypedGymStudents = await tx.studentProfile.findMany({
+        where: {
+          organisationId,
+          OR: [
+            { standard: "10th Standard" },
+            { standard: "General" },
+            { batch: "Morning Batch" },
+          ],
+        },
+        include: { person: true },
+      });
+
+      for (const std of mistypedGymStudents) {
+        const newStandard = std.standard === "10th Standard" || std.standard === "General"
+          ? "General Gym (Weights & Cardio)"
+          : std.standard;
+        const newBatch = std.batch === "Morning Batch"
+          ? "Full Day Flexible Access"
+          : std.batch;
+
+        await tx.studentProfile.update({
+          where: { id: std.id },
+          data: {
+            standard: newStandard,
+            batch: newBatch,
+          },
+        });
+
+        const pAddr = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+        if (pAddr.standard === "10th Standard" || pAddr.batch === "Morning Batch" || pAddr.standard === "General") {
+          await tx.person.update({
+            where: { id: std.person.id },
+            data: {
+              address: {
+                ...pAddr,
+                standard: newStandard,
+                batch: newBatch,
+              },
+            },
+          });
+        }
+      }
+    }
   }
 
   async list(
@@ -213,12 +302,18 @@ export class StudentsService {
     return withTenant(this.database, organisationId, userId, async (tx) => {
       // 1. Create or link Person
       const addressJson = (input.address && typeof input.address === "object" ? input.address : {}) as Record<string, any>;
-      let planMonths = 1;
+      const selectedMonths: string[] = (input.selectedMonths && input.selectedMonths.length > 0)
+        ? [...input.selectedMonths].sort()
+        : Array.isArray(addressJson.paidMonths)
+          ? addressJson.paidMonths
+          : [];
+
+      let planMonths = selectedMonths.length > 0 ? selectedMonths.length : 1;
       if (addressJson.planValidityMonths) {
-        planMonths = parseInt(String(addressJson.planValidityMonths), 10) || 1;
-      } else if (input.feeFrequency === "QUARTERLY") {
+        planMonths = parseInt(String(addressJson.planValidityMonths), 10) || planMonths;
+      } else if (input.feeFrequency === "QUARTERLY" && selectedMonths.length === 0) {
         planMonths = 3;
-      } else if (input.feeFrequency === "ANNUAL") {
+      } else if (input.feeFrequency === "ANNUAL" && selectedMonths.length === 0) {
         planMonths = 12;
       }
 
@@ -229,6 +324,7 @@ export class StudentsService {
 
       const finalAddress = {
         ...addressJson,
+        paidMonths: selectedMonths,
         planValidityMonths: String(planMonths),
         ...(input.guardianName ? { guardianName: input.guardianName.trim() } : {}),
         ...(input.guardianPhone ? { guardianPhone: input.guardianPhone.trim() } : {}),
@@ -308,13 +404,17 @@ export class StudentsService {
       // 4. Record Initial Payment & Invoice in the same fast transaction if paid now
       if (input.initialPaymentAmountMinor && input.initialPaymentAmountMinor > 0) {
         try {
-          const monthStr = input.admissionDate
+          const monthStr = selectedMonths[0] || (input.admissionDate
             ? (typeof input.admissionDate === "string"
                 ? (input.admissionDate as string).slice(0, 7)
                 : (input.admissionDate as Date).toISOString().slice(0, 7))
-            : new Date().toISOString().slice(0, 7);
-          const monthLabel = formatMonthLabel(monthStr);
-          const description = `Membership / Admission Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${planMonths > 1 ? `${planMonths} Months Plan` : monthLabel}]`;
+            : new Date().toISOString().slice(0, 7));
+          const lastMonthStr = selectedMonths[selectedMonths.length - 1] || monthStr;
+          const cycleLabel = selectedMonths.length > 1
+            ? `${formatMonthLabel(monthStr)} to ${formatMonthLabel(lastMonthStr)} (${selectedMonths.length} Months)`
+            : formatMonthLabel(monthStr);
+
+          const description = `Membership / Admission Fee — ${student.standard}${student.batch ? ` (${student.batch})` : ""} [${cycleLabel}]`;
           const expectedTotalMinor = Math.max(input.feeAmountMinor, input.initialPaymentAmountMinor);
           const invoiceCalc = calculateInvoice([
             {
@@ -327,8 +427,10 @@ export class StudentsService {
           const seq = await this.sequence(tx, organisationId, "invoice");
           const invoiceNumber = `FEE-${String(seq).padStart(6, "0")}`;
           const issueDate = input.admissionDate ? new Date(input.admissionDate) : new Date();
-          const dueDate = new Date(issueDate);
-          dueDate.setMonth(dueDate.getMonth() + planMonths);
+          const endParts = lastMonthStr.split("-");
+          const endYear = parseInt(endParts[0] || "2026", 10);
+          const endMonthIndex = parseInt(endParts[1] || "1", 10);
+          const dueDate = new Date(endYear, endMonthIndex, 0);
 
           const newInvoice = await tx.invoice.create({
             data: {
@@ -345,7 +447,7 @@ export class StudentsService {
               grandTotalMinor: invoiceCalc.grandTotalMinor,
               paidTotalMinor: input.initialPaymentAmountMinor,
               balanceDueMinor: Math.max(0, expectedTotalMinor - input.initialPaymentAmountMinor),
-              notes: `Fee Cycle: ${planMonths > 1 ? `${planMonths} Months` : monthStr} (${monthLabel}) - Admission Payment`,
+              notes: `Fee Cycle: ${cycleLabel} - Admission Payment`,
               issuedAt: new Date(),
               items: {
                 create: [
@@ -377,7 +479,7 @@ export class StudentsService {
               amountMinor: input.initialPaymentAmountMinor,
               method: input.initialPaymentMethod || "UPI",
               receivedAt: issueDate,
-              notes: `Paid at enrollment/admission for ${monthLabel}`,
+              notes: `Paid at enrollment/admission for ${cycleLabel}`,
               status: "COMPLETED",
             },
           });
@@ -389,7 +491,7 @@ export class StudentsService {
               standard: student.standard || "General",
               batch: student.batch,
               receiptNumber,
-              monthLabel,
+              monthLabel: cycleLabel,
               amountPaidMinor: input.initialPaymentAmountMinor,
               balanceDueMinor: Math.max(0, expectedTotalMinor - input.initialPaymentAmountMinor),
               totalFeeMinor: expectedTotalMinor,
