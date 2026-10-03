@@ -11,3 +11,125 @@ input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
 }
+
+/* ------------------------------------------------------------- */
+/* Responsive Form & Modal Utility Classes                       */
+/* ------------------------------------------------------------- */
+.form-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+.form-grid-3 {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.form-grid-fees {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1fr;
+  gap: 12px;
+  align-items: start;
+}
+
+.form-grid-address {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 12px;
+}
+
+.calendar-month-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.term-installments-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 12px;
+}
+
+.drawer-details-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+/* ------------------------------------------------------------- */
+/* Mobile & Tablet Responsiveness                                */
+/* ------------------------------------------------------------- */
+@media (max-width: 768px) {
+  .form-grid-2,
+  .form-grid-3,
+  .form-grid-fees,
+  .form-grid-address,
+  .term-installments-grid,
+  .drawer-details-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+
+  .calendar-month-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  .calendar-header-responsive {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    gap: 8px !important;
+  }
+
+  .calendar-header-responsive > div:last-child {
+    width: 100% !important;
+    justify-content: space-between !important;
+  }
+
+  .modal-sticky-footer-responsive {
+    flex-direction: column-reverse !important;
+    width: 100% !important;
+    gap: 8px !important;
+  }
+
+  .modal-sticky-footer-responsive button {
+    width: 100% !important;
+    min-height: 42px !important;
+    justify-content: center !important;
+  }
+
+  .quick-mark-row {
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+  }
+
+  .table-responsive-wrapper {
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .table-responsive-wrapper table {
+    min-width: 580px !important;
+  }
+}
+
+@media (max-width: 480px) {
+  .calendar-month-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 5px !important;
+  }
+
+  .calendar-month-grid > div {
+    padding: 6px 6px !important;
+  }
+
+  .quick-mark-row button {
+    font-size: 10.5px !important;
+    padding: 4px 7px !important;
+  }
+}

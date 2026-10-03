@@ -2993,7 +2993,7 @@ function PeopleContent() {
                     </span>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, fontSize: 12.5 }}>
+                  <div className="drawer-details-grid" style={{ fontSize: 12.5 }}>
                     <div>
                       <small style={{ color: "var(--muted)", display: "block" }}>Plan Validity (Months)</small>
                       <strong style={{ color: "var(--ink)", fontSize: 13 }}>{feeInfo.planLabel}</strong>
@@ -3150,7 +3150,7 @@ function PeopleContent() {
                 <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
                   Membership / Admission Details
                 </label>
-                <div style={{ fontSize: 13, marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="drawer-details-grid" style={{ fontSize: 13, marginTop: 8 }}>
                   <div>
                     <small style={{ color: "var(--muted)", display: "block" }}>Member ID / Reg No</small>
                     <strong style={{ color: "#2563eb" }}>
@@ -3881,6 +3881,7 @@ function PeopleContent() {
 
               {/* 12-Month Calendar Section Header & Year Switcher */}
               <div
+                className="calendar-header-responsive"
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -3950,7 +3951,7 @@ function PeopleContent() {
               </div>
 
               {/* Quick Select Buttons (Does NOT touch or calculate Amount!) */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              <div className="quick-mark-row" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748b" }}>Quick Mark:</span>
                 {[
                   { count: 1, label: "+ Next 1 Month" },
@@ -3998,14 +3999,7 @@ function PeopleContent() {
               </div>
 
               {/* 12 Months Grid */}
-              <div
-                style={{
-                  display: "grid",
-                  gridTemplateColumns: "repeat(4, 1fr)",
-                  gap: 8,
-                  marginBottom: 14,
-                }}
-              >
+              <div className="calendar-month-grid">
                 {monthLabels.map((item, idx) => {
                   const mNumStr = String(idx + 1).padStart(2, "0");
                   const yyyyMm = `${renewalYear}-${mNumStr}`;
@@ -4183,7 +4177,7 @@ function PeopleContent() {
               </div>
 
               {/* Payment mode & reference */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 14 }}>
+              <div className="form-grid-2" style={{ marginBottom: 14 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>Payment Mode</label>
                   <select
@@ -4223,7 +4217,7 @@ function PeopleContent() {
               </div>
 
               {/* Footer buttons */}
-              <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
+              <div className="modal-sticky-footer-responsive" style={{ display: "flex", justifyContent: "flex-end", gap: 8, paddingTop: 12, borderTop: "1px solid var(--line)" }}>
                 <button type="button" className="btn btn-secondary" onClick={() => setRenewalModalOpen(false)}>
                   Cancel
                 </button>

@@ -2071,7 +2071,7 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div style={{ overflowX: "auto" }}>
+            <div className="table-responsive-wrapper">
               <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                 <thead>
                   <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>

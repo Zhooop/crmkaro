@@ -2678,7 +2678,7 @@ function StudentsContent() {
             >
               <Icon name="people" size={14} /> {isGym ? "Member Profile & Contact" : "Student Profile & Contact"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="form-grid-2">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member Full Name *" : "Student Full Name *"}
@@ -2723,7 +2723,7 @@ function StudentsContent() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginTop: 12 }}>
+            <div className="form-grid-2" style={{ marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member ID / Reg No (Auto-Generated)" : "Student ID / Roll Number"}
@@ -2796,7 +2796,7 @@ function StudentsContent() {
 
             {isGym ? (
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                       Membership Plan / Package *
@@ -2881,7 +2881,7 @@ function StudentsContent() {
                 )}
               </div>
             ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+              <div className="form-grid-2">
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                     Class / Course / Standard *
@@ -2957,7 +2957,7 @@ function StudentsContent() {
                 ? "Emergency Contact & Reference (Optional)"
                 : "Guardian Contact (For Automated WhatsApp & PDF Receipts)"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div className="form-grid-3">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: isGym ? "#334155" : "#166534" }}>
                   {isGym ? "Contact Person Name" : "Guardian Name"}
@@ -3130,6 +3130,7 @@ function StudentsContent() {
                   <div>
                     {/* 12-Month Calendar Header & Year Switcher */}
                     <div
+                      className="calendar-header-responsive"
                       style={{
                         display: "flex",
                         justifyContent: "space-between",
@@ -3137,6 +3138,8 @@ function StudentsContent() {
                         marginBottom: 10,
                         paddingBottom: 8,
                         borderBottom: "1px solid #fef08a",
+                        flexWrap: "wrap",
+                        gap: 8,
                       }}
                     >
                       <div>
@@ -3201,7 +3204,7 @@ function StudentsContent() {
                     </div>
 
                     {/* Quick Select Buttons */}
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                    <div className="quick-mark-row" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                       <span style={{ fontSize: 11.5, fontWeight: 700, color: "#854d0e" }}>Quick Mark:</span>
                       {[
                         { count: 1, label: "+ 1 Month" },
@@ -3254,14 +3257,7 @@ function StudentsContent() {
                     </div>
 
                     {/* 12 Months Grid */}
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(4, 1fr)",
-                        gap: 8,
-                        marginBottom: 14,
-                      }}
-                    >
+                    <div className="calendar-month-grid">
                       {monthLabels.map((item, idx) => {
                         const mNumStr = String(idx + 1).padStart(2, "0");
                         const yyyyMm = `${admissionYear}-${mNumStr}`;
@@ -3400,7 +3396,7 @@ function StudentsContent() {
 
                     {/* Manual Fee and Date Inputs Row */}
                     <div>
-                      <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 12, alignItems: "start" }}>
+                      <div className="form-grid-fees">
                         <div className="form-group" style={{ margin: 0 }}>
                           <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
                             {isGym ? "Total Membership Fee (₹) *" : "Total Fee Amount (₹) *"}
@@ -3506,7 +3502,7 @@ function StudentsContent() {
                 <p style={{ margin: "0 0 10px", fontSize: 12, color: "#713f12" }}>
                   Annual academic fee is divided into 3 flexible term installments. Each installment has its own due date.
                 </p>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+                <div className="term-installments-grid">
                   {/* Term 1 */}
                   <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #fde047" }}>
                     <strong style={{ fontSize: 12, color: "#854d0e", display: "block", marginBottom: 8 }}>
@@ -3655,7 +3651,7 @@ function StudentsContent() {
 
             {admissionPaymentStatus === "PAID_NOW" ? (
               <div>
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div className="form-grid-2">
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
                       Payment Mode *
@@ -3738,7 +3734,7 @@ function StudentsContent() {
             >
               <Icon name="building" size={14} /> Address (Optional)
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+            <div className="form-grid-address">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ display: "block", marginBottom: 6, fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   Street Address
@@ -3803,7 +3799,7 @@ function StudentsContent() {
           </div>
 
           {/* Action Buttons in Sticky Modal Footer */}
-          <div className="modal-sticky-footer" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
+          <div className="modal-sticky-footer modal-sticky-footer-responsive" style={{ display: "flex", justifyContent: "flex-end", alignItems: "center", gap: 10, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
             <button
               type="button"
               className="secondary-button"
@@ -3892,7 +3888,7 @@ function StudentsContent() {
             >
               <Icon name="people" size={14} /> {isGym ? "Member Profile & Contact" : "Student Profile & Contact"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="form-grid-2">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member Full Name *" : "Student Full Name *"}
@@ -3932,7 +3928,7 @@ function StudentsContent() {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, marginTop: 12 }}>
+            <div className="form-grid-3" style={{ marginTop: 12 }}>
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Member ID / Reg No" : "Student ID / Roll Number"}
@@ -4015,7 +4011,7 @@ function StudentsContent() {
             >
               <Icon name="activity" size={14} /> {isGym ? "Membership Package & Slot" : "Class & Batch Allocation"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14 }}>
+            <div className="form-grid-3">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>
                   {isGym ? "Membership Plan / Package *" : "Standard / Class *"}
@@ -4104,7 +4100,7 @@ function StudentsContent() {
             >
               <Icon name="people" size={14} /> {isGym ? "Emergency Contact & Reference" : "Parent & Guardian (WhatsApp Receipts)"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 14 }}>
+            <div className="form-grid-3">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>
                   {isGym ? "Contact Person Name" : "Guardian Name"}
@@ -4196,7 +4192,7 @@ function StudentsContent() {
             >
               <Icon name="rupee" size={14} /> {isGym ? "Membership Fee Plan" : "Recurring Fee Plan"}
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+            <div className="form-grid-2">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12.5, fontWeight: 650, color: "#854d0e" }}>
                   {isGym ? "Plan Cycle / Frequency" : "Billing Frequency"}
@@ -4281,7 +4277,7 @@ function StudentsContent() {
 
           {/* Section 5: Address & Notes */}
           <div style={{ marginBottom: 18 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+            <div className="form-grid-address">
               <div className="form-group" style={{ margin: 0 }}>
                 <label style={{ fontSize: 12, color: "var(--muted)" }}>Street Address</label>
                 <input
@@ -4351,7 +4347,7 @@ function StudentsContent() {
           </div>
 
           {/* Action Buttons in Sticky Modal Footer */}
-          <div className="modal-sticky-footer">
+          <div className="modal-sticky-footer modal-sticky-footer-responsive">
             <button
               type="button"
               className="secondary-button"
@@ -4501,7 +4497,7 @@ function StudentsContent() {
                   </Badge>
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1", fontSize: 12.5 }}>
+                <div className="term-installments-grid" style={{ marginTop: 12, paddingTop: 12, borderTop: "1px dashed #cbd5e1", fontSize: 12.5 }}>
                   <div>
                     <div style={{ fontSize: 11, color: "#64748b", textTransform: "uppercase" }}>Monthly Plan</div>
                     <div style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>
@@ -4525,6 +4521,7 @@ function StudentsContent() {
 
               {/* 12-Month Calendar Section Header & Year Switcher */}
               <div
+                className="calendar-header-responsive"
                 style={{
                   display: "flex",
                   justifyContent: "space-between",
@@ -4594,7 +4591,7 @@ function StudentsContent() {
               </div>
 
               {/* Quick Select Buttons (Does NOT touch or calculate Amount!) */}
-              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+              <div className="quick-mark-row" style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
                 <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748b" }}>Quick Mark:</span>
                 {[
                   { count: 1, label: "+ Next 1 Month" },
@@ -4670,14 +4667,7 @@ function StudentsContent() {
 
                 return (
                   <>
-                    <div
-                      style={{
-                        display: "grid",
-                        gridTemplateColumns: "repeat(4, 1fr)",
-                        gap: 8,
-                        marginBottom: 14,
-                      }}
-                    >
+                    <div className="calendar-month-grid">
                       {monthLabels.map((item, idx) => {
                         const mNumStr = String(idx + 1).padStart(2, "0");
                         const yyyyMm = `${collectFeeYear}-${mNumStr}`;
@@ -4926,7 +4916,7 @@ function StudentsContent() {
                 </div>
               )}
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+              <div className="form-grid-2" style={{ marginBottom: 14 }}>
                 <div className="form-group" style={{ margin: 0 }}>
                   <label style={{ fontSize: 12.5, fontWeight: 650, color: "var(--ink)" }}>Payment Mode</label>
                   <select
@@ -4986,6 +4976,7 @@ function StudentsContent() {
               </div>
 
               <div
+                className="modal-sticky-footer-responsive"
                 style={{
                   display: "flex",
                   justifyContent: "flex-end",
