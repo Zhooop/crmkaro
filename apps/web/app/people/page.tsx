@@ -561,7 +561,7 @@ function PeopleContent() {
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
   const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
   const [formAdmissionNo, setFormAdmissionNo] = useState("");
-  const [formAdmissionDate, setFormAdmissionDate] = useState("");
+  const [formAdmissionDate, setFormAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [formStandard, setFormStandard] = useState("");
   const [formBatch, setFormBatch] = useState("");
   const [formPlanMonths, setFormPlanMonths] = useState<number>(1);
@@ -957,7 +957,7 @@ function PeopleContent() {
     setFormGuardianPhone("");
     setFormGuardianRelation("Self");
     setFormAdmissionNo("");
-    setFormAdmissionDate("");
+    setFormAdmissionDate(new Date().toISOString().slice(0, 10));
     setFormStandard("");
     setFormBatch("");
     setFormPlanMonths(1);
@@ -2014,10 +2014,10 @@ function PeopleContent() {
           </div>
 
           <div className="add-member-grid single-col">
-            {/* Admission Date */}
+            {/* Admission / Joining Date */}
             <div className="form-group" style={{ margin: 0, maxWidth: "50%" }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
-                Admission Date
+                Joining Date
               </label>
               <input
                 type="date"
