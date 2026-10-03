@@ -811,8 +811,8 @@ export class StudentsService {
         : [input.month || new Date().toISOString().slice(0, 7)];
 
       const planMonths = selectedMonths.length;
-      const startMonth = selectedMonths[0];
-      const endMonth = selectedMonths[selectedMonths.length - 1];
+      const startMonth = selectedMonths[0] || new Date().toISOString().slice(0, 7);
+      const endMonth = selectedMonths[selectedMonths.length - 1] || startMonth;
       const endParts = endMonth.split("-");
       const endYear = parseInt(endParts[0] || "2026", 10);
       const endMonthIndex = parseInt(endParts[1] || "1", 10);

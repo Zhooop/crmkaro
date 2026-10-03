@@ -768,7 +768,8 @@ function StudentsContent() {
       paidSet.add("2026-03");
     }
 
-    feesList.forEach((f) => {
+    const items = recurringFeesData?.items || [];
+    items.forEach((f) => {
       if (f.studentProfileId === studentProfileId && f.status === "PAID") {
         paidSet.add(f.cycleMonth);
       }
@@ -4269,8 +4270,8 @@ function StudentsContent() {
                 const selectedSorted = [...collectSelectedMonths].sort();
                 const selectedLabels = selectedSorted.map((ym) => {
                   const [y, m] = ym.split("-");
-                  const idx = parseInt(m, 10) - 1;
-                  return `${monthLabels[idx]?.short || m} ${y}`;
+                  const idx = parseInt(m || "1", 10) - 1;
+                  return `${monthLabels[idx]?.short || m || ""} ${y || ""}`;
                 });
 
                 return (

@@ -3846,8 +3846,8 @@ function PeopleContent() {
           const selectedSorted = [...renewalSelectedMonths].sort();
           const selectedLabels = selectedSorted.map((ym) => {
             const [y, m] = ym.split("-");
-            const idx = parseInt(m, 10) - 1;
-            return `${monthLabels[idx]?.short || m} ${y}`;
+            const idx = parseInt(m || "1", 10) - 1;
+            return `${monthLabels[idx]?.short || m || ""} ${y || ""}`;
           });
 
           return (
