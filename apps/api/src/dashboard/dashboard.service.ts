@@ -371,10 +371,16 @@ export class DashboardService {
           let validUntil: Date | null = null;
           if (paidMonthsList.length > 0) {
             const lastYm = paidMonthsList[paidMonthsList.length - 1];
-            const [yStr, mStr] = lastYm.split("-");
-            const y = parseInt(yStr, 10);
-            const m = parseInt(mStr, 10);
-            validUntil = new Date(y, m, 0); // Last calendar day of the last paid month
+            if (lastYm) {
+              const parts = lastYm.split("-");
+              const yStr = parts[0] ?? "";
+              const mStr = parts[1] ?? "";
+              const y = parseInt(yStr, 10);
+              const m = parseInt(mStr, 10);
+              if (!isNaN(y) && !isNaN(m)) {
+                validUntil = new Date(y, m, 0); // Last calendar day of the last paid month
+              }
+            }
           }
 
           const personPayments = paymentsByPerson.get(std.personId) || [];
