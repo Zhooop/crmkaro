@@ -409,6 +409,7 @@ function StudentsContent() {
   useEffect(() => {
     const action = searchParams?.get("action");
     if (action === "new-admission") {
+      resetAdmissionForm();
       setAdmissionModalOpen(true);
     }
   }, [searchParams]);
@@ -3096,14 +3097,14 @@ function StudentsContent() {
                   </label>
                   <input
                     type="number"
-                    placeholder={isGym ? "1500" : "500"}
+                    name="membership_fee_amount_manual"
+                    autoComplete="new-password"
+                    autoCorrect="off"
+                    data-lpignore="true"
+                    data-form-type="other"
+                    placeholder={isGym ? "Enter membership fee (e.g. 2000)" : "Enter fee amount"}
                     value={formFeeAmount}
-                    onChange={(e) => {
-                      setFormFeeAmount(e.target.value);
-                      if (!admissionAmountPaid || admissionAmountPaid === formFeeAmount) {
-                        setAdmissionAmountPaid(e.target.value);
-                      }
-                    }}
+                    onChange={(e) => setFormFeeAmount(e.target.value)}
                     required
                     style={{
                       width: "100%",
@@ -3316,8 +3317,13 @@ function StudentsContent() {
                     <label style={{ fontSize: 12.5, fontWeight: 650, color: "#166534" }}>Amount Received (₹) *</label>
                     <input
                       type="number"
-                      placeholder={formFeeAmount || "e.g. 1500"}
-                      value={admissionAmountPaid !== "" ? admissionAmountPaid : formFeeAmount}
+                      name="admission_amount_received_manual"
+                      autoComplete="new-password"
+                      autoCorrect="off"
+                      data-lpignore="true"
+                      data-form-type="other"
+                      placeholder="Enter amount received (e.g. 2000)"
+                      value={admissionAmountPaid}
                       onChange={(e) => setAdmissionAmountPaid(e.target.value)}
                       style={{
                         width: "100%",
@@ -4439,6 +4445,11 @@ function StudentsContent() {
                 </div>
                 <input
                   type="number"
+                  name="manual_collect_fee_amount"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  data-lpignore="true"
+                  data-form-type="other"
                   placeholder="Enter fee amount manually (e.g. 6000)"
                   value={collectAmount}
                   onChange={(e) => setCollectAmount(e.target.value)}

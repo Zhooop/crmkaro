@@ -399,7 +399,7 @@ export function PeopleListScreen() {
   const [formGuardianName, setFormGuardianName] = useState("");
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
   const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
-  const [formAdmissionDate, setFormAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formAdmissionDate, setFormAdmissionDate] = useState("");
   const [formBusy, setFormBusy] = useState(false);
 
   // Detail Sheet
@@ -1727,7 +1727,7 @@ export function PeopleListScreen() {
               </View>
 
               <View style={styles.formGroup}>
-                <Text style={styles.inputLabel}>Joining Date (YYYY-MM-DD)</Text>
+                <Text style={styles.inputLabel}>Admission / Enrollment Date (YYYY-MM-DD)</Text>
                 <TextInput
                   style={styles.formInput}
                   placeholder="e.g. 2026-07-01"

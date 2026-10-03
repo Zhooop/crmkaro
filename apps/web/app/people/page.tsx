@@ -561,7 +561,7 @@ function PeopleContent() {
   const [formGuardianPhone, setFormGuardianPhone] = useState("");
   const [formGuardianRelation, setFormGuardianRelation] = useState("Self");
   const [formAdmissionNo, setFormAdmissionNo] = useState("");
-  const [formAdmissionDate, setFormAdmissionDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formAdmissionDate, setFormAdmissionDate] = useState("");
   const [formStandard, setFormStandard] = useState("");
   const [formBatch, setFormBatch] = useState("");
   const [formPlanMonths, setFormPlanMonths] = useState<number>(1);
@@ -957,7 +957,7 @@ function PeopleContent() {
     setFormGuardianPhone("");
     setFormGuardianRelation("Self");
     setFormAdmissionNo("");
-    setFormAdmissionDate(new Date().toISOString().slice(0, 10));
+    setFormAdmissionDate("");
     setFormStandard("");
     setFormBatch("");
     setFormPlanMonths(1);
@@ -2014,10 +2014,10 @@ function PeopleContent() {
           </div>
 
           <div className="add-member-grid single-col">
-            {/* Admission / Joining Date */}
+            {/* Admission Date */}
             <div className="form-group" style={{ margin: 0, maxWidth: "50%" }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
-                Joining Date
+                Admission Date
               </label>
               <input
                 type="date"
@@ -4172,6 +4172,11 @@ function PeopleContent() {
                 </div>
                 <input
                   type="number"
+                  name="manual_renewal_fee_amount"
+                  autoComplete="new-password"
+                  autoCorrect="off"
+                  data-lpignore="true"
+                  data-form-type="other"
                   placeholder="Enter fee amount manually (e.g. 6000)"
                   value={renewalAmount}
                   onChange={(e) => setRenewalAmount(e.target.value)}
