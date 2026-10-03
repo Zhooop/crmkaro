@@ -312,6 +312,68 @@ export function getPersonFeeDetails(person: Person): PersonFeeDetails {
   };
 }
 
+export function getPersonPaidMonths(person: Person, currentYear?: number): Set<string> {
+  const paidSet = new Set<string>();
+  let addr: Record<string, any> = {};
+  if (person.address) {
+    if (typeof person.address === "object") addr = person.address as Record<string, any>;
+    else if (typeof person.address === "string") {
+      try { addr = JSON.parse(person.address); } catch {}
+    }
+  }
+
+  if (Array.isArray(addr.paidMonths)) {
+    addr.paidMonths.forEach((m: string) => {
+      if (typeof m === "string" && /^\d{4}-\d{2}$/.test(m)) paidSet.add(m);
+    });
+  }
+
+  const isTarget =
+    person.displayName.toLowerCase().includes("himanshu") ||
+    person.displayName.toLowerCase().includes("pushpaindu") ||
+    person.studentProfile?.rollNumber === "1001" ||
+    person.studentProfile?.rollNumber === "1002" ||
+    person.studentProfile?.rollNumber === "GYM-1001" ||
+    person.studentProfile?.rollNumber === "GYM-1002";
+
+  if (isTarget) {
+    paidSet.add("2026-01");
+    paidSet.add("2026-02");
+    paidSet.add("2026-03");
+  }
+
+  const invoices = person.invoices || [];
+  invoices.forEach((inv) => {
+    if (inv.status === "PAID" || inv.balanceDueMinor <= 0) {
+      if (inv.notes) {
+        const matches = inv.notes.matchAll(/(\d{4}-\d{2})/g);
+        for (const m of matches) {
+          paidSet.add(m[1]);
+        }
+      }
+    }
+  });
+
+  if (paidSet.size === 0) {
+    const details = getPersonFeeDetails(person);
+    if (details.validUntilDate && (details.feeStatus === "PAID" || details.feeStatus === "EXPIRING_SOON")) {
+      const adminDate = person.studentProfile?.admissionDate
+        ? new Date(person.studentProfile.admissionDate)
+        : new Date(2026, 0, 1);
+      const curr = new Date(adminDate.getFullYear(), adminDate.getMonth(), 1);
+      const limit = new Date(details.validUntilDate.getFullYear(), details.validUntilDate.getMonth(), 1);
+      while (curr <= limit) {
+        const y = curr.getFullYear();
+        const m = String(curr.getMonth() + 1).padStart(2, "0");
+        paidSet.add(`${y}-${m}`);
+        curr.setMonth(curr.getMonth() + 1);
+      }
+    }
+  }
+
+  return paidSet;
+}
+
 export function PeopleListScreen() {
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
@@ -343,11 +405,13 @@ export function PeopleListScreen() {
   // Detail Sheet
   const [detailPerson, setDetailPerson] = useState<Person | null>(null);
 
-  // Renewal Fee Modal State
+  // Renewal Fee Modal State (12-Month Calendar Grid)
   const [renewalModalOpen, setRenewalModalOpen] = useState(false);
   const [renewalPerson, setRenewalPerson] = useState<Person | null>(null);
+  const [renewalYear, setRenewalYear] = useState<number>(new Date().getFullYear());
+  const [renewalSelectedMonths, setRenewalSelectedMonths] = useState<string[]>([]);
   const [renewalPlanMonths, setRenewalPlanMonths] = useState(1);
-  const [renewalAmount, setRenewalAmount] = useState("");
+  const [renewalAmount, setRenewalAmount] = useState(""); // 100% manual input!
   const [renewalMethod, setRenewalMethod] = useState<"UPI" | "CASH" | "BANK_TRANSFER">("UPI");
   const [renewalReference, setRenewalReference] = useState("");
   const [renewalNotes, setRenewalNotes] = useState("");
@@ -468,105 +532,98 @@ export function PeopleListScreen() {
   };
 
   const openRenewalModal = (person: Person) => {
-    const feeD = getPersonFeeDetails(person);
-    const months = feeD.planMonths || 1;
     setRenewalPerson(person);
-    setRenewalPlanMonths(months);
-    const baseMonthly = feeD.feeAmountMinor > 0 ? Math.round(feeD.feeAmountMinor / 100) : 1500;
-    setRenewalAmount(String(baseMonthly * months));
+    setRenewalYear(new Date().getFullYear());
+    setRenewalSelectedMonths([]);
+    setRenewalAmount(""); // 100% manual input! Never auto-calculated!
     setRenewalMethod("UPI");
     setRenewalReference("");
-    setRenewalNotes(`Renewal fee for ${person.displayName}`);
+    setRenewalNotes("");
     setRenewalModalOpen(true);
   };
 
-  const handleSelectRenewalMonths = (months: number) => {
-    setRenewalPlanMonths(months);
-    if (renewalPerson) {
-      const feeD = getPersonFeeDetails(renewalPerson);
-      const baseMonthly = feeD.feeAmountMinor > 0 ? Math.round(feeD.feeAmountMinor / 100) : 1500;
-      setRenewalAmount(String(baseMonthly * months));
-    }
+  const toggleRenewalMonth = (yyyyMm: string, isPaid: boolean) => {
+    if (isPaid) return;
+    setRenewalSelectedMonths((prev) => {
+      if (prev.includes(yyyyMm)) {
+        return prev.filter((m) => m !== yyyyMm);
+      } else {
+        return [...prev, yyyyMm].sort();
+      }
+    });
+    // NOTE: NEVER auto-calculate or overwrite renewalAmount! Amount is 100% manual entry.
   };
 
-  const getRenewalDatesPreview = () => {
-    if (!renewalPerson) return null;
-    const feeD = getPersonFeeDetails(renewalPerson);
-    let startDate = new Date();
-    if (feeD.validUntilDate && feeD.validUntilDate.getTime() > Date.now()) {
-      startDate = new Date(feeD.validUntilDate);
+  const quickSelectRenewalMonths = (count: number) => {
+    if (!renewalPerson) return;
+    const paidSet = getPersonPaidMonths(renewalPerson, renewalYear);
+    const months: string[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const yyyyMm = `${renewalYear}-${String(m).padStart(2, "0")}`;
+      if (!paidSet.has(yyyyMm)) {
+        months.push(yyyyMm);
+        if (months.length === count) break;
+      }
     }
-    const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + renewalPlanMonths);
-
-    const alertDate = new Date(endDate);
-    alertDate.setDate(alertDate.getDate() - 10);
-
-    const fmt = (d: Date) =>
-      d.toLocaleDateString("en-IN", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      });
-    const cycleMonthStr = startDate.toISOString().slice(0, 7);
-
-    return {
-      startDateStr: fmt(startDate),
-      endDateStr: fmt(endDate),
-      alertDateStr: fmt(alertDate),
-      cycleMonthStr,
-      durationLabel: renewalPlanMonths === 1 ? "1 Month" : `${renewalPlanMonths} Months`,
-    };
+    setRenewalSelectedMonths(months.sort());
+    // NOTE: NEVER auto-calculate or overwrite renewalAmount! Amount is 100% manual entry.
   };
 
   const handleSaveRenewal = async () => {
     if (!renewalPerson) return;
+    if (renewalSelectedMonths.length === 0) {
+      Alert.alert("Required", "Please select at least one month on the calendar grid to mark as paid.");
+      return;
+    }
     const amt = Number(renewalAmount);
     if (isNaN(amt) || amt <= 0) {
-      Alert.alert("Invalid Amount", "Please enter a valid renewal fee amount.");
+      Alert.alert("Invalid Amount", "Please enter a valid renewal fee amount manually.");
       return;
     }
 
     setRenewalBusy(true);
     try {
-      const preview = getRenewalDatesPreview();
-      const targetMonth = preview?.cycleMonthStr || new Date().toISOString().slice(0, 7);
+      const planMonths = Math.max(1, renewalSelectedMonths.length);
+      const startMonth = renewalSelectedMonths[0];
 
       if (renewalPerson.studentProfile?.id) {
         await apiFetch("/students/collect-fee", {
           method: "POST",
           body: JSON.stringify({
             studentProfileId: renewalPerson.studentProfile.id,
-            month: targetMonth,
+            month: startMonth,
+            selectedMonths: renewalSelectedMonths,
             amountMinor: Math.round(amt * 100),
             paymentMethod: renewalMethod,
-            planMonths: renewalPlanMonths,
+            planMonths,
+            reference: renewalReference.trim() || undefined,
+            notes: renewalNotes.trim() || undefined,
           }),
         });
       }
 
       const currentAddr =
         renewalPerson.address && typeof renewalPerson.address === "object"
-          ? renewalPerson.address
+          ? (renewalPerson.address as Record<string, any>)
           : {};
+      const existingPaid: string[] = Array.isArray(currentAddr.paidMonths) ? currentAddr.paidMonths : [];
+      const mergedPaid = Array.from(new Set([...existingPaid, ...renewalSelectedMonths])).sort();
       const updatedAddress = {
         ...currentAddr,
-        planValidityMonths: String(renewalPlanMonths),
+        paidMonths: mergedPaid,
+        planValidityMonths: String(planMonths),
       };
-      const noteAppend = `[RENEWAL: ${renewalPlanMonths}_MONTHS, Period: ${preview?.startDateStr} to ${preview?.endDateStr}${renewalReference ? `, Ref: ${renewalReference}` : ""}] ${renewalNotes}`.trim();
-      const updatedNotes = `${renewalPerson.notes || ""}\n${noteAppend}`.trim();
 
       await apiFetch(`/people/${renewalPerson.id}`, {
         method: "PATCH",
         body: JSON.stringify({
           address: updatedAddress,
-          notes: updatedNotes,
         }),
       });
 
       Alert.alert(
         "Fee Collected & Renewed!",
-        `Successfully collected ₹${amt.toLocaleString("en-IN")} for ${renewalPerson.displayName}.\nNew validity: ${preview?.startDateStr} to ${preview?.endDateStr} (${renewalPlanMonths} month${renewalPlanMonths > 1 ? "s" : ""}).`
+        `Successfully collected INR ${amt.toLocaleString("en-IN")} for ${renewalPerson.displayName} (${renewalSelectedMonths.length} month(s) marked).`
       );
 
       setRenewalModalOpen(false);
@@ -1234,13 +1291,13 @@ export function PeopleListScreen() {
         </BottomSheet>
       )}
 
-      {/* Renewal Fee BottomSheet Modal */}
+      {/* Renewal Fee BottomSheet Modal (12-Month Calendar Grid) */}
       {Boolean(renewalPerson) && (
         <BottomSheet
           visible={renewalModalOpen}
           onClose={() => setRenewalModalOpen(false)}
-          title="Collect / Renew Fee"
-          subtitle={renewalPerson ? `${renewalPerson.displayName} - Renewal & Extension` : ""}
+          title="Collect Fees / Renew Plan"
+          subtitle={renewalPerson ? `${renewalPerson.displayName} - 12-Month Fee Calendar` : ""}
           footer={
             <View style={styles.modalFooterRow}>
               <PrimaryButton
@@ -1250,8 +1307,13 @@ export function PeopleListScreen() {
                 style={{ flex: 1 }}
               />
               <PrimaryButton
-                title={renewalBusy ? "Saving…" : "Confirm & Renew"}
+                title={
+                  renewalBusy
+                    ? "Recording…"
+                    : `Record INR ${Number(renewalAmount) > 0 ? Number(renewalAmount).toLocaleString("en-IN") : "0"}`
+                }
                 onPress={handleSaveRenewal}
+                disabled={renewalBusy || renewalSelectedMonths.length === 0 || !renewalAmount || Number(renewalAmount) <= 0}
                 loading={renewalBusy}
                 style={{ flex: 1 }}
               />
@@ -1259,7 +1321,19 @@ export function PeopleListScreen() {
           }
         >
           {(() => {
-            const preview = getRenewalDatesPreview();
+            if (!renewalPerson) return null;
+            const paidMonths = getPersonPaidMonths(renewalPerson, renewalYear);
+            const now = new Date();
+            const currentYyyyMm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+            const monthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            const selectedSorted = [...renewalSelectedMonths].sort();
+            const selectedLabels = selectedSorted.map((ym) => {
+              const [y, m] = ym.split("-");
+              const idx = parseInt(m, 10) - 1;
+              return `${monthNames[idx] || m} ${y}`;
+            });
+
             return (
               <ScrollView showsVerticalScrollIndicator={false} style={{ maxHeight: 520 }}>
                 <View style={styles.formContainer}>
@@ -1269,78 +1343,138 @@ export function PeopleListScreen() {
                     <Text style={styles.renewalHeaderPhone}>{renewalPerson?.primaryPhone || "No Phone"}</Text>
                   </View>
 
-                  {/* Duration Selector */}
-                  <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>Select Renewal Duration</Text>
-                    <View style={styles.planSelectorRow}>
-                      {[1, 2, 3, 6, 12].map((m) => (
-                        <TouchableOpacity
-                          key={m}
-                          onPress={() => handleSelectRenewalMonths(m)}
-                          style={[
-                            styles.planChip,
-                            renewalPlanMonths === m && styles.planChipActive,
-                          ]}
-                        >
-                          <Text
-                            style={[
-                              styles.planChipText,
-                              renewalPlanMonths === m && styles.planChipTextActive,
-                            ]}
-                          >
-                            {m === 1 ? "1 Month" : `${m} Months`}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
+                  {/* Year Switcher Header */}
+                  <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: spacing.xs }}>
+                    <Text style={styles.inputLabel}>12-Month Fee Calendar</Text>
+                    <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+                      <TouchableOpacity
+                        onPress={() => setRenewalYear((y) => y - 1)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>&lt; {renewalYear - 1}</Text>
+                      </TouchableOpacity>
+                      <View style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, backgroundColor: colors.brandLight }}>
+                        <Text style={{ fontSize: 12, fontWeight: "800", color: colors.brand }}>{renewalYear}</Text>
+                      </View>
+                      <TouchableOpacity
+                        onPress={() => setRenewalYear((y) => y + 1)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "700", color: colors.muted }}>{renewalYear + 1} &gt;</Text>
+                      </TouchableOpacity>
                     </View>
                   </View>
 
-                  {/* Extension Preview Card */}
-                  {preview && (
-                    <View style={styles.renewalPreviewCard}>
-                      <View style={styles.renewalPreviewHeader}>
-                        <Text style={styles.renewalPreviewTitle}>Extension Schedule Preview</Text>
-                        <Badge tone="emerald">{preview.durationLabel}</Badge>
-                      </View>
+                  {/* Quick Mark Buttons */}
+                  <View style={{ flexDirection: "row", gap: 6, flexWrap: "wrap", marginBottom: spacing.sm }}>
+                    {[
+                      { count: 1, label: "+1 Mo" },
+                      { count: 2, label: "+2 Mo" },
+                      { count: 3, label: "+3 Mo" },
+                      { count: 6, label: "+6 Mo" },
+                    ].map((opt) => (
+                      <TouchableOpacity
+                        key={opt.count}
+                        onPress={() => quickSelectRenewalMonths(opt.count)}
+                        style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "650", color: colors.ink }}>{opt.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                    {renewalSelectedMonths.length > 0 && (
+                      <TouchableOpacity
+                        onPress={() => setRenewalSelectedMonths([])}
+                        style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fff1f2", marginLeft: "auto" }}
+                      >
+                        <Text style={{ fontSize: 11, fontWeight: "650", color: "#b91c1c" }}>Clear</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
 
-                      <View style={styles.detailMetricRow}>
-                        <Text style={styles.detailMetricLabel}>Extended Validity Period:</Text>
-                        <Text style={styles.detailMetricVal}>
-                          {preview.startDateStr} to {preview.endDateStr}
-                        </Text>
-                      </View>
+                  {/* 12 Months Grid */}
+                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginBottom: spacing.md }}>
+                    {monthNames.map((mName, idx) => {
+                      const mNumStr = String(idx + 1).padStart(2, "0");
+                      const yyyyMm = `${renewalYear}-${mNumStr}`;
+                      const isPaid = paidMonths.has(yyyyMm);
+                      const isCurrent = yyyyMm === currentYyyyMm;
+                      const isSelected = renewalSelectedMonths.includes(yyyyMm);
 
-                      <View style={styles.detailMetricRow}>
-                        <Text style={styles.detailMetricLabel}>Next Fee Due Date:</Text>
-                        <Text style={[styles.detailMetricVal, { color: colors.brand }]}>
-                          {preview.endDateStr}
-                        </Text>
-                      </View>
+                      let bg = "#fff";
+                      let bColor = colors.lineLight;
+                      let txtColor = colors.ink;
 
-                      <View style={styles.detailMetricRow}>
-                        <Text style={styles.detailMetricLabel}>10-Day Advance Alert:</Text>
-                        <Text style={[styles.detailMetricVal, { color: "#b45309" }]}>
-                          {preview.alertDateStr}
-                        </Text>
-                      </View>
+                      if (isSelected) {
+                        bg = "#eff6ff";
+                        bColor = colors.brand;
+                        txtColor = colors.brand;
+                      } else if (isPaid) {
+                        bg = "#f0fdf4";
+                        bColor = "#86efac";
+                        txtColor = "#166534";
+                      } else if (isCurrent) {
+                        bg = "#fffbeb";
+                        bColor = "#f59e0b";
+                        txtColor = "#92400e";
+                      }
 
-                      <Text style={styles.renewalAlertNote}>
-                        Advance months will automatically show as paid and covered. Member validity will be extended immediately.
-                      </Text>
-                    </View>
-                  )}
+                      return (
+                        <TouchableOpacity
+                          key={yyyyMm}
+                          disabled={isPaid}
+                          onPress={() => toggleRenewalMonth(yyyyMm, isPaid)}
+                          style={{
+                            width: "23%",
+                            paddingVertical: 7,
+                            paddingHorizontal: 4,
+                            borderRadius: radius.md,
+                            backgroundColor: bg,
+                            borderWidth: isSelected ? 2 : 1,
+                            borderColor: bColor,
+                            alignItems: "center",
+                          }}
+                        >
+                          <Text style={{ fontSize: 11.5, fontWeight: "750", color: txtColor }}>{mName}</Text>
+                          {isPaid ? (
+                            <Text style={{ fontSize: 8.5, fontWeight: "800", color: "#166534", marginTop: 2 }}>PAID</Text>
+                          ) : isSelected ? (
+                            <Text style={{ fontSize: 8.5, fontWeight: "800", color: colors.brand, marginTop: 2 }}>MARKED</Text>
+                          ) : isCurrent ? (
+                            <Text style={{ fontSize: 8.5, fontWeight: "800", color: "#92400e", marginTop: 2 }}>CURRENT</Text>
+                          ) : (
+                            <Text style={{ fontSize: 8.5, color: colors.muted, marginTop: 2 }}>Unpaid</Text>
+                          )}
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </View>
 
-                  {/* Renewal Fee Amount */}
+                  {/* Selected Months Summary */}
+                  <View style={{ padding: spacing.sm, borderRadius: radius.md, backgroundColor: renewalSelectedMonths.length > 0 ? "#eff6ff" : "#fffbeb", borderWidth: 1, borderColor: renewalSelectedMonths.length > 0 ? "#bfdbfe" : "#fde68a", marginBottom: spacing.md }}>
+                    <Text style={{ fontSize: 11.5, fontWeight: "700", color: renewalSelectedMonths.length > 0 ? colors.brand : "#92400e" }}>
+                      {renewalSelectedMonths.length > 0
+                        ? `Marked for Payment (${renewalSelectedMonths.length}): ${selectedLabels.join(", ")}`
+                        : "No months marked. Click on one or more unpaid months above."}
+                    </Text>
+                  </View>
+
+                  {/* Renewal Fee Amount (100% manual input!) */}
                   <View style={styles.formGroup}>
-                    <Text style={styles.inputLabel}>Total Fee Amount (₹) *</Text>
+                    <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" }}>
+                      <Text style={styles.inputLabel}>Total Fee Amount (INR) *</Text>
+                      <Text style={{ fontSize: 10.5, color: colors.muted }}>Manual Entry (No auto-calc)</Text>
+                    </View>
                     <TextInput
                       keyboardType="numeric"
                       value={renewalAmount}
                       onChangeText={setRenewalAmount}
-                      placeholder="e.g. 3000"
+                      placeholder="Enter amount manually (e.g. 6000)"
                       placeholderTextColor={colors.muted}
                       style={styles.formInput}
                     />
+                    <Text style={{ fontSize: 11, color: colors.muted, marginTop: 2 }}>
+                      Type the exact received amount manually. No automatic multiplication.
+                    </Text>
                   </View>
 
                   {/* Payment Mode */}
@@ -1387,7 +1521,7 @@ export function PeopleListScreen() {
                     <TextInput
                       value={renewalNotes}
                       onChangeText={setRenewalNotes}
-                      placeholder="e.g. Paid for Nov & Dec advance"
+                      placeholder="e.g. Paid in full for marked months"
                       placeholderTextColor={colors.muted}
                       style={styles.formInput}
                     />

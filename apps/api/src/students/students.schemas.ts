@@ -48,7 +48,8 @@ export const studentUpdateSchema = z.object({
 
 export const collectFeeSchema = z.object({
   studentProfileId: z.string().uuid(),
-  month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format"),
+  month: z.string().regex(/^\d{4}-\d{2}$/, "Month must be in YYYY-MM format").optional(),
+  selectedMonths: z.array(z.string().regex(/^\d{4}-\d{2}$/)).optional(),
   amountMinor: z.coerce.number().int().min(0).max(2_000_000_000),
   planMonths: z.coerce.number().int().min(1).max(36).default(1).optional(),
   validFrom: z.coerce.date().optional(),

@@ -637,6 +637,14 @@ export class StudentsService {
           }
 
           const personPayments = paymentsByPerson.get(std.personId) || [];
+          const rawPaidMonths = addr.paidMonths;
+          const paidMonthsList: string[] = Array.isArray(rawPaidMonths)
+            ? rawPaidMonths
+            : typeof rawPaidMonths === "string"
+              ? rawPaidMonths.split(",").map((s: string) => s.trim())
+              : [];
+          const isExplicitlyPaidMonth = paidMonthsList.includes(targetMonth);
+
           // Check if any completed payment covers this target month
           let coveringPayment: (typeof allCompletedPayments)[0] | null = null;
           for (const p of personPayments) {
@@ -659,8 +667,8 @@ export class StudentsService {
           let paidMinor = 0;
           let balanceMinor = feePlanAmount;
 
-          if (coveringPayment) {
-            // Target month is covered by multi-month plan payment
+          if (isExplicitlyPaidMonth || coveringPayment) {
+            // Target month is covered by marked paid months or advance payment
             status = "PAID";
             paidMinor = feePlanAmount;
             balanceMinor = 0;
@@ -798,16 +806,21 @@ export class StudentsService {
       });
       if (!student) throw new NotFoundException("Student not found.");
 
-      const planMonths = Math.max(1, input.planMonths || 1);
-      const safeMonth = input.month || new Date().toISOString().slice(0, 7);
-      const startParts = safeMonth.split("-");
-      const startYear = parseInt(startParts[0] || "2026", 10);
-      const startMonthIndex = parseInt(startParts[1] || "1", 10) - 1;
-      const endMonthDate = new Date(startYear, startMonthIndex + planMonths - 1, 1);
-      const endMonthStr = `${endMonthDate.getFullYear()}-${String(endMonthDate.getMonth() + 1).padStart(2, "0")}`;
-      const startMonthLabel = formatMonthLabel(safeMonth);
-      const endMonthLabel = formatMonthLabel(endMonthStr);
-      const cycleLabel = planMonths > 1 ? `${startMonthLabel} to ${endMonthLabel} (${planMonths} Months)` : startMonthLabel;
+      const selectedMonths: string[] = (input.selectedMonths && input.selectedMonths.length > 0)
+        ? [...input.selectedMonths].sort()
+        : [input.month || new Date().toISOString().slice(0, 7)];
+
+      const planMonths = selectedMonths.length;
+      const startMonth = selectedMonths[0];
+      const endMonth = selectedMonths[selectedMonths.length - 1];
+      const endParts = endMonth.split("-");
+      const endYear = parseInt(endParts[0] || "2026", 10);
+      const endMonthIndex = parseInt(endParts[1] || "1", 10);
+      const dueDate = new Date(endYear, endMonthIndex, 0);
+
+      const cycleLabel = selectedMonths.length === 1
+        ? formatMonthLabel(startMonth)
+        : `${formatMonthLabel(startMonth)} to ${formatMonthLabel(endMonth)} (${selectedMonths.length} Months)`;
 
       const stdName = student.standard || "General";
       const orgType = (student.organisation.businessType || student.organisation.industry || "").toLowerCase();
@@ -823,19 +836,15 @@ export class StudentsService {
         where: {
           organisationId,
           personId: student.personId,
-          notes: { contains: input.month },
+          notes: { contains: startMonth },
         },
         include: { payments: true },
       });
 
       let invoice = existingInvoice;
-      const monthlyFeePlanAmountMinor = student.feeAmountMinor || 0;
-      const expectedTotalMinor = Math.max(
-        monthlyFeePlanAmountMinor * planMonths,
-        existingInvoice?.grandTotalMinor || 0,
-        input.amountMinor || 0,
-      );
-      const amountPaidNowMinor = input.amountMinor || expectedTotalMinor;
+      // Amount is 100% manual from user input; no auto-multiplication!
+      const expectedTotalMinor = input.amountMinor || 0;
+      const amountPaidNowMinor = input.amountMinor || 0;
 
       if (!invoice) {
         // Create new invoice with full fee plan amount for the selected duration
@@ -937,14 +946,21 @@ export class StudentsService {
         include: { items: true, payments: true, person: true },
       });
 
-      // 4. Update Person address planValidityMonths so directory & cards stay consistent
+      // 4. Update Person address paidMonths & planValidityMonths so directory & cards stay consistent
       try {
         const currentAddress = (student.person.address && typeof student.person.address === "object"
           ? student.person.address
           : {}) as Record<string, any>;
+        const prevPaidMonths = Array.isArray(currentAddress.paidMonths)
+          ? currentAddress.paidMonths
+          : typeof currentAddress.paidMonths === "string"
+            ? currentAddress.paidMonths.split(",").map((s: string) => s.trim())
+            : [];
+        const mergedPaidMonths = Array.from(new Set([...prevPaidMonths, ...selectedMonths])).sort();
         const updatedAddress = {
           ...currentAddress,
-          planValidityMonths: String(planMonths),
+          paidMonths: mergedPaidMonths,
+          planValidityMonths: String(Math.max(selectedMonths.length, parseInt(currentAddress.planValidityMonths || "1", 10))),
         };
         await tx.person.update({
           where: { id: student.personId },
@@ -953,7 +969,7 @@ export class StudentsService {
           },
         });
       } catch (addrErr) {
-        console.error("Failed to update person address planValidityMonths:", addrErr);
+        console.error("Failed to update person address paidMonths:", addrErr);
       }
 
       // 5. Log Activity (clean, no emojis)

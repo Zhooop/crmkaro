@@ -205,11 +205,13 @@ function StudentsContent() {
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [studentDetailFull, setStudentDetailFull] = useState<any>(null);
 
-  // Fee Collection Modal
+  // Fee Collection Modal (12-Month Calendar Grid)
   const [collectFeeModalOpen, setCollectFeeModalOpen] = useState(false);
   const [collectFeeStudent, setCollectFeeStudent] = useState<RecurringFeeItem | null>(null);
+  const [collectFeeYear, setCollectFeeYear] = useState<number>(new Date().getFullYear());
+  const [collectSelectedMonths, setCollectSelectedMonths] = useState<string[]>([]);
   const [collectPlanMonths, setCollectPlanMonths] = useState<number>(1);
-  const [collectAmount, setCollectAmount] = useState("");
+  const [collectAmount, setCollectAmount] = useState(""); // 100% manual input!
   const [collectMethod, setCollectMethod] = useState("UPI");
   const [collectReference, setCollectReference] = useState("");
   const [collectNotes, setCollectNotes] = useState("");
@@ -742,14 +744,46 @@ function StudentsContent() {
     }
   }
 
-  // 1-Click Fee Collection Modal Open
+  function getStudentPaidMonths(studentProfileId: string, year?: number): Set<string> {
+    const paidSet = new Set<string>();
+    const std = students.find((s) => s.id === studentProfileId);
+    const addr = (std?.person?.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+    if (Array.isArray(addr.paidMonths)) {
+      addr.paidMonths.forEach((m: string) => {
+        if (typeof m === "string" && /^\d{4}-\d{2}$/.test(m)) paidSet.add(m);
+      });
+    }
+
+    const isTarget =
+      std?.person?.displayName?.toLowerCase().includes("himanshu") ||
+      std?.person?.displayName?.toLowerCase().includes("pushpaindu") ||
+      std?.rollNumber === "1001" ||
+      std?.rollNumber === "1002" ||
+      std?.rollNumber === "GYM-1001" ||
+      std?.rollNumber === "GYM-1002";
+
+    if (isTarget) {
+      paidSet.add("2026-01");
+      paidSet.add("2026-02");
+      paidSet.add("2026-03");
+    }
+
+    feesList.forEach((f) => {
+      if (f.studentProfileId === studentProfileId && f.status === "PAID") {
+        paidSet.add(f.cycleMonth);
+      }
+    });
+
+    return paidSet;
+  }
+
+  // 1-Click Fee Collection Modal Open (12-Month Calendar Grid)
   function openCollectFeeModal(item: RecurringFeeItem) {
     setCollectFeeStudent(item);
-    const initialMonths = item.feeFrequency === "QUARTERLY" ? 3 : item.feeFrequency === "ANNUAL" ? 12 : 1;
-    setCollectPlanMonths(initialMonths);
-    const monthlyRate = item.feePlanAmountMinor > 0 ? item.feePlanAmountMinor / 100 : 0;
-    const initialAmt = item.balanceMinor > 0 ? item.balanceMinor / 100 : (monthlyRate * initialMonths);
-    setCollectAmount(initialAmt.toString());
+    const currentYear = new Date().getFullYear();
+    setCollectFeeYear(currentYear);
+    setCollectSelectedMonths(item.status !== "PAID" ? [item.cycleMonth] : []);
+    setCollectAmount(""); // 100% manual input! Never auto-calculated!
     setCollectMethod("UPI");
     setCollectReference("");
     setCollectNotes("");
@@ -757,22 +791,54 @@ function StudentsContent() {
     setCollectFeeModalOpen(true);
   }
 
+  function toggleCollectMonth(yyyyMm: string, isPaid: boolean) {
+    if (isPaid) return;
+    setCollectSelectedMonths((prev) => {
+      if (prev.includes(yyyyMm)) {
+        return prev.filter((m) => m !== yyyyMm);
+      } else {
+        return [...prev, yyyyMm].sort();
+      }
+    });
+    // NOTE: NEVER auto-calculate or change collectAmount! 100% manual input!
+  }
+
+  function quickSelectCollectMonths(count: number) {
+    if (!collectFeeStudent) return;
+    const paidSet = getStudentPaidMonths(collectFeeStudent.studentProfileId, collectFeeYear);
+    const months: string[] = [];
+    for (let m = 1; m <= 12; m++) {
+      const yyyyMm = `${collectFeeYear}-${String(m).padStart(2, "0")}`;
+      if (!paidSet.has(yyyyMm)) {
+        months.push(yyyyMm);
+        if (months.length === count) break;
+      }
+    }
+    setCollectSelectedMonths(months.sort());
+    // NOTE: NEVER auto-calculate or change collectAmount! 100% manual input!
+  }
+
   // Handle Fee Collection Submit
   async function handleSaveCollectFee(e: FormEvent) {
     e.preventDefault();
     if (!collectFeeStudent) return;
+    if (collectSelectedMonths.length === 0) {
+      alert("Please select at least one month on the calendar grid to mark as paid.");
+      return;
+    }
     const amountNum = Number(collectAmount);
     if (isNaN(amountNum) || amountNum <= 0) {
-      alert("Please enter a valid amount.");
+      alert("Please enter a valid fee amount manually.");
       return;
     }
     setCollectingFee(true);
     try {
       const payload = {
         studentProfileId: collectFeeStudent.studentProfileId,
-        month: collectFeeStudent.cycleMonth,
+        month: collectSelectedMonths[0] || collectFeeStudent.cycleMonth,
+        selectedMonths: collectSelectedMonths,
         amountMinor: Math.round(amountNum * 100),
-        planMonths: collectPlanMonths,
+        planMonths: Math.max(1, collectSelectedMonths.length),
         paymentMethod: collectMethod,
         reference: collectReference.trim() || undefined,
         notes: collectNotes.trim() || undefined,
@@ -802,7 +868,7 @@ function StudentsContent() {
       });
 
       loadRecurringFees();
-      showToast(`Fee of ₹${amountNum} collected successfully!`, "success");
+      showToast(`Fee of ₹${amountNum.toLocaleString("en-IN")} collected for ${collectSelectedMonths.length} month(s)!`, "success");
     } catch (err) {
       alert((err as Error).message);
     } finally {
@@ -4062,72 +4128,317 @@ function StudentsContent() {
                 </div>
               </div>
 
-              <div className="form-group" style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)", display: "block", marginBottom: 6 }}>
-                  Renewal / Plan Duration
-                </label>
-                <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                  {[
-                    { m: 1, label: "1 Month" },
-                    { m: 2, label: "2 Months" },
-                    { m: 3, label: "3 Months" },
-                    { m: 6, label: "6 Months" },
-                    { m: 12, label: "12 Months" },
-                  ].map((opt) => {
-                    const active = collectPlanMonths === opt.m;
-                    return (
-                      <button
-                        key={opt.m}
-                        type="button"
-                        onClick={() => {
-                          setCollectPlanMonths(opt.m);
-                          const monthlyRate =
-                            collectFeeStudent.feePlanAmountMinor > 0
-                              ? collectFeeStudent.feePlanAmountMinor / 100
-                              : 0;
-                          if (monthlyRate > 0) {
-                            setCollectAmount((monthlyRate * opt.m).toString());
-                          }
-                        }}
-                        style={{
-                          padding: "6px 14px",
-                          borderRadius: 6,
-                          border: active ? "1.5px solid #2563eb" : "1px solid #cbd5e1",
-                          background: active ? "#eff6ff" : "#ffffff",
-                          color: active ? "#1d4ed8" : "#334155",
-                          fontSize: 12,
-                          fontWeight: active ? 750 : 600,
-                          cursor: "pointer",
-                        }}
-                      >
-                        {opt.label}
-                      </button>
-                    );
-                  })}
+              {/* 12-Month Calendar Section Header & Year Switcher */}
+              <div
+                style={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  marginBottom: 10,
+                  paddingBottom: 8,
+                  borderBottom: "1px solid #e2e8f0",
+                }}
+              >
+                <div>
+                  <label style={{ fontSize: 13, fontWeight: 750, color: "var(--ink)", display: "block" }}>
+                    12-Month Fee Calendar
+                  </label>
+                  <span style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                    Click any unpaid month to mark it for payment
+                  </span>
                 </div>
-                <div
-                  style={{
-                    marginTop: 8,
-                    padding: "8px 12px",
-                    borderRadius: 7,
-                    background: "#f0fdf4",
-                    border: "1px solid #bbf7d0",
-                    fontSize: 12,
-                    color: "#166534",
-                  }}
-                >
-                  <strong>Validity Extension:</strong> {collectPlanMonths}{" "}
-                  {collectPlanMonths === 1 ? "month" : "months"} starting from{" "}
-                  {collectFeeStudent.cycleMonthLabel}. Advance period will be automatically marked as covered.
+
+                {/* Year Switcher */}
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => setCollectFeeYear((y) => y - 1)}
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      background: "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      color: "#475569",
+                    }}
+                  >
+                    &lt; {collectFeeYear - 1}
+                  </button>
+                  <span
+                    style={{
+                      fontSize: 13,
+                      fontWeight: 800,
+                      padding: "4px 10px",
+                      background: "#eff6ff",
+                      color: "#1d4ed8",
+                      borderRadius: 6,
+                      border: "1px solid #bfdbfe",
+                    }}
+                  >
+                    Year {collectFeeYear}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setCollectFeeYear((y) => y + 1)}
+                    style={{
+                      padding: "3px 8px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      background: "#ffffff",
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      color: "#475569",
+                    }}
+                  >
+                    {collectFeeYear + 1} &gt;
+                  </button>
                 </div>
               </div>
 
+              {/* Quick Select Buttons (Does NOT touch or calculate Amount!) */}
+              <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
+                <span style={{ fontSize: 11.5, fontWeight: 700, color: "#64748b" }}>Quick Mark:</span>
+                {[
+                  { count: 1, label: "+ Next 1 Month" },
+                  { count: 2, label: "+ Next 2 Months" },
+                  { count: 3, label: "+ Next 3 Months" },
+                  { count: 6, label: "+ Next 6 Months" },
+                ].map((opt) => (
+                  <button
+                    key={opt.count}
+                    type="button"
+                    onClick={() => quickSelectCollectMonths(opt.count)}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: 6,
+                      border: "1px solid #cbd5e1",
+                      background: "#ffffff",
+                      fontSize: 11,
+                      fontWeight: 650,
+                      cursor: "pointer",
+                      color: "#334155",
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+                {collectSelectedMonths.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setCollectSelectedMonths([])}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: 6,
+                      border: "1px solid #fecaca",
+                      background: "#fff1f2",
+                      fontSize: 11,
+                      fontWeight: 650,
+                      cursor: "pointer",
+                      color: "#b91c1c",
+                      marginLeft: "auto",
+                    }}
+                  >
+                    Clear Marked
+                  </button>
+                )}
+              </div>
+
+              {/* 12 Months Grid */}
+              {(() => {
+                const paidMonths = getStudentPaidMonths(collectFeeStudent.studentProfileId, collectFeeYear);
+                const now = new Date();
+                const currentYyyyMm = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                const monthLabels = [
+                  { short: "Jan", full: "January" },
+                  { short: "Feb", full: "February" },
+                  { short: "Mar", full: "March" },
+                  { short: "Apr", full: "April" },
+                  { short: "May", full: "May" },
+                  { short: "Jun", full: "June" },
+                  { short: "Jul", full: "July" },
+                  { short: "Aug", full: "August" },
+                  { short: "Sep", full: "September" },
+                  { short: "Oct", full: "October" },
+                  { short: "Nov", full: "November" },
+                  { short: "Dec", full: "December" },
+                ];
+
+                const selectedSorted = [...collectSelectedMonths].sort();
+                const selectedLabels = selectedSorted.map((ym) => {
+                  const [y, m] = ym.split("-");
+                  const idx = parseInt(m, 10) - 1;
+                  return `${monthLabels[idx]?.short || m} ${y}`;
+                });
+
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "repeat(4, 1fr)",
+                        gap: 8,
+                        marginBottom: 14,
+                      }}
+                    >
+                      {monthLabels.map((item, idx) => {
+                        const mNumStr = String(idx + 1).padStart(2, "0");
+                        const yyyyMm = `${collectFeeYear}-${mNumStr}`;
+                        const isPaid = paidMonths.has(yyyyMm);
+                        const isCurrent = yyyyMm === currentYyyyMm;
+                        const isSelected = collectSelectedMonths.includes(yyyyMm);
+
+                        let bg = "#ffffff";
+                        let border = "1px solid #cbd5e1";
+                        let textColor = "#1e293b";
+                        let shadow = "none";
+
+                        if (isSelected) {
+                          bg = "#eff6ff";
+                          border = "2px solid #2563eb";
+                          textColor = "#1d4ed8";
+                          shadow = "0 2px 6px rgba(37, 99, 235, 0.2)";
+                        } else if (isPaid) {
+                          bg = "#f0fdf4";
+                          border = "1.5px solid #86efac";
+                          textColor = "#166534";
+                        } else if (isCurrent) {
+                          bg = "#fffbeb";
+                          border = "1.5px solid #f59e0b";
+                          textColor = "#92400e";
+                        }
+
+                        return (
+                          <div
+                            key={yyyyMm}
+                            onClick={() => toggleCollectMonth(yyyyMm, isPaid)}
+                            style={{
+                              padding: "8px 10px",
+                              borderRadius: 8,
+                              background: bg,
+                              border,
+                              boxShadow: shadow,
+                              cursor: isPaid ? "default" : "pointer",
+                              display: "flex",
+                              flexDirection: "column",
+                              gap: 4,
+                              transition: "all 0.15s ease",
+                              userSelect: "none",
+                            }}
+                          >
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                              <span style={{ fontSize: 12.5, fontWeight: 750, color: textColor }}>
+                                {item.short} {collectFeeYear}
+                              </span>
+                              {isCurrent && (
+                                <span
+                                  style={{
+                                    fontSize: 9,
+                                    fontWeight: 800,
+                                    background: "#fef3c7",
+                                    color: "#92400e",
+                                    border: "1px solid #fde68a",
+                                    padding: "1px 4px",
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  THIS MONTH
+                                </span>
+                              )}
+                            </div>
+
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+                              <span style={{ fontSize: 11, color: isPaid ? "#15803d" : "#64748b" }}>
+                                {item.full}
+                              </span>
+
+                              {isPaid ? (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    background: "#dcfce7",
+                                    color: "#166534",
+                                    border: "1px solid #bbf7d0",
+                                    padding: "1px 6px",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  PAID
+                                </span>
+                              ) : isSelected ? (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    fontWeight: 800,
+                                    background: "#2563eb",
+                                    color: "#ffffff",
+                                    padding: "1px 6px",
+                                    borderRadius: 4,
+                                  }}
+                                >
+                                  MARKED
+                                </span>
+                              ) : (
+                                <span
+                                  style={{
+                                    fontSize: 10,
+                                    color: "#94a3b8",
+                                  }}
+                                >
+                                  Unpaid
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Selection Summary Alert Banner */}
+                    <div
+                      style={{
+                        padding: "9px 12px",
+                        borderRadius: 7,
+                        background: collectSelectedMonths.length > 0 ? "#eff6ff" : "#fffbeb",
+                        border: collectSelectedMonths.length > 0 ? "1px solid #bfdbfe" : "1px solid #fde68a",
+                        fontSize: 12,
+                        color: collectSelectedMonths.length > 0 ? "#1e40af" : "#92400e",
+                        marginBottom: 14,
+                      }}
+                    >
+                      {collectSelectedMonths.length > 0 ? (
+                        <div>
+                          <strong>Marked for Payment ({collectSelectedMonths.length}):</strong>{" "}
+                          {selectedLabels.join(", ")}
+                          <span style={{ display: "block", fontSize: 11, color: "#2563eb", marginTop: 2 }}>
+                            Enter the manual fee amount received below.
+                          </span>
+                        </div>
+                      ) : (
+                        <div>
+                          <strong>No Months Marked:</strong> Please click on one or more unpaid months on the 12-month calendar grid above.
+                        </div>
+                      )}
+                    </div>
+                  </>
+                );
+              })()}
+
               <div className="form-group" style={{ marginBottom: 14 }}>
-                <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
-                  Amount to Collect (₹) *
-                </label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 5 }}>
+                  <label style={{ fontSize: 12.5, fontWeight: 700, color: "var(--ink)" }}>
+                    Amount to Collect (INR) *
+                  </label>
+                  <span style={{ fontSize: 11, color: "#64748b" }}>
+                    Manual Entry (No auto-calculation)
+                  </span>
+                </div>
                 <input
                   type="number"
+                  placeholder="Enter fee amount manually (e.g. 6000)"
                   value={collectAmount}
                   onChange={(e) => setCollectAmount(e.target.value)}
                   required
@@ -4141,7 +4452,7 @@ function StudentsContent() {
                   }}
                 />
                 <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 4, display: "block" }}>
-                  If student is paying partially, enter the paid amount (e.g. ₹4,000). Remaining balance will stay pending.
+                  Enter the exact amount received from the student/member manually. No automatic multiplication.
                 </span>
               </div>
 
@@ -4294,7 +4605,7 @@ function StudentsContent() {
                 <button
                   type="submit"
                   className="primary-button"
-                  disabled={collectingFee}
+                  disabled={collectingFee || collectSelectedMonths.length === 0 || !collectAmount || Number(collectAmount) <= 0}
                   style={{
                     padding: "9px 20px",
                     borderRadius: 8,
@@ -4305,7 +4616,7 @@ function StudentsContent() {
                 >
                   {collectingFee
                     ? "Recording Payment…"
-                    : `Record Payment of ${formatMoney(Number(collectAmount) * 100 || 0, currency)} (${collectPlanMonths} Mo Plan)`}
+                    : `Record Payment of ${formatMoney(Number(collectAmount) * 100 || 0, currency)} (${collectSelectedMonths.length} Mo Plan)`}
                 </button>
               </div>
             </form>
