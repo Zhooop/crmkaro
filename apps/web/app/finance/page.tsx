@@ -1131,85 +1131,167 @@ function FinanceContent() {
               onAction={() => openCreateInvoiceModal()}
             />
           ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Invoice #</th>
-                    <th>Customer</th>
-                    <th>Issue Date</th>
-                    <th>Due Date</th>
-                    <th>Total Amount</th>
-                    <th>Balance Due</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {invoices.map((inv) => (
-                    <tr
-                      key={inv.id}
-                      className="clickable"
-                      onClick={() => handleOpenDetailInvoice(inv)}
-                    >
-                      <td>
-                        <strong>{inv.invoiceNumber}</strong>
-                      </td>
-                      <td>{inv.person?.displayName || "—"}</td>
-                      <td>{new Date(inv.issueDate).toLocaleDateString()}</td>
-                      <td>{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</td>
-                      <td>
-                        <strong>{formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}</strong>
-                      </td>
-                      <td>
-                        <span style={{ color: (inv.balanceDueMinor ?? 0) > 0 ? "var(--danger)" : "var(--ink)", fontWeight: 600 }}>
-                          {formatMoney(inv.balanceDueMinor ?? 0)}
-                        </span>
-                      </td>
-                      <td>
-                        <Badge
-                          tone={
-                            inv.status === "PAID"
-                              ? "green"
-                              : inv.status === "PARTIALLY_PAID"
-                                ? "amber"
-                                : inv.status === "ISSUED"
-                                  ? "blue"
-                                  : inv.status === "VOID"
-                                    ? "red"
-                                    : "neutral"
-                          }
+            <>
+              <div className="desktop-table-view">
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Invoice #</th>
+                        <th>Customer</th>
+                        <th>Issue Date</th>
+                        <th>Due Date</th>
+                        <th>Total Amount</th>
+                        <th>Balance Due</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {invoices.map((inv) => (
+                        <tr
+                          key={inv.id}
+                          className="clickable"
+                          onClick={() => handleOpenDetailInvoice(inv)}
                         >
-                          {inv.status}
-                        </Badge>
-                      </td>
-                      <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
-                          {inv.status === "DRAFT" && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => openEditInvoiceModal(inv)}
-                              title="Edit Draft Bill"
-                              style={{ color: "var(--brand)", borderColor: "var(--line)" }}
+                          <td>
+                            <strong>{inv.invoiceNumber}</strong>
+                          </td>
+                          <td>{inv.person?.displayName || "—"}</td>
+                          <td>{new Date(inv.issueDate).toLocaleDateString()}</td>
+                          <td>{inv.dueDate ? new Date(inv.dueDate).toLocaleDateString() : "—"}</td>
+                          <td>
+                            <strong>{formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}</strong>
+                          </td>
+                          <td>
+                            <span style={{ color: (inv.balanceDueMinor ?? 0) > 0 ? "var(--danger)" : "var(--ink)", fontWeight: 600 }}>
+                              {formatMoney(inv.balanceDueMinor ?? 0)}
+                            </span>
+                          </td>
+                          <td>
+                            <Badge
+                              tone={
+                                inv.status === "PAID"
+                                  ? "green"
+                                  : inv.status === "PARTIALLY_PAID"
+                                    ? "amber"
+                                    : inv.status === "ISSUED"
+                                      ? "blue"
+                                      : inv.status === "VOID"
+                                        ? "red"
+                                        : "neutral"
+                              }
                             >
-                              <Icon name="edit" size={14} />
-                              <span>Edit</span>
-                            </button>
-                          )}
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => handleOpenDetailInvoice(inv)}
-                          >
-                            <Icon name="eye" size={14} />
-                            <span>View</span>
-                          </button>
+                              {inv.status}
+                            </Badge>
+                          </td>
+                          <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", gap: 6, justifyContent: "flex-end" }}>
+                              {inv.status === "DRAFT" && (
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => openEditInvoiceModal(inv)}
+                                  title="Edit Draft Bill"
+                                  style={{ color: "var(--brand)", borderColor: "var(--line)" }}
+                                >
+                                  <Icon name="edit" size={14} />
+                                  <span>Edit</span>
+                                </button>
+                              )}
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => handleOpenDetailInvoice(inv)}
+                              >
+                                <Icon name="eye" size={14} />
+                                <span>View</span>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Invoice Cards */}
+              <div className="mobile-cards-view">
+                {invoices.map((inv) => (
+                  <div
+                    key={inv.id}
+                    className="mobile-record-card"
+                    onClick={() => handleOpenDetailInvoice(inv)}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name">{inv.person?.displayName || "Customer"}</div>
+                        <div className="mobile-card-subtext">
+                          Invoice #{inv.invoiceNumber} · {new Date(inv.issueDate).toLocaleDateString()}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <Badge
+                        tone={
+                          inv.status === "PAID"
+                            ? "green"
+                            : inv.status === "PARTIALLY_PAID"
+                              ? "amber"
+                              : inv.status === "ISSUED"
+                                ? "blue"
+                                : inv.status === "VOID"
+                                  ? "red"
+                                  : "neutral"
+                        }
+                      >
+                        {inv.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mobile-card-meta-row" style={{ marginTop: 10 }}>
+                      <div>
+                        <div className="mobile-card-label">Total Amount</div>
+                        <div className="mobile-card-value" style={{ fontWeight: 700 }}>
+                          {formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div className="mobile-card-label">Balance Due</div>
+                        <div
+                          className="mobile-card-value"
+                          style={{
+                            fontWeight: 750,
+                            color: (inv.balanceDueMinor ?? 0) > 0 ? "var(--danger)" : "var(--ink)",
+                          }}
+                        >
+                          {formatMoney(inv.balanceDueMinor ?? 0)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mobile-card-footer" style={{ marginTop: 12, display: "flex", gap: 8, justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                      {inv.status === "DRAFT" && (
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => openEditInvoiceModal(inv)}
+                          style={{ color: "var(--brand)", borderColor: "var(--line)", padding: "6px 12px", borderRadius: 7 }}
+                        >
+                          <Icon name="edit" size={13} />
+                          <span>Edit</span>
+                        </button>
+                      )}
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => handleOpenDetailInvoice(inv)}
+                        style={{ padding: "6px 14px", borderRadius: 7 }}
+                      >
+                        <Icon name="eye" size={13} />
+                        <span>View Details</span>
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </>
       )}
@@ -1236,7 +1318,9 @@ function FinanceContent() {
               description="Record payments against issued invoices to keep track of collections."
             />
           ) : (
-            <table className="data-table">
+            <>
+              <div className="desktop-table-view">
+                <table className="data-table">
               <thead>
                 <tr>
                   <th>Payment Date</th>
@@ -1298,7 +1382,72 @@ function FinanceContent() {
                 ))}
               </tbody>
             </table>
-          )}
+          </div>
+
+          {/* Mobile View: Payment Cards */}
+          <div className="mobile-cards-view">
+            {allPayments.map((pay) => (
+              <div key={pay.id} className="mobile-record-card">
+                <div className="mobile-card-header">
+                  <div>
+                    <div className="mobile-card-name">{pay.person?.displayName || "Customer"}</div>
+                    <div className="mobile-card-subtext">
+                      Invoice #{pay.invoice?.invoiceNumber || "—"} · {new Date(pay.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                  <Badge
+                    tone={
+                      pay.status === "COMPLETED"
+                        ? "green"
+                        : pay.status === "REFUNDED"
+                          ? "red"
+                          : "blue"
+                    }
+                  >
+                    {pay.status}
+                  </Badge>
+                </div>
+
+                <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                  <div>
+                    <div className="mobile-card-label">Payment Method</div>
+                    <div className="mobile-card-value">{pay.method}</div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="mobile-card-label">Amount Paid</div>
+                    <div className="mobile-card-value" style={{ color: "#047857", fontWeight: 750, fontSize: 13.5 }}>
+                      {formatMoney(pay.amountMinor)}
+                    </div>
+                  </div>
+                </div>
+
+                {pay.reference && (
+                  <div style={{ fontSize: 12, color: "var(--muted)", marginTop: 6 }}>
+                    Ref: {pay.reference}
+                  </div>
+                )}
+
+                {pay.status === "COMPLETED" && (
+                  <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                    <button
+                      className="btn btn-danger btn-sm"
+                      onClick={() => {
+                        setSelectedPaymentForRefund(pay);
+                        setRefundAmount((pay.amountMinor / 100).toString());
+                        setRefundOpen(true);
+                      }}
+                      style={{ padding: "6px 12px", borderRadius: 7 }}
+                    >
+                      <Icon name="refresh" size={13} />
+                      <span>Refund</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
         </div>
       )}
 
@@ -1330,42 +1479,76 @@ function FinanceContent() {
               onAction={() => setCreateExpenseOpen(true)}
             />
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Category</th>
-                  <th>Vendor</th>
-                  <th>Description</th>
-                  <th>Amount</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              <div className="desktop-table-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Category</th>
+                      <th>Vendor</th>
+                      <th>Description</th>
+                      <th>Amount</th>
+                      <th>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {expenses.map((exp) => (
+                      <tr key={exp.id}>
+                        <td>{new Date(exp.date).toLocaleDateString()}</td>
+                        <td>
+                          <Badge tone="blue">{exp.category}</Badge>
+                        </td>
+                        <td>
+                          <strong>{exp.vendor || "—"}</strong>
+                        </td>
+                        <td>{exp.description || "—"}</td>
+                        <td>
+                          <strong style={{ color: "#b91c1c" }}>
+                            -{formatMoney(exp.amountMinor)}
+                          </strong>
+                        </td>
+                        <td>
+                          <Badge tone={exp.status === "RECORDED" ? "neutral" : "red"}>
+                            {exp.status}
+                          </Badge>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Expense Cards */}
+              <div className="mobile-cards-view">
                 {expenses.map((exp) => (
-                  <tr key={exp.id}>
-                    <td>{new Date(exp.date).toLocaleDateString()}</td>
-                    <td>
+                  <div key={exp.id} className="mobile-record-card">
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name">{exp.vendor || exp.description || "Expense"}</div>
+                        <div className="mobile-card-subtext">
+                          {new Date(exp.date).toLocaleDateString()}
+                        </div>
+                      </div>
                       <Badge tone="blue">{exp.category}</Badge>
-                    </td>
-                    <td>
-                      <strong>{exp.vendor || "—"}</strong>
-                    </td>
-                    <td>{exp.description || "—"}</td>
-                    <td>
-                      <strong style={{ color: "#b91c1c" }}>
-                        -{formatMoney(exp.amountMinor)}
-                      </strong>
-                    </td>
-                    <td>
-                      <Badge tone={exp.status === "RECORDED" ? "neutral" : "red"}>
-                        {exp.status}
-                      </Badge>
-                    </td>
-                  </tr>
+                    </div>
+
+                    <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                      <div>
+                        <div className="mobile-card-label">Description</div>
+                        <div className="mobile-card-value">{exp.description || "—"}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div className="mobile-card-label">Expense Amount</div>
+                        <div className="mobile-card-value" style={{ color: "#b91c1c", fontWeight: 750, fontSize: 13.5 }}>
+                          -{formatMoney(exp.amountMinor)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       )}

@@ -550,6 +550,10 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
+                                justifyContent: "center",
+                                textAlign: "center",
+                                maxWidth: "100%",
+                                boxSizing: "border-box",
                                 gap: 6,
                                 padding: "8px 18px",
                                 borderRadius: 8,

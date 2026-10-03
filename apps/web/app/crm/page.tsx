@@ -920,72 +920,143 @@ function CrmContent() {
         </div>
       ) : (
         /* Table List View */
-        <div className="table-wrap">
-          <table className="data-table">
-            <thead>
-              <tr>
-                <th>Lead Name</th>
-                <th>Contact</th>
-                <th>Stage</th>
-                <th>Expected Value</th>
-                <th>Source</th>
-                <th>Status</th>
-                <th style={{ textAlign: "right" }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leads.map((lead) => {
-                const stageName = stages.find((s) => s.id === lead.stageId)?.name || "Initial";
-                return (
-                  <tr
-                    key={lead.id}
-                    className="clickable"
-                    onClick={() => setDetailLead(lead)}
-                  >
-                    <td>
-                      <strong>{lead.name}</strong>
-                    </td>
-                    <td>
-                      <div>
-                        {lead.email && <div>{lead.email}</div>}
-                        {lead.phone && <small style={{ color: "var(--muted)" }}>{lead.phone}</small>}
-                      </div>
-                    </td>
-                    <td>
-                      <Badge tone="neutral">{stageName}</Badge>
-                    </td>
-                    <td>
-                      <strong>{formatMoney(lead.expectedValueMinor)}</strong>
-                    </td>
-                    <td>{lead.source || "—"}</td>
-                    <td>
-                      <Badge
-                        tone={
-                          lead.status === "CONVERTED"
-                            ? "green"
-                            : lead.status === "LOST"
-                              ? "red"
-                              : "blue"
-                        }
-                      >
-                        {lead.status}
-                      </Badge>
-                    </td>
-                    <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="btn btn-secondary btn-sm"
+        <>
+          <div className="desktop-table-view">
+            <div className="table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Lead Name</th>
+                    <th>Contact</th>
+                    <th>Stage</th>
+                    <th>Expected Value</th>
+                    <th>Source</th>
+                    <th>Status</th>
+                    <th style={{ textAlign: "right" }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {leads.map((lead) => {
+                    const stageName = stages.find((s) => s.id === lead.stageId)?.name || "Initial";
+                    return (
+                      <tr
+                        key={lead.id}
+                        className="clickable"
                         onClick={() => setDetailLead(lead)}
                       >
-                        <Icon name="eye" size={14} />
-                        <span>View</span>
-                      </button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
+                        <td>
+                          <strong>{lead.name}</strong>
+                        </td>
+                        <td>
+                          <div>
+                            {lead.email && <div>{lead.email}</div>}
+                            {lead.phone && <small style={{ color: "var(--muted)" }}>{lead.phone}</small>}
+                          </div>
+                        </td>
+                        <td>
+                          <Badge tone="neutral">{stageName}</Badge>
+                        </td>
+                        <td>
+                          <strong>{formatMoney(lead.expectedValueMinor)}</strong>
+                        </td>
+                        <td>{lead.source || "—"}</td>
+                        <td>
+                          <Badge
+                            tone={
+                              lead.status === "CONVERTED"
+                                ? "green"
+                                : lead.status === "LOST"
+                                  ? "red"
+                                  : "blue"
+                            }
+                          >
+                            {lead.status}
+                          </Badge>
+                        </td>
+                        <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setDetailLead(lead)}
+                          >
+                            <Icon name="eye" size={14} />
+                            <span>View</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Mobile View: Lead Cards */}
+          <div className="mobile-cards-view">
+            {leads.map((lead) => {
+              const stageName = stages.find((s) => s.id === lead.stageId)?.name || "Initial";
+              return (
+                <div
+                  key={lead.id}
+                  className="mobile-record-card"
+                  onClick={() => setDetailLead(lead)}
+                  style={{ cursor: "pointer" }}
+                >
+                  <div className="mobile-card-header">
+                    <div>
+                      <div className="mobile-card-name">{lead.name}</div>
+                      <div className="mobile-card-subtext">
+                        Stage: {stageName} {lead.source ? `· Source: ${lead.source}` : ""}
+                      </div>
+                    </div>
+                    <Badge
+                      tone={
+                        lead.status === "CONVERTED"
+                          ? "green"
+                          : lead.status === "LOST"
+                            ? "red"
+                            : "blue"
+                      }
+                    >
+                      {lead.status}
+                    </Badge>
+                  </div>
+
+                  <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                    <div>
+                      <div className="mobile-card-label">Expected Value</div>
+                      <div className="mobile-card-value" style={{ fontWeight: 700, color: "var(--brand-primary)" }}>
+                        {formatMoney(lead.expectedValueMinor)}
+                      </div>
+                    </div>
+                    {lead.phone && (
+                      <div style={{ textAlign: "right" }}>
+                        <div className="mobile-card-label">Contact</div>
+                        <a
+                          href={`tel:${lead.phone}`}
+                          onClick={(e) => e.stopPropagation()}
+                          style={{ fontSize: 12.5, fontWeight: 650, color: "var(--brand-primary)" }}
+                        >
+                          {lead.phone}
+                        </a>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => setDetailLead(lead)}
+                      style={{ padding: "6px 14px", borderRadius: 7 }}
+                    >
+                      <Icon name="eye" size={13} />
+                      <span>View Details</span>
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
       )}
 
       {/* Lead Detail Drawer */}

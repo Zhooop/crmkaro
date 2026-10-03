@@ -1502,142 +1502,262 @@ function StudentsContent() {
               </button>
             </div>
           ) : (
-            <div className="table-responsive" style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>{isGym ? "Member Details" : "Student Details"}</th>
-                    <th>{isGym ? "Plan & Slot" : "Standard & Batch"}</th>
-                    <th>{isGym ? "Emergency / Contact" : "Guardian / Parent"}</th>
-                    <th>{isGym ? "Membership Fee" : "Fee Plan"}</th>
-                    <th>Enrolled On</th>
-                    <th>Status</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {students.map((std) => (
-                    <tr
-                      key={std.id}
-                      style={{ cursor: "pointer", opacity: std.status === "INACTIVE" ? 0.6 : 1 }}
-                      onClick={() => handleOpenDetail(std)}
-                    >
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                          <div
-                            style={{
-                              width: 36,
-                              height: 36,
-                              borderRadius: 10,
-                              background: std.status === "ACTIVE" ? "#0f766e" : "#64748b",
-                              color: "#fff",
-                              display: "flex",
-                              alignItems: "center",
-                              justifyContent: "center",
-                              fontWeight: 750,
-                              fontSize: 13.5,
-                              flexShrink: 0,
-                            }}
-                          >
-                            {std.person.displayName.slice(0, 2).toUpperCase()}
-                          </div>
-                          <div>
-                            <strong style={{ fontSize: 13.5, color: "var(--ink)" }}>{std.person.displayName}</strong>
-                            <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
-                              {std.rollNumber ? `ID #${std.rollNumber}` : "No Roll"} · {std.person.primaryPhone || "No Phone"}
+            <>
+              {/* Desktop View: Full Data Table */}
+              <div className="desktop-table-view">
+                <div className="table-responsive" style={{ overflowX: "auto" }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>{isGym ? "Member Details" : "Student Details"}</th>
+                        <th>{isGym ? "Plan & Slot" : "Standard & Batch"}</th>
+                        <th>{isGym ? "Emergency / Contact" : "Guardian / Parent"}</th>
+                        <th>{isGym ? "Membership Fee" : "Fee Plan"}</th>
+                        <th>Enrolled On</th>
+                        <th>Status</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {students.map((std) => (
+                        <tr
+                          key={std.id}
+                          style={{ cursor: "pointer", opacity: std.status === "INACTIVE" ? 0.6 : 1 }}
+                          onClick={() => handleOpenDetail(std)}
+                        >
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                              <div
+                                style={{
+                                  width: 36,
+                                  height: 36,
+                                  borderRadius: 10,
+                                  background: std.status === "ACTIVE" ? "#0f766e" : "#64748b",
+                                  color: "#fff",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  fontWeight: 750,
+                                  fontSize: 13.5,
+                                  flexShrink: 0,
+                                }}
+                              >
+                                {std.person.displayName.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <strong style={{ fontSize: 13.5, color: "var(--ink)" }}>{std.person.displayName}</strong>
+                                <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                                  {std.rollNumber ? `ID #${std.rollNumber}` : "No Roll"} · {std.person.primaryPhone || "No Phone"}
+                                </div>
+                              </div>
                             </div>
-                          </div>
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 650, fontSize: 13 }}>{std.standard}</div>
+                            {std.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{std.batch}</div>}
+                          </td>
+                          <td>
+                            <div style={{ fontSize: 13, fontWeight: 600 }}>
+                              {std.guardianName || (isGym ? std.person.displayName : "—")}
+                            </div>
+                            <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                              {std.guardianRelation ? `(${std.guardianRelation}) ` : ""}
+                              {std.guardianPhone || (isGym ? std.person.primaryPhone : "—")}
+                            </div>
+                          </td>
+                          <td>
+                            <strong style={{ color: "var(--ink)", fontSize: 13 }}>
+                              {formatMoney(std.feeAmountMinor, currency)}
+                            </strong>
+                            <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "lowercase" }}>
+                              /{(() => {
+                                const valMonths = (std.person.address as any)?.planValidityMonths;
+                                if (valMonths) return valMonths === "1" ? "1 month" : `${valMonths} months`;
+                                return std.feeFrequency.toLowerCase();
+                              })()}
+                            </div>
+                          </td>
+                          <td>
+                            <time style={{ fontSize: 12, color: "var(--muted)" }}>
+                              {new Date(std.admissionDate).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </time>
+                          </td>
+                          <td>
+                            <Badge tone={std.status === "ACTIVE" ? "green" : "neutral"}>
+                              {std.status}
+                            </Badge>
+                          </td>
+                          <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                              <button
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  fontWeight: 700,
+                                  color: "var(--brand)",
+                                  background: "rgba(37, 99, 235, 0.06)",
+                                  borderColor: "rgba(37, 99, 235, 0.2)",
+                                }}
+                                onClick={() => handleOpenEdit(std)}
+                                title="Edit student details & fee plan"
+                              >
+                                Edit
+                              </button>
+                              <button
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  fontWeight: 650,
+                                }}
+                                onClick={() => handleOpenDetail(std)}
+                              >
+                                View
+                              </button>
+                              <button
+                                className="secondary-button"
+                                style={{
+                                  padding: "5px 10px",
+                                  fontSize: 11.5,
+                                  borderRadius: 6,
+                                  fontWeight: 650,
+                                  color: std.status === "ACTIVE" ? "#b91c1c" : "#047857",
+                                }}
+                                onClick={() => handleToggleStatus(std.id, std.status)}
+                              >
+                                {std.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Clean Native Cards */}
+              <div className="mobile-cards-view">
+                {students.map((std) => (
+                  <div
+                    key={`m-std-${std.id}`}
+                    className="mobile-record-card"
+                    style={{ opacity: std.status === "INACTIVE" ? 0.6 : 1 }}
+                    onClick={() => handleOpenDetail(std)}
+                  >
+                    <div className="mobile-card-header">
+                      <div
+                        className="mobile-card-avatar"
+                        style={{ background: std.status === "ACTIVE" ? "#0f766e" : "#64748b", color: "#fff" }}
+                      >
+                        {std.person.displayName.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="mobile-card-title-col">
+                        <div className="mobile-card-title-row">
+                          <strong className="mobile-card-name">{std.person.displayName}</strong>
+                          {std.rollNumber && (
+                            <span className="mobile-card-id-badge">ID #{std.rollNumber}</span>
+                          )}
                         </div>
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, fontSize: 13 }}>{std.standard}</div>
-                        {std.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{std.batch}</div>}
-                      </td>
-                      <td>
-                        <div style={{ fontSize: 13, fontWeight: 600 }}>
-                          {std.guardianName || (isGym ? std.person.displayName : "—")}
+                        <div className="mobile-card-package">
+                          <span>{std.standard}</span>
+                          {std.batch && <span> · Slot: {std.batch}</span>}
                         </div>
-                        <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                          {std.guardianRelation ? `(${std.guardianRelation}) ` : ""}
-                          {std.guardianPhone || (isGym ? std.person.primaryPhone : "—")}
-                        </div>
-                      </td>
-                      <td>
-                        <strong style={{ color: "var(--ink)", fontSize: 13 }}>
-                          {formatMoney(std.feeAmountMinor, currency)}
-                        </strong>
-                        <div style={{ fontSize: 11, color: "var(--muted)", textTransform: "lowercase" }}>
+                      </div>
+                      <Badge tone={std.status === "ACTIVE" ? "green" : "neutral"}>
+                        {std.status}
+                      </Badge>
+                    </div>
+
+                    <div className="mobile-card-meta-row">
+                      <div>
+                        <small>{isGym ? "Membership Fee Plan" : "Fee Plan"}</small>
+                        <strong style={{ color: "var(--ink)" }}>{formatMoney(std.feeAmountMinor, currency)}</strong>
+                        <span style={{ fontSize: 11, color: "var(--muted)" }}>
                           /{(() => {
                             const valMonths = (std.person.address as any)?.planValidityMonths;
-                            if (valMonths) return valMonths === "1" ? "1 month" : `${valMonths} months`;
+                            if (valMonths) return valMonths === "1" ? "1 mo" : `${valMonths} mo`;
                             return std.feeFrequency.toLowerCase();
                           })()}
-                        </div>
-                      </td>
-                      <td>
-                        <time style={{ fontSize: 12, color: "var(--muted)" }}>
+                        </span>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <small>Enrolled On</small>
+                        <time style={{ fontSize: 12, color: "var(--ink)", fontWeight: 650 }}>
                           {new Date(std.admissionDate).toLocaleDateString("en-IN", {
                             day: "numeric",
                             month: "short",
                             year: "numeric",
                           })}
                         </time>
-                      </td>
-                      <td>
-                        <Badge tone={std.status === "ACTIVE" ? "green" : "neutral"}>
-                          {std.status}
-                        </Badge>
-                      </td>
-                      <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                          <button
-                            className="secondary-button"
-                            style={{
-                              padding: "5px 10px",
-                              fontSize: 11.5,
-                              borderRadius: 6,
-                              fontWeight: 700,
-                              color: "var(--brand)",
-                              background: "rgba(37, 99, 235, 0.06)",
-                              borderColor: "rgba(37, 99, 235, 0.2)",
-                            }}
-                            onClick={() => handleOpenEdit(std)}
-                            title="Edit student details & fee plan"
+                      </div>
+                    </div>
+
+                    {(std.guardianName || std.guardianPhone || std.person.primaryPhone) && (
+                      <div className="mobile-card-contact-row">
+                        {std.person.primaryPhone && (
+                          <a
+                            href={`tel:${std.person.primaryPhone}`}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mobile-call-link"
                           >
-                            Edit
-                          </button>
-                          <button
-                            className="secondary-button"
-                            style={{
-                              padding: "5px 10px",
-                              fontSize: 11.5,
-                              borderRadius: 6,
-                              fontWeight: 650,
-                            }}
-                            onClick={() => handleOpenDetail(std)}
-                          >
-                            View
-                          </button>
-                          <button
-                            className="secondary-button"
-                            style={{
-                              padding: "5px 10px",
-                              fontSize: 11.5,
-                              borderRadius: 6,
-                              fontWeight: 650,
-                              color: std.status === "ACTIVE" ? "#b91c1c" : "#047857",
-                            }}
-                            onClick={() => handleToggleStatus(std.id, std.status)}
-                          >
-                            {std.status === "ACTIVE" ? "Deactivate" : "Reactivate"}
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                            <Icon name="phone" size={13} />
+                            <span>{std.person.primaryPhone}</span>
+                          </a>
+                        )}
+                        {std.guardianName && (
+                          <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                            Emergency: <strong>{std.guardianName}</strong>
+                            {std.guardianPhone ? ` (${std.guardianPhone})` : ""}
+                          </span>
+                        )}
+                      </div>
+                    )}
+
+                    <div className="mobile-card-footer" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm mobile-collect-btn"
+                        onClick={() => handleOpenEdit(std)}
+                      >
+                        <Icon name="edit" size={13} />
+                        <span>Edit Profile & Plan</span>
+                      </button>
+                      <div className="mobile-card-icon-actions">
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{ padding: "5px 10px", fontSize: 12, borderRadius: 6 }}
+                          onClick={() => handleOpenDetail(std)}
+                        >
+                          View
+                        </button>
+                        <button
+                          type="button"
+                          className="secondary-button"
+                          style={{
+                            padding: "5px 10px",
+                            fontSize: 12,
+                            borderRadius: 6,
+                            color: std.status === "ACTIVE" ? "#b91c1c" : "#047857",
+                          }}
+                          onClick={() => handleToggleStatus(std.id, std.status)}
+                        >
+                          {std.status === "ACTIVE" ? "Deactivate" : "Activate"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
       )}
@@ -1951,8 +2071,11 @@ function StudentsContent() {
             }
 
             return (
-              <div className="table-responsive" style={{ overflowX: "auto" }}>
-                <table className="data-table">
+              <>
+                {/* Desktop View: Full Data Table */}
+                <div className="desktop-table-view">
+                  <div className="table-responsive" style={{ overflowX: "auto" }}>
+                    <table className="data-table">
                   <thead>
                     <tr>
                       <th>{isGym ? "Member Details" : "Student Details"}</th>
@@ -2172,7 +2295,150 @@ function StudentsContent() {
                 </tbody>
               </table>
             </div>
-            );
+          </div>
+
+          {/* Mobile View: High Quality Cards */}
+          <div className="mobile-cards-view">
+            {filteredFeeItems.map((item) => (
+              <div key={item.studentProfileId} className="mobile-record-card">
+                <div className="mobile-card-header">
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div className="mobile-card-avatar">
+                      {item.displayName.slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <div className="mobile-card-name">{item.displayName}</div>
+                      <div className="mobile-card-subtext">
+                        {item.rollNumber ? `#${item.rollNumber} · ` : ""}{item.cycleMonthLabel}
+                      </div>
+                    </div>
+                  </div>
+                  <Badge
+                    tone={
+                      item.status === "PAID"
+                        ? "green"
+                        : item.status === "PARTIALLY_PAID"
+                          ? "amber"
+                          : "red"
+                    }
+                  >
+                    {item.status === "PAID"
+                      ? "PAID"
+                      : item.status === "PARTIALLY_PAID"
+                        ? "PARTIAL"
+                        : "DUE"}
+                  </Badge>
+                </div>
+
+                <div className="mobile-card-meta-row">
+                  <div>
+                    <div className="mobile-card-label">{isGym ? "Plan & Slot" : "Standard / Batch"}</div>
+                    <div className="mobile-card-value">
+                      {item.standard}{item.batch ? ` · ${item.batch}` : ""}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="mobile-card-label">Fee Amount</div>
+                    <div className="mobile-card-value" style={{ fontWeight: 700 }}>
+                      {formatMoney(item.feePlanAmountMinor, currency)}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mobile-card-meta-row" style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #f1f5f9" }}>
+                  <div>
+                    <div className="mobile-card-label">Paid</div>
+                    <div className="mobile-card-value" style={{ color: "#047857" }}>
+                      {formatMoney(item.paidMinor, currency)}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <div className="mobile-card-label">Balance Due</div>
+                    <div className="mobile-card-value" style={{ color: item.balanceMinor > 0 ? "#b45309" : "#047857", fontWeight: 750 }}>
+                      {formatMoney(item.balanceMinor, currency)}
+                    </div>
+                  </div>
+                </div>
+
+                {(item.guardianPhone || (isGym && item.displayName)) && (
+                  <div className="mobile-card-contact-row" style={{ marginTop: 8 }}>
+                    <Icon name="phone" size={12} />
+                    <span>{item.guardianName || (isGym ? item.displayName : "Contact")}: </span>
+                    <a href={`tel:${item.guardianPhone || ""}`} style={{ color: "var(--brand-primary)", fontWeight: 600 }}>
+                      {item.guardianPhone || "—"}
+                    </a>
+                  </div>
+                )}
+
+                <div className="mobile-card-footer" style={{ marginTop: 12 }}>
+                  {item.status === "PAID" ? (
+                    <div style={{ display: "flex", width: "100%", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: 13, color: "#047857", fontWeight: 750, display: "inline-flex", alignItems: "center", gap: 5 }}>
+                        ✓ Received / Cleared
+                      </span>
+                      {item.whatsappUrl && (
+                        <a
+                          href={item.whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="secondary-button"
+                          style={{ padding: "6px 12px", fontSize: 12, borderRadius: 8, display: "inline-flex", alignItems: "center", gap: 5, color: "#16a34a" }}
+                        >
+                          <Icon name="whatsapp" size={14} />
+                          <span>Receipt</span>
+                        </a>
+                      )}
+                    </div>
+                  ) : (
+                    <div style={{ display: "flex", width: "100%", gap: 8, alignItems: "center" }}>
+                      <button
+                        className="primary-button mobile-collect-btn"
+                        style={{
+                          flex: 1,
+                          padding: "8px 12px",
+                          fontSize: 12.5,
+                          fontWeight: 700,
+                          borderRadius: 8,
+                          background: item.status === "PARTIALLY_PAID" ? "#d97706" : undefined,
+                          borderColor: item.status === "PARTIALLY_PAID" ? "#d97706" : undefined,
+                        }}
+                        onClick={() => openCollectFeeModal(item)}
+                      >
+                        <Icon name="rupee" size={13} />
+                        <span>{item.status === "PARTIALLY_PAID" ? `Collect (${formatMoney(item.balanceMinor, currency)})` : "Collect Fee"}</span>
+                      </button>
+                      {item.invoiceId && (
+                        <a
+                          href={`/pay/${item.invoiceId}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="secondary-button"
+                          style={{ padding: "8px 10px", fontSize: 12, borderRadius: 8, color: "#2563eb", background: "#eff6ff" }}
+                          title="Pay Link"
+                        >
+                          <Icon name="rupee" size={12} />
+                        </a>
+                      )}
+                      {item.whatsappUrl && (
+                        <a
+                          href={item.whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="secondary-button"
+                          style={{ padding: "8px 10px", fontSize: 12, borderRadius: 8, color: "#16a34a" }}
+                          title="WhatsApp Reminder"
+                        >
+                          <Icon name="whatsapp" size={14} />
+                        </a>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      );
           })()}
         </section>
       )}
@@ -2353,8 +2619,10 @@ function StudentsContent() {
               </p>
             </div>
           ) : (
-            <div className="table-responsive" style={{ overflowX: "auto" }}>
-              <table className="data-table">
+            <>
+              <div className="desktop-table-view">
+                <div className="table-responsive" style={{ overflowX: "auto" }}>
+                  <table className="data-table">
                 <thead>
                   <tr>
                     <th>Student Name</th>
@@ -2479,7 +2747,132 @@ function StudentsContent() {
                 </tbody>
               </table>
             </div>
-          )}
+          </div>
+
+          {/* Mobile View: Quick attendance cards */}
+          <div className="mobile-cards-view">
+            {attendanceData.items.map((item) => {
+              const currentStatus = attendanceEdits[item.studentProfileId]?.status || "PRESENT";
+              const currentRemarks = attendanceEdits[item.studentProfileId]?.remarks || "";
+
+              return (
+                <div key={item.studentProfileId} className="mobile-record-card">
+                  <div className="mobile-card-header">
+                    <div>
+                      <div className="mobile-card-name">{item.displayName}</div>
+                      <div className="mobile-card-subtext">
+                        {item.rollNumber ? `#${item.rollNumber} · ` : ""}{item.standard}{item.batch ? ` · ${item.batch}` : ""}
+                      </div>
+                    </div>
+                    <Badge
+                      tone={
+                        currentStatus === "PRESENT"
+                          ? "green"
+                          : currentStatus === "ABSENT"
+                            ? "red"
+                            : "amber"
+                      }
+                    >
+                      {currentStatus}
+                    </Badge>
+                  </div>
+
+                  <div style={{ marginTop: 12 }}>
+                    <div
+                      style={{
+                        display: "grid",
+                        gridTemplateColumns: "1fr 1fr 1fr",
+                        borderRadius: 8,
+                        overflow: "hidden",
+                        border: "1px solid #cbd5e1",
+                      }}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendance(item.studentProfileId, "PRESENT", item.displayName)}
+                        style={{
+                          padding: "9px 6px",
+                          fontSize: 12.5,
+                          fontWeight: currentStatus === "PRESENT" ? 750 : 550,
+                          background: currentStatus === "PRESENT" ? "#047857" : "#ffffff",
+                          color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
+                          border: "none",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Present
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendance(item.studentProfileId, "ABSENT", item.displayName)}
+                        style={{
+                          padding: "9px 6px",
+                          fontSize: 12.5,
+                          fontWeight: currentStatus === "ABSENT" ? 750 : 550,
+                          background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
+                          color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
+                          borderLeft: "1px solid #cbd5e1",
+                          borderRight: "1px solid #cbd5e1",
+                          borderTop: "none",
+                          borderBottom: "none",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Absent
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleToggleAttendance(item.studentProfileId, "LEAVE", item.displayName)}
+                        style={{
+                          padding: "9px 6px",
+                          fontSize: 12.5,
+                          fontWeight: currentStatus === "LEAVE" ? 750 : 550,
+                          background: currentStatus === "LEAVE" ? "#b45309" : "#ffffff",
+                          color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
+                          border: "none",
+                          cursor: "pointer",
+                          textAlign: "center",
+                        }}
+                      >
+                        Leave
+                      </button>
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    <input
+                      type="text"
+                      placeholder="Optional remark…"
+                      value={currentRemarks}
+                      onChange={(e) =>
+                        setAttendanceEdits((prev) => ({
+                          ...prev,
+                          [item.studentProfileId]: {
+                            ...prev[item.studentProfileId],
+                            status: currentStatus,
+                            remarks: e.target.value,
+                          },
+                        }))
+                      }
+                      style={{
+                        padding: "7px 10px",
+                        borderRadius: 6,
+                        border: "1px solid #cbd5e1",
+                        fontSize: 12,
+                        width: "100%",
+                        background: "#ffffff",
+                        boxSizing: "border-box",
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </>
+      )}
         </section>
       )}
 
@@ -2565,66 +2958,139 @@ function StudentsContent() {
               </p>
             </div>
           ) : (
-            <div className="table-responsive" style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Student Name & Roll</th>
-                    <th>Standard & Batch</th>
-                    <th>Total Working Days</th>
-                    <th>Present Days</th>
-                    <th>Absent Days</th>
-                    <th>Leave Days</th>
-                    <th>Attendance Rate</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {attendanceSummary.students.map((st) => (
-                    <tr key={st.studentProfileId}>
-                      <td>
-                        <strong style={{ fontSize: 13.5 }}>{st.displayName}</strong>
-                        {st.rollNumber && (
-                          <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
-                            #{st.rollNumber}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <div style={{ fontWeight: 650, fontSize: 13 }}>{st.standard}</div>
-                        {st.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{st.batch}</div>}
-                      </td>
-                      <td style={{ fontSize: 13, fontWeight: 600 }}>{st.totalWorkingDays}</td>
-                      <td style={{ color: "#047857", fontWeight: 750, fontSize: 13 }}>{st.presentDays}</td>
-                      <td style={{ color: "#b91c1c", fontSize: 13 }}>{st.absentDays}</td>
-                      <td style={{ color: "#b45309", fontSize: 13 }}>{st.leaveDays}</td>
-                      <td>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                          <div
-                            style={{
-                              width: 90,
-                              height: 7,
-                              borderRadius: 4,
-                              background: "#e2e8f0",
-                              overflow: "hidden",
-                            }}
-                          >
-                            <div
-                              style={{
-                                width: `${Math.min(100, st.percentage)}%`,
-                                height: "100%",
-                                background:
-                                  st.percentage >= 75 ? "#047857" : st.percentage >= 50 ? "#b45309" : "#b91c1c",
-                              }}
-                            />
-                          </div>
-                          <strong style={{ fontSize: 12.5, color: "var(--ink)" }}>{st.percentage}%</strong>
+            <>
+              <div className="desktop-table-view">
+                <div className="table-responsive" style={{ overflowX: "auto" }}>
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Student Name & Roll</th>
+                        <th>Standard & Batch</th>
+                        <th>Total Working Days</th>
+                        <th>Present Days</th>
+                        <th>Absent Days</th>
+                        <th>Leave Days</th>
+                        <th>Attendance Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {attendanceSummary.students.map((st) => (
+                        <tr key={st.studentProfileId}>
+                          <td>
+                            <strong style={{ fontSize: 13.5 }}>{st.displayName}</strong>
+                            {st.rollNumber && (
+                              <div style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 1 }}>
+                                #{st.rollNumber}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <div style={{ fontWeight: 650, fontSize: 13 }}>{st.standard}</div>
+                            {st.batch && <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{st.batch}</div>}
+                          </td>
+                          <td style={{ fontSize: 13, fontWeight: 600 }}>{st.totalWorkingDays}</td>
+                          <td style={{ color: "#047857", fontWeight: 750, fontSize: 13 }}>{st.presentDays}</td>
+                          <td style={{ color: "#b91c1c", fontSize: 13 }}>{st.absentDays}</td>
+                          <td style={{ color: "#b45309", fontSize: 13 }}>{st.leaveDays}</td>
+                          <td>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div
+                                style={{
+                                  width: 90,
+                                  height: 7,
+                                  borderRadius: 4,
+                                  background: "#e2e8f0",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <div
+                                  style={{
+                                    width: `${Math.min(100, st.percentage)}%`,
+                                    height: "100%",
+                                    background:
+                                      st.percentage >= 75 ? "#047857" : st.percentage >= 50 ? "#b45309" : "#b91c1c",
+                                  }}
+                                />
+                              </div>
+                              <strong style={{ fontSize: 12.5, color: "var(--ink)" }}>{st.percentage}%</strong>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Attendance Summary Cards */}
+              <div className="mobile-cards-view">
+                {attendanceSummary.students.map((st) => (
+                  <div key={st.studentProfileId} className="mobile-record-card">
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name">{st.displayName}</div>
+                        <div className="mobile-card-subtext">
+                          {st.rollNumber ? `#${st.rollNumber} · ` : ""}{st.standard}{st.batch ? ` · ${st.batch}` : ""}
                         </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                      </div>
+                      <Badge
+                        tone={
+                          st.percentage >= 75 ? "green" : st.percentage >= 50 ? "amber" : "red"
+                        }
+                      >
+                        {st.percentage}%
+                      </Badge>
+                    </div>
+
+                    <div className="mobile-card-meta-row" style={{ marginTop: 10 }}>
+                      <div>
+                        <div className="mobile-card-label">Working Days</div>
+                        <div className="mobile-card-value">{st.totalWorkingDays}</div>
+                      </div>
+                      <div>
+                        <div className="mobile-card-label">Present</div>
+                        <div className="mobile-card-value" style={{ color: "#047857", fontWeight: 750 }}>
+                          {st.presentDays}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mobile-card-label">Absent</div>
+                        <div className="mobile-card-value" style={{ color: "#b91c1c" }}>
+                          {st.absentDays}
+                        </div>
+                      </div>
+                      <div>
+                        <div className="mobile-card-label">Leave</div>
+                        <div className="mobile-card-value" style={{ color: "#b45309" }}>
+                          {st.leaveDays}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: 12 }}>
+                      <div
+                        style={{
+                          width: "100%",
+                          height: 8,
+                          borderRadius: 4,
+                          background: "#e2e8f0",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: `${Math.min(100, st.percentage)}%`,
+                            height: "100%",
+                            background:
+                              st.percentage >= 75 ? "#047857" : st.percentage >= 50 ? "#b45309" : "#b91c1c",
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
           )}
         </section>
       )}

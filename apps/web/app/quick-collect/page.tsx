@@ -485,7 +485,7 @@ function QuickCollectContent() {
             </div>
 
             {/* Generated Links Table */}
-            <div className="table-wrap" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, overflow: "hidden" }}>
+            <div className="table-wrap" style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 8, overflowX: "auto" }}>
               <table className="data-table" style={{ margin: 0 }}>
                 <thead>
                   <tr style={{ background: "#f8fafc" }}>
@@ -829,7 +829,7 @@ function QuickCollectContent() {
               </div>
 
               {/* Members Table */}
-              <div className="table-wrap" style={{ maxHeight: 340, overflowY: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
+              <div className="table-wrap" style={{ maxHeight: 340, overflow: "auto", border: "1px solid #e2e8f0", borderRadius: 8 }}>
                 {peopleLoading ? (
                   <div className="empty-state" style={{ padding: 24 }}>
                     <div className="state-spinner" />

@@ -495,119 +495,224 @@ function TransactionsContent() {
             </button>
           </div>
         ) : (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Invoice / Ref #</th>
-                  <th>Customer / Member</th>
-                  <th>Date</th>
-                  <th>Total Amount</th>
-                  <th>Balance Due</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredInvoices.map((inv) => {
-                  const statusTone =
-                    inv.status === "PAID"
-                      ? "green"
-                      : inv.status === "PARTIALLY_PAID"
-                        ? "blue"
-                        : "amber";
+          <>
+            <div className="desktop-table-view">
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Invoice / Ref #</th>
+                      <th>Customer / Member</th>
+                      <th>Date</th>
+                      <th>Total Amount</th>
+                      <th>Balance Due</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredInvoices.map((inv) => {
+                      const statusTone =
+                        inv.status === "PAID"
+                          ? "green"
+                          : inv.status === "PARTIALLY_PAID"
+                            ? "blue"
+                            : "amber";
 
-                  const whatsappMsg = `Hello ${inv.person?.displayName || "Customer"}, your invoice ${inv.invoiceNumber} for ${formatCurrency(inv.grandTotalMinor)} has a balance due of ${formatCurrency(inv.balanceDueMinor)}. Thank you! - ${orgName}`;
-                  const whatsappUrl = inv.person?.primaryPhone
-                    ? `https://wa.me/${inv.person.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
-                    : null;
+                      const whatsappMsg = `Hello ${inv.person?.displayName || "Customer"}, your invoice ${inv.invoiceNumber} for ${formatCurrency(inv.grandTotalMinor)} has a balance due of ${formatCurrency(inv.balanceDueMinor)}. Thank you! - ${orgName}`;
+                      const whatsappUrl = inv.person?.primaryPhone
+                        ? `https://wa.me/${inv.person.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
+                        : null;
 
-                  return (
-                    <tr key={inv.id}>
-                      <td>
-                        <strong>{inv.invoiceNumber}</strong>
-                        {inv.notes && (
-                          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{inv.notes}</div>
-                        )}
-                      </td>
-                      <td>
-                        <strong>{inv.person?.displayName || "Unknown Customer"}</strong>
-                        {inv.person?.primaryPhone && (
-                          <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
-                            {inv.person.primaryPhone}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        <span style={{ fontSize: 12.5 }}>
-                          {new Date(inv.issueDate || inv.createdAt).toLocaleDateString("en-IN", {
-                            day: "numeric",
-                            month: "short",
-                            year: "numeric",
-                          })}
-                        </span>
-                      </td>
-                      <td>
-                        <strong style={{ fontSize: 13.5 }}>
+                      return (
+                        <tr key={inv.id}>
+                          <td>
+                            <strong>{inv.invoiceNumber}</strong>
+                            {inv.notes && (
+                              <div style={{ fontSize: 11.5, color: "var(--muted)" }}>{inv.notes}</div>
+                            )}
+                          </td>
+                          <td>
+                            <strong>{inv.person?.displayName || "Unknown Customer"}</strong>
+                            {inv.person?.primaryPhone && (
+                              <div style={{ fontSize: 11.5, color: "var(--muted)" }}>
+                                {inv.person.primaryPhone}
+                              </div>
+                            )}
+                          </td>
+                          <td>
+                            <span style={{ fontSize: 12.5 }}>
+                              {new Date(inv.issueDate || inv.createdAt).toLocaleDateString("en-IN", {
+                                day: "numeric",
+                                month: "short",
+                                year: "numeric",
+                              })}
+                            </span>
+                          </td>
+                          <td>
+                            <strong style={{ fontSize: 13.5 }}>
+                              {formatCurrency(inv.grandTotalMinor, inv.currency)}
+                            </strong>
+                          </td>
+                          <td>
+                            <strong
+                              style={{
+                                fontSize: 13.5,
+                                color: inv.balanceDueMinor > 0 ? "#b91c1c" : "#059669",
+                              }}
+                            >
+                              {formatCurrency(inv.balanceDueMinor, inv.currency)}
+                            </strong>
+                          </td>
+                          <td>
+                            <Badge tone={statusTone}>{inv.status.replace(/_/g, " ")}</Badge>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                              {whatsappUrl && inv.balanceDueMinor > 0 && (
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn btn-secondary btn-sm"
+                                  title="Share on WhatsApp"
+                                  style={{ padding: "4px 8px", color: "#15803d", borderColor: "#86efac", background: "#f0fdf4" }}
+                                >
+                                  <Icon name="whatsapp" size={14} />
+                                </a>
+                              )}
+
+                              {inv.balanceDueMinor > 0 && (
+                                <button
+                                  className="btn btn-primary btn-sm"
+                                  onClick={() => {
+                                    setPaymentModalInvoice(inv);
+                                    setPaymentAmount(inv.balanceDueMinor / 100);
+                                  }}
+                                  style={{ background: "#059669", borderColor: "#059669", fontSize: 12, padding: "4px 10px" }}
+                                >
+                                  Collect
+                                </button>
+                              )}
+
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => setSelectedInvoice(inv)}
+                                style={{ fontSize: 12, padding: "4px 10px" }}
+                              >
+                                Receipt
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* Mobile View: Transaction Cards */}
+            <div className="mobile-cards-view">
+              {filteredInvoices.map((inv) => {
+                const statusTone =
+                  inv.status === "PAID"
+                    ? "green"
+                    : inv.status === "PARTIALLY_PAID"
+                      ? "blue"
+                      : "amber";
+
+                const whatsappMsg = `Hello ${inv.person?.displayName || "Customer"}, your invoice ${inv.invoiceNumber} for ${formatCurrency(inv.grandTotalMinor)} has a balance due of ${formatCurrency(inv.balanceDueMinor)}. Thank you! - ${orgName}`;
+                const whatsappUrl = inv.person?.primaryPhone
+                  ? `https://wa.me/${inv.person.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
+                  : null;
+
+                return (
+                  <div key={inv.id} className="mobile-record-card">
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name" style={{ fontSize: 14 }}>
+                          {inv.person?.displayName || "Customer"}
+                        </div>
+                        <div className="mobile-card-subtext">
+                          Invoice #{inv.invoiceNumber} · {new Date(inv.issueDate || inv.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                        </div>
+                      </div>
+                      <Badge tone={statusTone}>{inv.status.replace(/_/g, " ")}</Badge>
+                    </div>
+
+                    <div className="mobile-card-meta-row" style={{ marginTop: 10 }}>
+                      <div>
+                        <div className="mobile-card-label">Invoice Total</div>
+                        <div className="mobile-card-value" style={{ fontWeight: 700, fontSize: 13.5 }}>
                           {formatCurrency(inv.grandTotalMinor, inv.currency)}
-                        </strong>
-                      </td>
-                      <td>
-                        <strong
+                        </div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div className="mobile-card-label">Balance Due</div>
+                        <div
+                          className="mobile-card-value"
                           style={{
+                            fontWeight: 750,
                             fontSize: 13.5,
                             color: inv.balanceDueMinor > 0 ? "#b91c1c" : "#059669",
                           }}
                         >
                           {formatCurrency(inv.balanceDueMinor, inv.currency)}
-                        </strong>
-                      </td>
-                      <td>
-                        <Badge tone={statusTone}>{inv.status.replace(/_/g, " ")}</Badge>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                          {whatsappUrl && inv.balanceDueMinor > 0 && (
-                            <a
-                              href={whatsappUrl}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="btn btn-secondary btn-sm"
-                              title="Share on WhatsApp"
-                              style={{ padding: "4px 8px", color: "#15803d", borderColor: "#86efac", background: "#f0fdf4" }}
-                            >
-                              <Icon name="whatsapp" size={14} />
-                            </a>
-                          )}
-
-                          {inv.balanceDueMinor > 0 && (
-                            <button
-                              className="btn btn-primary btn-sm"
-                              onClick={() => {
-                                setPaymentModalInvoice(inv);
-                                setPaymentAmount(inv.balanceDueMinor / 100);
-                              }}
-                              style={{ background: "#059669", borderColor: "#059669", fontSize: 12, padding: "4px 10px" }}
-                            >
-                              Collect
-                            </button>
-                          )}
-
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setSelectedInvoice(inv)}
-                            style={{ fontSize: 12, padding: "4px 10px" }}
-                          >
-                            Receipt
-                          </button>
                         </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                      </div>
+                    </div>
+
+                    {inv.person?.primaryPhone && (
+                      <div className="mobile-card-contact-row" style={{ marginTop: 8 }}>
+                        <Icon name="phone" size={12} />
+                        <span>Phone: </span>
+                        <a href={`tel:${inv.person.primaryPhone}`} style={{ color: "var(--brand-primary)", fontWeight: 600 }}>
+                          {inv.person.primaryPhone}
+                        </a>
+                      </div>
+                    )}
+
+                    <div className="mobile-card-footer" style={{ marginTop: 12, display: "flex", gap: 8, alignItems: "center" }}>
+                      {inv.balanceDueMinor > 0 && (
+                        <button
+                          className="btn btn-primary btn-sm mobile-collect-btn"
+                          onClick={() => {
+                            setPaymentModalInvoice(inv);
+                            setPaymentAmount(inv.balanceDueMinor / 100);
+                          }}
+                          style={{ flex: 1, background: "#059669", borderColor: "#059669", fontSize: 12.5, padding: "7px 12px", borderRadius: 8 }}
+                        >
+                          Collect ({formatCurrency(inv.balanceDueMinor, inv.currency)})
+                        </button>
+                      )}
+
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setSelectedInvoice(inv)}
+                        style={{ fontSize: 12, padding: "7px 12px", borderRadius: 8, flex: inv.balanceDueMinor > 0 ? undefined : 1 }}
+                      >
+                        Receipt
+                      </button>
+
+                      {whatsappUrl && inv.balanceDueMinor > 0 && (
+                        <a
+                          href={whatsappUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="btn btn-secondary btn-sm"
+                          title="Share on WhatsApp"
+                          style={{ padding: "7px 10px", color: "#15803d", borderColor: "#86efac", background: "#f0fdf4", borderRadius: 8 }}
+                        >
+                          <Icon name="whatsapp" size={15} />
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
         )}
 
         {/* View Receipt Modal */}

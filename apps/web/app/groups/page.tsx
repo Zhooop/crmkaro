@@ -941,7 +941,7 @@ function GroupsContent() {
                 </div>
 
                 {/* Activation & Deactivation Dates */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 14 }}>
                   <div className="form-group" style={{ margin: 0 }}>
                     <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5 }}>
                       Group Activation Date <span style={{ color: "#ef4444" }}>*</span>
@@ -1103,7 +1103,7 @@ function GroupsContent() {
               </div>
 
               {/* Members Table */}
-              <div className="table-wrap" style={{ maxHeight: 380, overflowY: "auto" }}>
+              <div className="table-wrap" style={{ maxHeight: 380, overflow: "auto" }}>
                 <table className="data-table">
                   <thead>
                     <tr>
@@ -1551,55 +1551,107 @@ function GroupsContent() {
                   </div>
 
                   <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Member Name</th>
-                          <th>Contact</th>
-                          <th>Group Fee</th>
-                          <th>Total Due</th>
-                          <th>Status</th>
-                          <th style={{ textAlign: "right" }}>Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupDetail.members.map((member) => (
-                          <tr key={member.id}>
-                            <td>
-                              <strong>{member.displayName}</strong>
-                            </td>
-                            <td>
-                              <div>
-                                {member.primaryPhone && <div>{member.primaryPhone}</div>}
-                                {member.email && (
-                                  <small style={{ color: "var(--muted)" }}>{member.email}</small>
+                    {/* Desktop Table View */}
+                    <div className="desktop-table-view">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Member Name</th>
+                            <th>Contact</th>
+                            <th>Group Fee</th>
+                            <th>Total Due</th>
+                            <th>Status</th>
+                            <th style={{ textAlign: "right" }}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupDetail.members.map((member) => (
+                            <tr key={member.id}>
+                              <td>
+                                <strong>{member.displayName}</strong>
+                              </td>
+                              <td>
+                                <div>
+                                  {member.primaryPhone && <div>{member.primaryPhone}</div>}
+                                  {member.email && (
+                                    <small style={{ color: "var(--muted)" }}>{member.email}</small>
+                                  )}
+                                </div>
+                              </td>
+                              <td>{formatCurrency(member.customFeeMinor)}</td>
+                              <td>
+                                <strong style={{ color: member.dueAmountMinor > 0 ? "#b91c1c" : "#059669" }}>
+                                  {formatCurrency(member.dueAmountMinor)}
+                                </strong>
+                              </td>
+                              <td>
+                                <Badge tone={member.status === "ACTIVE" ? "green" : "neutral"}>
+                                  {member.status}
+                                </Badge>
+                              </td>
+                              <td style={{ textAlign: "right" }}>
+                                <button
+                                  className="btn-icon"
+                                  title="Remove from group"
+                                  onClick={() => handleRemoveMember(member.personId)}
+                                >
+                                  <Icon name="trash" size={14} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="mobile-cards-view">
+                      {groupDetail.members.map((member) => (
+                        <div key={member.id} className="mobile-record-card">
+                          <div className="mobile-card-header">
+                            <div>
+                              <div className="mobile-card-name">{member.displayName}</div>
+                              <div className="mobile-card-subtext">
+                                {member.primaryPhone ? (
+                                  <a href={`tel:${member.primaryPhone}`} style={{ color: "inherit", textDecoration: "none" }}>
+                                    {member.primaryPhone}
+                                  </a>
+                                ) : (
+                                  member.email || "No contact"
                                 )}
                               </div>
-                            </td>
-                            <td>{formatCurrency(member.customFeeMinor)}</td>
-                            <td>
-                              <strong style={{ color: member.dueAmountMinor > 0 ? "#b91c1c" : "#059669" }}>
+                            </div>
+                            <Badge tone={member.status === "ACTIVE" ? "green" : "neutral"}>
+                              {member.status}
+                            </Badge>
+                          </div>
+
+                          <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                            <div>
+                              <div className="mobile-card-label">Group Fee</div>
+                              <div className="mobile-card-value">{formatCurrency(member.customFeeMinor)}</div>
+                            </div>
+                            <div style={{ textAlign: "right" }}>
+                              <div className="mobile-card-label">Total Due</div>
+                              <div className="mobile-card-value" style={{ fontWeight: 750, color: member.dueAmountMinor > 0 ? "#b91c1c" : "#059669" }}>
                                 {formatCurrency(member.dueAmountMinor)}
-                              </strong>
-                            </td>
-                            <td>
-                              <Badge tone={member.status === "ACTIVE" ? "green" : "neutral"}>
-                                {member.status}
-                              </Badge>
-                            </td>
-                            <td style={{ textAlign: "right" }}>
-                              <button
-                                className="btn-icon"
-                                title="Remove from group"
-                                onClick={() => handleRemoveMember(member.personId)}
-                              >
-                                <Icon name="trash" size={14} />
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ padding: "6px 12px", color: "var(--danger)", borderColor: "#fecaca" }}
+                              onClick={() => handleRemoveMember(member.personId)}
+                            >
+                              <Icon name="trash" size={13} />
+                              <span>Remove</span>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1617,54 +1669,111 @@ function GroupsContent() {
                   </div>
 
                   <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Member</th>
-                          <th>Mobile</th>
-                          <th>Due Amount</th>
-                          <th style={{ textAlign: "right" }}>Quick Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupDetail.members.map((m) => {
-                          const whatsappMsg = `Hello ${m.displayName}, your fee of ${formatCurrency(m.dueAmountMinor)} for ${groupDetail.name} is due. Please pay at your earliest convenience. Thank you!`;
-                          const whatsappUrl = m.primaryPhone
-                            ? `https://wa.me/${m.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
-                            : null;
-                          return (
-                            <tr key={m.id}>
-                              <td><strong>{m.displayName}</strong></td>
-                              <td>{m.primaryPhone || "—"}</td>
-                              <td><strong style={{ color: "#b91c1c" }}>{formatCurrency(m.dueAmountMinor)}</strong></td>
-                              <td style={{ textAlign: "right" }}>
-                                <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
-                                  {whatsappUrl && (
+                    {/* Desktop Table View */}
+                    <div className="desktop-table-view">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Member</th>
+                            <th>Mobile</th>
+                            <th>Due Amount</th>
+                            <th style={{ textAlign: "right" }}>Quick Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupDetail.members.map((m) => {
+                            const whatsappMsg = `Hello ${m.displayName}, your fee of ${formatCurrency(m.dueAmountMinor)} for ${groupDetail.name} is due. Please pay at your earliest convenience. Thank you!`;
+                            const whatsappUrl = m.primaryPhone
+                              ? `https://wa.me/${m.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
+                              : null;
+                            return (
+                              <tr key={m.id}>
+                                <td><strong>{m.displayName}</strong></td>
+                                <td>{m.primaryPhone || "—"}</td>
+                                <td><strong style={{ color: "#b91c1c" }}>{formatCurrency(m.dueAmountMinor)}</strong></td>
+                                <td style={{ textAlign: "right" }}>
+                                  <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                                    {whatsappUrl && (
+                                      <a
+                                        href={whatsappUrl}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="btn btn-secondary btn-sm"
+                                        style={{ color: "#166534", background: "#f0fdf4", borderColor: "#86efac", display: "inline-flex", alignItems: "center", gap: 5 }}
+                                      >
+                                        <Icon name="whatsapp" size={13} />
+                                        <span>WhatsApp</span>
+                                      </a>
+                                    )}
                                     <a
-                                      href={whatsappUrl}
-                                      target="_blank"
-                                      rel="noreferrer"
-                                      className="btn btn-secondary btn-sm"
-                                      style={{ color: "#166534", background: "#f0fdf4", borderColor: "#86efac", display: "inline-flex", alignItems: "center", gap: 5 }}
+                                      href={`/finance?action=new-invoice&personId=${m.personId}&price=${m.dueAmountMinor / 100}&description=${encodeURIComponent(`Monthly Fee - ${groupDetail.name}`)}`}
+                                      className="btn btn-primary btn-sm"
+                                      style={{ background: "#059669", borderColor: "#059669" }}
                                     >
-                                      <Icon name="whatsapp" size={13} />
-                                      <span>WhatsApp</span>
+                                      Collect
                                     </a>
-                                  )}
-                                  <a
-                                    href={`/finance?action=new-invoice&personId=${m.personId}&price=${m.dueAmountMinor / 100}&description=${encodeURIComponent(`Monthly Fee - ${groupDetail.name}`)}`}
-                                    className="btn btn-primary btn-sm"
-                                    style={{ background: "#059669", borderColor: "#059669" }}
-                                  >
-                                    Collect
-                                  </a>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="mobile-cards-view">
+                      {groupDetail.members.map((m) => {
+                        const whatsappMsg = `Hello ${m.displayName}, your fee of ${formatCurrency(m.dueAmountMinor)} for ${groupDetail.name} is due. Please pay at your earliest convenience. Thank you!`;
+                        const whatsappUrl = m.primaryPhone
+                          ? `https://wa.me/${m.primaryPhone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
+                          : null;
+                        return (
+                          <div key={m.id} className="mobile-record-card">
+                            <div className="mobile-card-header">
+                              <div>
+                                <div className="mobile-card-name">{m.displayName}</div>
+                                <div className="mobile-card-subtext">
+                                  {m.primaryPhone ? (
+                                    <a href={`tel:${m.primaryPhone}`} style={{ color: "inherit", textDecoration: "none" }}>
+                                      {m.primaryPhone}
+                                    </a>
+                                  ) : "No mobile"}
                                 </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                              </div>
+                              <div style={{ textAlign: "right" }}>
+                                <div className="mobile-card-label">Due Amount</div>
+                                <div className="mobile-card-value" style={{ fontWeight: 800, color: "#b91c1c", fontSize: 14 }}>
+                                  {formatCurrency(m.dueAmountMinor)}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", gap: 8 }}>
+                              {whatsappUrl && (
+                                <a
+                                  href={whatsappUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="btn btn-secondary btn-sm"
+                                  style={{ flex: 1, justifyContent: "center", color: "#166534", background: "#f0fdf4", borderColor: "#86efac", display: "inline-flex", alignItems: "center", gap: 5 }}
+                                >
+                                  <Icon name="whatsapp" size={13} />
+                                  <span>WhatsApp</span>
+                                </a>
+                              )}
+                              <a
+                                href={`/finance?action=new-invoice&personId=${m.personId}&price=${m.dueAmountMinor / 100}&description=${encodeURIComponent(`Monthly Fee - ${groupDetail.name}`)}`}
+                                className="btn btn-primary btn-sm"
+                                style={{ flex: 1, justifyContent: "center", background: "#059669", borderColor: "#059669", display: "inline-flex", alignItems: "center", gap: 5 }}
+                              >
+                                <span>Collect Fee</span>
+                              </a>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1685,41 +1794,74 @@ function GroupsContent() {
                   </div>
 
                   <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Invoice / Ref</th>
-                          <th>Member</th>
-                          <th>Amount</th>
-                          <th>Status</th>
-                          <th>Date</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupDetail.members.flatMap((m) =>
-                          (m.recentInvoices || []).map((inv) => (
-                            <tr key={inv.id}>
-                              <td><strong>{inv.invoiceNumber}</strong></td>
-                              <td>{m.displayName}</td>
-                              <td>{formatCurrency(inv.totalMinor)}</td>
-                              <td>
-                                <Badge tone={inv.status === "PAID" ? "green" : "neutral"}>
-                                  {inv.status}
-                                </Badge>
-                              </td>
-                              <td>{new Date(inv.issueDate).toLocaleDateString()}</td>
-                            </tr>
-                          )),
-                        )}
-                        {groupDetail.members.every((m) => (m.recentInvoices || []).length === 0) && (
+                    {/* Desktop Table View */}
+                    <div className="desktop-table-view">
+                      <table className="data-table">
+                        <thead>
                           <tr>
-                            <td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>
-                              No transactions recorded for this group yet.
-                            </td>
+                            <th>Invoice / Ref</th>
+                            <th>Member</th>
+                            <th>Amount</th>
+                            <th>Status</th>
+                            <th>Date</th>
                           </tr>
-                        )}
-                      </tbody>
-                    </table>
+                        </thead>
+                        <tbody>
+                          {groupDetail.members.flatMap((m) =>
+                            (m.recentInvoices || []).map((inv) => (
+                              <tr key={inv.id}>
+                                <td><strong>{inv.invoiceNumber}</strong></td>
+                                <td>{m.displayName}</td>
+                                <td>{formatCurrency(inv.totalMinor)}</td>
+                                <td>
+                                  <Badge tone={inv.status === "PAID" ? "green" : "neutral"}>
+                                    {inv.status}
+                                  </Badge>
+                                </td>
+                                <td>{new Date(inv.issueDate).toLocaleDateString()}</td>
+                              </tr>
+                            )),
+                          )}
+                          {groupDetail.members.every((m) => (m.recentInvoices || []).length === 0) && (
+                            <tr>
+                              <td colSpan={5} style={{ textAlign: "center", color: "var(--muted)", padding: 24 }}>
+                                No transactions recorded for this group yet.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="mobile-cards-view">
+                      {groupDetail.members.flatMap((m) =>
+                        (m.recentInvoices || []).map((inv) => (
+                          <div key={inv.id} className="mobile-record-card">
+                            <div className="mobile-card-header">
+                              <div>
+                                <div className="mobile-card-name">{inv.invoiceNumber}</div>
+                                <div className="mobile-card-subtext">{m.displayName} · {new Date(inv.issueDate).toLocaleDateString()}</div>
+                              </div>
+                              <Badge tone={inv.status === "PAID" ? "green" : "neutral"}>
+                                {inv.status}
+                              </Badge>
+                            </div>
+                            <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                              <div className="mobile-card-label">Total Amount</div>
+                              <div className="mobile-card-value" style={{ fontWeight: 750, color: "var(--brand-primary)" }}>
+                                {formatCurrency(inv.totalMinor)}
+                              </div>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                      {groupDetail.members.every((m) => (m.recentInvoices || []).length === 0) && (
+                        <div style={{ textAlign: "center", color: "var(--muted)", padding: 24, fontSize: 13 }}>
+                          No transactions recorded for this group yet.
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1830,145 +1972,278 @@ function GroupsContent() {
                   })()}
 
                   <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Member Name</th>
-                          <th>Phone</th>
-                          <th>Current Status</th>
-                          <th style={{ textAlign: "center" }}>Mark Attendance</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {groupDetail.members.map((m) => {
-                          const currentStatus = attendanceState[m.personId] || "PRESENT";
-                          const isSaving = savingMemberId === m.personId;
-                          return (
-                            <tr key={m.id}>
-                              <td>
-                                <strong style={{ fontSize: 13.5 }}>{m.displayName}</strong>
-                              </td>
-                              <td style={{ color: "var(--muted)", fontSize: 12.5 }}>
-                                {m.primaryPhone || "—"}
-                              </td>
-                              <td>
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    padding: "3px 9px",
-                                    borderRadius: 12,
-                                    fontSize: 11,
-                                    fontWeight: 750,
-                                    background:
-                                      currentStatus === "PRESENT"
-                                        ? "#ecfdf5"
-                                        : currentStatus === "ABSENT"
-                                          ? "#fef2f2"
-                                          : "#fffbeb",
-                                    color:
-                                      currentStatus === "PRESENT"
-                                        ? "#059669"
-                                        : currentStatus === "ABSENT"
-                                          ? "#b91c1c"
-                                          : "#b45309",
-                                    border: `1px solid ${
-                                      currentStatus === "PRESENT"
-                                        ? "#a7f3d0"
-                                        : currentStatus === "ABSENT"
-                                          ? "#fecaca"
-                                          : "#fde68a"
-                                    }`,
-                                  }}
-                                >
+                    {/* Desktop Table View */}
+                    <div className="desktop-table-view">
+                      <table className="data-table">
+                        <thead>
+                          <tr>
+                            <th>Member Name</th>
+                            <th>Phone</th>
+                            <th>Current Status</th>
+                            <th style={{ textAlign: "center" }}>Mark Attendance</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {groupDetail.members.map((m) => {
+                            const currentStatus = attendanceState[m.personId] || "PRESENT";
+                            const isSaving = savingMemberId === m.personId;
+                            return (
+                              <tr key={m.id}>
+                                <td>
+                                  <strong style={{ fontSize: 13.5 }}>{m.displayName}</strong>
+                                </td>
+                                <td style={{ color: "var(--muted)", fontSize: 12.5 }}>
+                                  {m.primaryPhone || "—"}
+                                </td>
+                                <td>
                                   <span
                                     style={{
-                                      width: 6,
-                                      height: 6,
-                                      borderRadius: "50%",
+                                      display: "inline-flex",
+                                      alignItems: "center",
+                                      gap: 5,
+                                      padding: "3px 9px",
+                                      borderRadius: 12,
+                                      fontSize: 11,
+                                      fontWeight: 750,
                                       background:
                                         currentStatus === "PRESENT"
-                                          ? "#10b981"
+                                          ? "#ecfdf5"
                                           : currentStatus === "ABSENT"
-                                            ? "#ef4444"
-                                            : "#f59e0b",
+                                            ? "#fef2f2"
+                                            : "#fffbeb",
+                                      color:
+                                        currentStatus === "PRESENT"
+                                          ? "#059669"
+                                          : currentStatus === "ABSENT"
+                                            ? "#b91c1c"
+                                            : "#b45309",
+                                      border: `1px solid ${
+                                        currentStatus === "PRESENT"
+                                          ? "#a7f3d0"
+                                          : currentStatus === "ABSENT"
+                                            ? "#fecaca"
+                                            : "#fde68a"
+                                      }`,
                                     }}
-                                  />
-                                  {currentStatus}
-                                </span>
-                              </td>
-                              <td style={{ textAlign: "center" }}>
-                                <div
+                                  >
+                                    <span
+                                      style={{
+                                        width: 6,
+                                        height: 6,
+                                        borderRadius: "50%",
+                                        background:
+                                          currentStatus === "PRESENT"
+                                            ? "#10b981"
+                                            : currentStatus === "ABSENT"
+                                              ? "#ef4444"
+                                              : "#f59e0b",
+                                      }}
+                                    />
+                                    {currentStatus}
+                                  </span>
+                                </td>
+                                <td style={{ textAlign: "center" }}>
+                                  <div
+                                    style={{
+                                      display: "inline-flex",
+                                      borderRadius: 8,
+                                      border: "1px solid var(--line)",
+                                      overflow: "hidden",
+                                      boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                    }}
+                                  >
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "PRESENT")}
+                                      disabled={isSaving}
+                                      style={{
+                                        padding: "6px 14px",
+                                        fontSize: 12,
+                                        fontWeight: currentStatus === "PRESENT" ? 800 : 600,
+                                        background: currentStatus === "PRESENT" ? "#059669" : "#ffffff",
+                                        color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      Present
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "ABSENT")}
+                                      disabled={isSaving}
+                                      style={{
+                                        padding: "6px 14px",
+                                        fontSize: 12,
+                                        fontWeight: currentStatus === "ABSENT" ? 800 : 600,
+                                        background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
+                                        color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
+                                        borderLeft: "1px solid var(--line)",
+                                        borderRight: "1px solid var(--line)",
+                                        borderTop: "none",
+                                        borderBottom: "none",
+                                        cursor: "pointer",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      Absent
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "LEAVE")}
+                                      disabled={isSaving}
+                                      style={{
+                                        padding: "6px 14px",
+                                        fontSize: 12,
+                                        fontWeight: currentStatus === "LEAVE" ? 800 : 600,
+                                        background: currentStatus === "LEAVE" ? "#d97706" : "#ffffff",
+                                        color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
+                                        border: "none",
+                                        cursor: "pointer",
+                                        transition: "all 0.15s ease",
+                                      }}
+                                    >
+                                      Leave
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Mobile Cards View */}
+                    <div className="mobile-cards-view">
+                      {groupDetail.members.map((m) => {
+                        const currentStatus = attendanceState[m.personId] || "PRESENT";
+                        const isSaving = savingMemberId === m.personId;
+                        return (
+                          <div key={m.id} className="mobile-record-card">
+                            <div className="mobile-card-header">
+                              <div>
+                                <div className="mobile-card-name">{m.displayName}</div>
+                                <div className="mobile-card-subtext">{m.primaryPhone || "No contact"}</div>
+                              </div>
+                              <span
+                                style={{
+                                  display: "inline-flex",
+                                  alignItems: "center",
+                                  gap: 5,
+                                  padding: "3px 9px",
+                                  borderRadius: 12,
+                                  fontSize: 11,
+                                  fontWeight: 750,
+                                  background:
+                                    currentStatus === "PRESENT"
+                                      ? "#ecfdf5"
+                                      : currentStatus === "ABSENT"
+                                        ? "#fef2f2"
+                                        : "#fffbeb",
+                                  color:
+                                    currentStatus === "PRESENT"
+                                      ? "#059669"
+                                      : currentStatus === "ABSENT"
+                                        ? "#b91c1c"
+                                        : "#b45309",
+                                  border: `1px solid ${
+                                    currentStatus === "PRESENT"
+                                      ? "#a7f3d0"
+                                      : currentStatus === "ABSENT"
+                                        ? "#fecaca"
+                                        : "#fde68a"
+                                  }`,
+                                }}
+                              >
+                                <span
                                   style={{
-                                    display: "inline-flex",
-                                    borderRadius: 8,
-                                    border: "1px solid var(--line)",
-                                    overflow: "hidden",
-                                    boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                    width: 6,
+                                    height: 6,
+                                    borderRadius: "50%",
+                                    background:
+                                      currentStatus === "PRESENT"
+                                        ? "#10b981"
+                                        : currentStatus === "ABSENT"
+                                          ? "#ef4444"
+                                          : "#f59e0b",
+                                  }}
+                                />
+                                {currentStatus}
+                              </span>
+                            </div>
+
+                            <div style={{ marginTop: 10 }}>
+                              <div
+                                style={{
+                                  display: "grid",
+                                  gridTemplateColumns: "1fr 1fr 1fr",
+                                  borderRadius: 8,
+                                  border: "1px solid var(--line)",
+                                  overflow: "hidden",
+                                }}
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "PRESENT")}
+                                  disabled={isSaving}
+                                  style={{
+                                    padding: "8px 0",
+                                    fontSize: 12,
+                                    fontWeight: currentStatus === "PRESENT" ? 800 : 600,
+                                    background: currentStatus === "PRESENT" ? "#059669" : "#ffffff",
+                                    color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    textAlign: "center",
                                   }}
                                 >
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "PRESENT")}
-                                    disabled={isSaving}
-                                    style={{
-                                      padding: "6px 14px",
-                                      fontSize: 12,
-                                      fontWeight: currentStatus === "PRESENT" ? 800 : 600,
-                                      background: currentStatus === "PRESENT" ? "#059669" : "#ffffff",
-                                      color: currentStatus === "PRESENT" ? "#ffffff" : "var(--ink)",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      transition: "all 0.15s ease",
-                                    }}
-                                  >
-                                    Present
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "ABSENT")}
-                                    disabled={isSaving}
-                                    style={{
-                                      padding: "6px 14px",
-                                      fontSize: 12,
-                                      fontWeight: currentStatus === "ABSENT" ? 800 : 600,
-                                      background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
-                                      color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
-                                      borderLeft: "1px solid var(--line)",
-                                      borderRight: "1px solid var(--line)",
-                                      borderTop: "none",
-                                      borderBottom: "none",
-                                      cursor: "pointer",
-                                      transition: "all 0.15s ease",
-                                    }}
-                                  >
-                                    Absent
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "LEAVE")}
-                                    disabled={isSaving}
-                                    style={{
-                                      padding: "6px 14px",
-                                      fontSize: 12,
-                                      fontWeight: currentStatus === "LEAVE" ? 800 : 600,
-                                      background: currentStatus === "LEAVE" ? "#d97706" : "#ffffff",
-                                      color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
-                                      border: "none",
-                                      cursor: "pointer",
-                                      transition: "all 0.15s ease",
-                                    }}
-                                  >
-                                    Leave
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
+                                  Present
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "ABSENT")}
+                                  disabled={isSaving}
+                                  style={{
+                                    padding: "8px 0",
+                                    fontSize: 12,
+                                    fontWeight: currentStatus === "ABSENT" ? 800 : 600,
+                                    background: currentStatus === "ABSENT" ? "#b91c1c" : "#ffffff",
+                                    color: currentStatus === "ABSENT" ? "#ffffff" : "var(--ink)",
+                                    borderLeft: "1px solid var(--line)",
+                                    borderRight: "1px solid var(--line)",
+                                    borderTop: "none",
+                                    borderBottom: "none",
+                                    cursor: "pointer",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  Absent
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleMarkMemberAttendance(m.personId, m.displayName, "LEAVE")}
+                                  disabled={isSaving}
+                                  style={{
+                                    padding: "8px 0",
+                                    fontSize: 12,
+                                    fontWeight: currentStatus === "LEAVE" ? 800 : 600,
+                                    background: currentStatus === "LEAVE" ? "#d97706" : "#ffffff",
+                                    color: currentStatus === "LEAVE" ? "#ffffff" : "var(--ink)",
+                                    border: "none",
+                                    cursor: "pointer",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  Leave
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               )}

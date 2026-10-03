@@ -2071,165 +2071,255 @@ export default function HomePage() {
               </p>
             </div>
           ) : (
-            <div className="table-responsive-wrapper">
-              <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
-                <thead>
-                  <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Member" : "Student"}</th>
-                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Plan & Slot" : "Standard & Batch"}</th>
-                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>Contact (Manual Call)</th>
-                    <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Pending Dues</th>
-                    <th style={{ padding: "8px 10px", fontWeight: 650 }}>Status</th>
-                    <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {data.academySummary.pendingDues.map((item) => {
-                    const contactPhone = item.guardianPhone || item.phone;
-                    return (
-                      <tr
-                        key={item.id}
-                        style={{ borderBottom: "1px solid #f8fafc", transition: "background 0.15s ease" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
-                      >
-                        <td style={{ padding: "8px 10px" }}>
-                          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                            <div
-                              style={{
-                                width: 32,
-                                height: 32,
-                                borderRadius: 8,
-                                background: "#f1f5f9",
-                                color: "var(--ink)",
-                                fontWeight: 750,
-                                fontSize: 12,
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                                flexShrink: 0,
-                              }}
-                            >
-                              {item.displayName.slice(0, 2).toUpperCase()}
-                            </div>
-                            <div>
-                              <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
-                                {item.displayName}
-                              </strong>
-                              {item.rollNumber && (
-                                <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                                  ID #{item.rollNumber}
-                                </span>
+            <>
+              <div className="desktop-table-view">
+                <div className="table-responsive-wrapper">
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Member" : "Student"}</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Plan & Slot" : "Standard & Batch"}</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>Contact (Manual Call)</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Pending Dues</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>Status</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.academySummary.pendingDues.map((item) => {
+                        const contactPhone = item.guardianPhone || item.phone;
+                        return (
+                          <tr
+                            key={item.id}
+                            style={{ borderBottom: "1px solid #f8fafc", transition: "background 0.15s ease" }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = "#f8fafc"; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                          >
+                            <td style={{ padding: "8px 10px" }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                                <div
+                                  style={{
+                                    width: 32,
+                                    height: 32,
+                                    borderRadius: 8,
+                                    background: "#f1f5f9",
+                                    color: "var(--ink)",
+                                    fontWeight: 750,
+                                    fontSize: 12,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    flexShrink: 0,
+                                  }}
+                                >
+                                  {item.displayName.slice(0, 2).toUpperCase()}
+                                </div>
+                                <div>
+                                  <strong style={{ fontSize: 13, color: "var(--ink)", display: "block" }}>
+                                    {item.displayName}
+                                  </strong>
+                                  {item.rollNumber && (
+                                    <span style={{ fontSize: 11, color: "var(--muted)" }}>
+                                      ID #{item.rollNumber}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </td>
+                            <td style={{ padding: "8px 10px" }}>
+                              <div style={{ fontWeight: 600, color: "#334155" }}>
+                                {item.standard || "General"}
+                              </div>
+                              {item.batch && (
+                                <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                                  {item.batch}
+                                </div>
                               )}
+                            </td>
+                            <td style={{ padding: "8px 10px" }}>
+                              {contactPhone ? (
+                                <a
+                                  href={`tel:${contactPhone}`}
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    fontSize: 12,
+                                    fontWeight: 650,
+                                    color: "#1e40af",
+                                    textDecoration: "none",
+                                    background: "#eff6ff",
+                                    padding: "3px 8px",
+                                    borderRadius: 6,
+                                    border: "1px solid #bfdbfe",
+                                  }}
+                                  title="Click to dial / call manually"
+                                >
+                                  <span>📞 {contactPhone}</span>
+                                </a>
+                              ) : (
+                                <span style={{ color: "var(--muted)", fontSize: 11.5 }}>No Phone</span>
+                              )}
+                            </td>
+                            <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                              <strong style={{ fontSize: 13.5, color: "#dc2626" }}>
+                                ₹{((item.pendingMinor) / 100).toLocaleString("en-IN")}
+                              </strong>
+                              {item.paidMinor > 0 && (
+                                <div style={{ fontSize: 11, color: "#16a34a" }}>
+                                  (₹{((item.paidMinor) / 100).toLocaleString("en-IN")} paid)
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: "8px 10px" }}>
+                              <span
+                                style={{
+                                  fontSize: 11,
+                                  fontWeight: 700,
+                                  padding: "2px 7px",
+                                  borderRadius: 5,
+                                  background:
+                                    item.status === "PARTIALLY_PAID"
+                                      ? "#fef3c7"
+                                      : item.status === "EXPIRING_SOON"
+                                      ? "#fffbeb"
+                                      : "#fef2f2",
+                                  color:
+                                    item.status === "PARTIALLY_PAID"
+                                      ? "#b45309"
+                                      : item.status === "EXPIRING_SOON"
+                                      ? "#d97706"
+                                      : "#dc2626",
+                                  border: `1px solid ${
+                                    item.status === "PARTIALLY_PAID"
+                                      ? "#fde68a"
+                                      : item.status === "EXPIRING_SOON"
+                                      ? "#fde68a"
+                                      : "#fecaca"
+                                  }`,
+                                }}
+                              >
+                                {item.status === "PARTIALLY_PAID"
+                                  ? "Partially Paid"
+                                  : item.status === "EXPIRING_SOON"
+                                  ? (item.dueDate ? `Expiring ${item.dueDate}` : "Expiring Soon")
+                                  : item.status === "OVERDUE"
+                                  ? (item.dueDate ? `Overdue (${item.dueDate})` : "Overdue")
+                                  : item.dueDate
+                                  ? `Due ${item.dueDate}`
+                                  : "Pending"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "8px 10px", textAlign: "right" }}>
+                              <button
+                                onClick={() => router.push(`/students?tab=recurring-fees`)}
+                                className="primary-button"
+                                style={{
+                                  padding: "4px 10px",
+                                  fontSize: 11.5,
+                                  fontWeight: 700,
+                                  borderRadius: 6,
+                                  background: "#16a34a",
+                                  borderColor: "#16a34a",
+                                }}
+                              >
+                                <span>Collect Fee →</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Dashboard Pending Due Cards */}
+              <div className="mobile-cards-view">
+                {data.academySummary.pendingDues.map((item) => {
+                  const contactPhone = item.guardianPhone || item.phone;
+                  return (
+                    <div key={item.id} className="mobile-record-card">
+                      <div className="mobile-card-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div className="mobile-card-avatar">
+                            {item.displayName.slice(0, 2).toUpperCase()}
+                          </div>
+                          <div>
+                            <div className="mobile-card-name">{item.displayName}</div>
+                            <div className="mobile-card-subtext">
+                              {item.rollNumber ? `#${item.rollNumber} · ` : ""}{item.standard || "General"}{item.batch ? ` · ${item.batch}` : ""}
                             </div>
                           </div>
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          <div style={{ fontWeight: 600, color: "#334155" }}>
-                            {item.standard || "General"}
+                        </div>
+                        <Badge
+                          tone={
+                            item.status === "PARTIALLY_PAID"
+                              ? "amber"
+                              : item.status === "EXPIRING_SOON"
+                                ? "amber"
+                                : "red"
+                          }
+                        >
+                          {item.status === "PARTIALLY_PAID"
+                            ? "PARTIAL"
+                            : item.status === "EXPIRING_SOON"
+                              ? "EXPIRING"
+                              : "DUE"}
+                        </Badge>
+                      </div>
+
+                      <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                        <div>
+                          <div className="mobile-card-label">Pending Dues</div>
+                          <div className="mobile-card-value" style={{ color: "#dc2626", fontWeight: 750, fontSize: 14 }}>
+                            ₹{((item.pendingMinor) / 100).toLocaleString("en-IN")}
                           </div>
-                          {item.batch && (
-                            <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                              {item.batch}
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          {contactPhone ? (
+                        </div>
+                        {contactPhone && (
+                          <div style={{ textAlign: "right" }}>
+                            <div className="mobile-card-label">Direct Contact</div>
                             <a
                               href={`tel:${contactPhone}`}
                               style={{
                                 display: "inline-flex",
                                 alignItems: "center",
-                                gap: 5,
-                                fontSize: 12,
-                                fontWeight: 650,
+                                gap: 4,
                                 color: "#1e40af",
+                                fontWeight: 650,
+                                fontSize: 12,
                                 textDecoration: "none",
-                                background: "#eff6ff",
-                                padding: "3px 8px",
-                                borderRadius: 6,
-                                border: "1px solid #bfdbfe",
                               }}
-                              title="Click to dial / call manually"
                             >
-                              <span>📞 {contactPhone}</span>
+                              📞 {contactPhone}
                             </a>
-                          ) : (
-                            <span style={{ color: "var(--muted)", fontSize: 11.5 }}>No Phone</span>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          <strong style={{ fontSize: 13.5, color: "#dc2626" }}>
-                            ₹{((item.pendingMinor) / 100).toLocaleString("en-IN")}
-                          </strong>
-                          {item.paidMinor > 0 && (
-                            <div style={{ fontSize: 11, color: "#16a34a" }}>
-                              (₹{((item.paidMinor) / 100).toLocaleString("en-IN")} paid)
-                            </div>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px 10px" }}>
-                          <span
-                            style={{
-                              fontSize: 11,
-                              fontWeight: 700,
-                              padding: "2px 7px",
-                              borderRadius: 5,
-                              background:
-                                item.status === "PARTIALLY_PAID"
-                                  ? "#fef3c7"
-                                  : item.status === "EXPIRING_SOON"
-                                  ? "#fffbeb"
-                                  : "#fef2f2",
-                              color:
-                                item.status === "PARTIALLY_PAID"
-                                  ? "#b45309"
-                                  : item.status === "EXPIRING_SOON"
-                                  ? "#d97706"
-                                  : "#dc2626",
-                              border: `1px solid ${
-                                item.status === "PARTIALLY_PAID"
-                                  ? "#fde68a"
-                                  : item.status === "EXPIRING_SOON"
-                                  ? "#fde68a"
-                                  : "#fecaca"
-                              }`,
-                            }}
-                          >
-                            {item.status === "PARTIALLY_PAID"
-                              ? "Partially Paid"
-                              : item.status === "EXPIRING_SOON"
-                              ? (item.dueDate ? `Expiring ${item.dueDate}` : "Expiring Soon")
-                              : item.status === "OVERDUE"
-                              ? (item.dueDate ? `Overdue (${item.dueDate})` : "Overdue")
-                              : item.dueDate
-                              ? `Due ${item.dueDate}`
-                              : "Pending"}
-                          </span>
-                        </td>
-                        <td style={{ padding: "8px 10px", textAlign: "right" }}>
-                          <button
-                            onClick={() => router.push(`/students?tab=recurring-fees`)}
-                            className="primary-button"
-                            style={{
-                              padding: "4px 10px",
-                              fontSize: 11.5,
-                              fontWeight: 700,
-                              borderRadius: 6,
-                              background: "#16a34a",
-                              borderColor: "#16a34a",
-                            }}
-                          >
-                            <span>Collect Fee →</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="mobile-card-footer" style={{ marginTop: 10 }}>
+                        <button
+                          onClick={() => router.push(`/students?tab=recurring-fees`)}
+                          className="primary-button mobile-collect-btn"
+                          style={{
+                            width: "100%",
+                            padding: "8px 12px",
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            borderRadius: 8,
+                            background: "#16a34a",
+                            borderColor: "#16a34a",
+                            justifyContent: "center",
+                          }}
+                        >
+                          <span>Collect Fee →</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </div>
       )}
@@ -2386,43 +2476,66 @@ export default function HomePage() {
             subtitle="Latest receipts generated across your workspace"
           >
             {data.transactions && data.transactions.length > 0 ? (
-              <div style={{ overflowX: "auto" }}>
-                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
-                  <thead>
-                    <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Receipt #</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Payer / Student</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 650 }}>Mode</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Amount Paid</th>
-                      <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Date</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {data.transactions.map((tx) => (
-                      <tr
-                        key={tx.id}
-                        style={{ borderBottom: "1px solid #f1f5f9" }}
-                      >
-                        <td style={{ padding: "6px 8px", fontWeight: 700, color: "var(--ink)" }}>
-                          {tx.receiptNumber}
-                        </td>
-                        <td style={{ padding: "6px 8px", color: "var(--ink)", fontWeight: 600 }}>
-                          {tx.personName}
-                        </td>
-                        <td style={{ padding: "6px 8px" }}>
-                          <Badge tone="neutral">{tx.method}</Badge>
-                        </td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 750, color: "#16a34a" }}>
+              <>
+                <div className="desktop-table-view">
+                  <div style={{ overflowX: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 11.5 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
+                          <th style={{ padding: "6px 8px", fontWeight: 650 }}>Receipt #</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 650 }}>Payer / Student</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 650 }}>Mode</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Amount Paid</th>
+                          <th style={{ padding: "6px 8px", fontWeight: 650, textAlign: "right" }}>Date</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {data.transactions.map((tx) => (
+                          <tr
+                            key={tx.id}
+                            style={{ borderBottom: "1px solid #f1f5f9" }}
+                          >
+                            <td style={{ padding: "6px 8px", fontWeight: 700, color: "var(--ink)" }}>
+                              {tx.receiptNumber}
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "var(--ink)", fontWeight: 600 }}>
+                              {tx.personName}
+                            </td>
+                            <td style={{ padding: "6px 8px" }}>
+                              <Badge tone="neutral">{tx.method}</Badge>
+                            </td>
+                            <td style={{ padding: "6px 8px", textAlign: "right", fontWeight: 750, color: "#16a34a" }}>
+                              +{money(tx.amountMinor, data.organisation.currency)}
+                            </td>
+                            <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)", fontSize: 11 }}>
+                              {formatRelativeTime(tx.receivedAt)}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="mobile-cards-view">
+                  {data.transactions.map((tx) => (
+                    <div key={tx.id} className="mobile-record-card" style={{ padding: "10px 12px" }}>
+                      <div className="mobile-card-header">
+                        <div>
+                          <div className="mobile-card-name" style={{ fontSize: 13 }}>{tx.personName}</div>
+                          <div className="mobile-card-subtext">Receipt #{tx.receiptNumber} · {formatRelativeTime(tx.receivedAt)}</div>
+                        </div>
+                        <strong style={{ fontSize: 13.5, color: "#16a34a", fontWeight: 750 }}>
                           +{money(tx.amountMinor, data.organisation.currency)}
-                        </td>
-                        <td style={{ padding: "6px 8px", textAlign: "right", color: "var(--muted)", fontSize: 11 }}>
-                          {formatRelativeTime(tx.receivedAt)}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                        </strong>
+                      </div>
+                      <div style={{ marginTop: 6, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <Badge tone="neutral">{tx.method}</Badge>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
             ) : (
               <div style={{ padding: "14px 10px", textAlign: "center", color: "var(--muted)", fontSize: 11.5 }}>
                 No recent fee receipts or collections recorded yet.

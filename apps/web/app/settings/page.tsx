@@ -1142,7 +1142,7 @@ export default function SettingsPage() {
                   ⚡ Online Payment Gateway Preference
                 </div>
 
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
                   <label
                     style={{
                       display: "flex",
@@ -1206,7 +1206,7 @@ export default function SettingsPage() {
 
                 {/* Custom Razorpay Keys fields */}
                 {payoutForm.gatewayMode === "CUSTOM_KEYS" && (
-                  <div style={{ marginTop: 16, padding: "16px 18px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+                  <div style={{ marginTop: 16, padding: "16px 18px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                     <div>
                       <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                         Razorpay Key ID *
@@ -1263,39 +1263,63 @@ export default function SettingsPage() {
       {/* Team & Roles Tab */}
       {activeTab === "team" && (
         <div style={{ maxWidth: 840 }}>
-          <div className="table-responsive" style={{ overflowX: "auto" }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Role Name</th>
-                  <th>System Preset</th>
-                  <th>Description</th>
-                </tr>
-              </thead>
-              <tbody>
-                {roles.map((r) => (
-                  <tr key={r.id}>
-                    <td>
-                      <strong>{r.name}</strong>
-                    </td>
-                    <td>
-                      <Badge tone={r.isSystem ? "blue" : "neutral"}>
-                        {r.isSystem ? "System Role" : "Custom Role"}
-                      </Badge>
-                    </td>
-                    <td style={{ color: "var(--muted)" }}>
-                      {r.name === "Owner"
-                        ? "Full ownership and tenant billing management."
-                        : r.name === "Admin"
-                          ? "Full operational and read/write capabilities across all modules."
-                          : r.name === "Manager"
-                            ? "Can manage customer/student records and team operations."
-                            : "Standard operational permissions."}
-                    </td>
+          <div className="table-responsive">
+            <div className="desktop-table-view">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Role Name</th>
+                    <th>System Preset</th>
+                    <th>Description</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {roles.map((r) => (
+                    <tr key={r.id}>
+                      <td>
+                        <strong>{r.name}</strong>
+                      </td>
+                      <td>
+                        <Badge tone={r.isSystem ? "blue" : "neutral"}>
+                          {r.isSystem ? "System Role" : "Custom Role"}
+                        </Badge>
+                      </td>
+                      <td style={{ color: "var(--muted)" }}>
+                        {r.name === "Owner"
+                          ? "Full ownership and tenant billing management."
+                          : r.name === "Admin"
+                            ? "Full operational and read/write capabilities across all modules."
+                            : r.name === "Manager"
+                              ? "Can manage customer/student records and team operations."
+                              : "Standard operational permissions."}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="mobile-cards-view">
+              {roles.map((r) => (
+                <div key={r.id} className="mobile-record-card">
+                  <div className="mobile-card-header">
+                    <div className="mobile-card-name">{r.name}</div>
+                    <Badge tone={r.isSystem ? "blue" : "neutral"}>
+                      {r.isSystem ? "System Role" : "Custom Role"}
+                    </Badge>
+                  </div>
+                  <div style={{ marginTop: 6, fontSize: 12.5, color: "var(--muted)", lineHeight: 1.4 }}>
+                    {r.name === "Owner"
+                      ? "Full ownership and tenant billing management."
+                      : r.name === "Admin"
+                        ? "Full operational and read/write capabilities across all modules."
+                        : r.name === "Manager"
+                          ? "Can manage customer/student records and team operations."
+                          : "Standard operational permissions."}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -1308,33 +1332,51 @@ export default function SettingsPage() {
               No audited events logged yet.
             </div>
           ) : (
-            <div className="table-responsive" style={{ overflowX: "auto" }}>
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Action</th>
-                    <th>Entity Type</th>
-                    <th>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {auditLogs.map((log) => (
-                    <tr key={log.id}>
-                      <td>
-                        <strong>{log.action}</strong>
-                      </td>
-                      <td>
-                        <span className="code-chip">{log.entityType}</span>
-                      </td>
-                      <td>
-                        <time style={{ fontSize: 12, color: "var(--muted)" }}>
-                          {new Date(log.createdAt).toLocaleString("en-IN")}
-                        </time>
-                      </td>
+            <div className="table-responsive">
+              <div className="desktop-table-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Action</th>
+                      <th>Entity Type</th>
+                      <th>Timestamp</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {auditLogs.map((log) => (
+                      <tr key={log.id}>
+                        <td>
+                          <strong>{log.action}</strong>
+                        </td>
+                        <td>
+                          <span className="code-chip">{log.entityType}</span>
+                        </td>
+                        <td>
+                          <time style={{ fontSize: 12, color: "var(--muted)" }}>
+                            {new Date(log.createdAt).toLocaleString("en-IN")}
+                          </time>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mobile-cards-view">
+                {auditLogs.map((log) => (
+                  <div key={log.id} className="mobile-record-card">
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name">{log.action}</div>
+                        <div className="mobile-card-subtext">
+                          {new Date(log.createdAt).toLocaleString("en-IN")}
+                        </div>
+                      </div>
+                      <span className="code-chip">{log.entityType}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           )}
         </div>

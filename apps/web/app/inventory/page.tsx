@@ -506,73 +506,131 @@ function InventoryContent() {
               onAction={() => openCreateProductModal()}
             />
           ) : (
-            <div className="table-wrap">
-              <table className="data-table">
-                <thead>
-                  <tr>
-                    <th>Product Name</th>
-                    <th>SKU</th>
-                    <th>Category</th>
-                    <th>Current Stock</th>
-                    <th>Reorder Level</th>
-                    <th>Selling Price</th>
-                    <th style={{ textAlign: "right" }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((prod) => {
-                    const isLow =
-                      prod.reorderPoint !== null && prod.currentStock <= prod.reorderPoint;
-                    return (
-                      <tr key={prod.id}>
-                        <td>
-                          <strong>{prod.name}</strong>
-                        </td>
-                        <td>
-                          <code>{prod.sku}</code>
-                        </td>
-                        <td>
-                          <Badge tone="neutral">{prod.category?.name || "General"}</Badge>
-                        </td>
-                        <td>
-                          <span
-                            style={{
-                              fontWeight: 700,
-                              color: isLow ? "var(--danger)" : "var(--ink)",
-                            }}
-                          >
-                            {prod.currentStock} {prod.unit}
-                          </span>
-                          {isLow && (
-                            <span style={{ marginLeft: 6 }}>
-                              <Badge tone="red">Low Stock</Badge>
-                            </span>
-                          )}
-                        </td>
-                        <td>
-                          {prod.reorderPoint !== null ? `${prod.reorderPoint} ${prod.unit}` : "—"}
-                        </td>
-                        <td>
-                          <strong>{formatMoney(prod.sellingPriceMinor)}</strong>
-                        </td>
-                        <td style={{ textAlign: "right" }}>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => {
-                              setSelectedProduct(prod);
-                              setStockAdjustOpen(true);
-                            }}
-                          >
-                            <Icon name="refresh" size={13} />
-                            <span>Adjust Stock</span>
-                          </button>
-                        </td>
+            <>
+              <div className="desktop-table-view">
+                <div className="table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Product Name</th>
+                        <th>SKU</th>
+                        <th>Category</th>
+                        <th>Current Stock</th>
+                        <th>Reorder Level</th>
+                        <th>Selling Price</th>
+                        <th style={{ textAlign: "right" }}>Actions</th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                    </thead>
+                    <tbody>
+                      {products.map((prod) => {
+                        const isLow =
+                          prod.reorderPoint !== null && prod.currentStock <= prod.reorderPoint;
+                        return (
+                          <tr key={prod.id}>
+                            <td>
+                              <strong>{prod.name}</strong>
+                            </td>
+                            <td>
+                              <code>{prod.sku}</code>
+                            </td>
+                            <td>
+                              <Badge tone="neutral">{prod.category?.name || "General"}</Badge>
+                            </td>
+                            <td>
+                              <span
+                                style={{
+                                  fontWeight: 700,
+                                  color: isLow ? "var(--danger)" : "var(--ink)",
+                                }}
+                              >
+                                {prod.currentStock} {prod.unit}
+                              </span>
+                              {isLow && (
+                                <span style={{ marginLeft: 6 }}>
+                                  <Badge tone="red">Low Stock</Badge>
+                                </span>
+                              )}
+                            </td>
+                            <td>
+                              {prod.reorderPoint !== null ? `${prod.reorderPoint} ${prod.unit}` : "—"}
+                            </td>
+                            <td>
+                              <strong>{formatMoney(prod.sellingPriceMinor)}</strong>
+                            </td>
+                            <td style={{ textAlign: "right" }}>
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => {
+                                  setSelectedProduct(prod);
+                                  setStockAdjustOpen(true);
+                                }}
+                              >
+                                <Icon name="refresh" size={13} />
+                                <span>Adjust Stock</span>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Mobile View: Product Cards */}
+              <div className="mobile-cards-view">
+                {products.map((prod) => {
+                  const isLow =
+                    prod.reorderPoint !== null && prod.currentStock <= prod.reorderPoint;
+                  return (
+                    <div key={prod.id} className="mobile-record-card">
+                      <div className="mobile-card-header">
+                        <div>
+                          <div className="mobile-card-name">{prod.name}</div>
+                          <div className="mobile-card-subtext">
+                            SKU: {prod.sku} · {prod.category?.name || "General"}
+                          </div>
+                        </div>
+                        {isLow ? (
+                          <Badge tone="red">Low Stock</Badge>
+                        ) : (
+                          <Badge tone="green">In Stock</Badge>
+                        )}
+                      </div>
+
+                      <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                        <div>
+                          <div className="mobile-card-label">Current Stock</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 750, color: isLow ? "var(--danger)" : "var(--ink)" }}>
+                            {prod.currentStock} {prod.unit}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="mobile-card-label">Selling Price</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 700, color: "var(--brand-primary)", fontSize: 13.5 }}>
+                            {formatMoney(prod.sellingPriceMinor)}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: "6px 14px", borderRadius: 7 }}
+                          onClick={() => {
+                            setSelectedProduct(prod);
+                            setStockAdjustOpen(true);
+                          }}
+                        >
+                          <Icon name="refresh" size={13} />
+                          <span>Adjust Stock</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
           )}
         </>
       )}
@@ -599,18 +657,60 @@ function InventoryContent() {
               description="Stock ledger entries will automatically be logged when items are purchased, adjusted, or sold."
             />
           ) : (
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Timestamp</th>
-                  <th>Product</th>
-                  <th>Type</th>
-                  <th>Qty Change</th>
-                  <th>Balance After</th>
-                  <th>Reason / Reference</th>
-                </tr>
-              </thead>
-              <tbody>
+            <>
+              {/* Desktop Table View */}
+              <div className="desktop-table-view">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Timestamp</th>
+                      <th>Product</th>
+                      <th>Type</th>
+                      <th>Qty Change</th>
+                      <th>Balance After</th>
+                      <th>Reason / Reference</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {movements.map((mov) => {
+                      const isPositive =
+                        mov.type === "PURCHASE" ||
+                        mov.type === "OPENING" ||
+                        mov.type === "RETURN_IN" ||
+                        mov.type === "ADJUSTMENT_IN";
+
+                      return (
+                        <tr key={mov.id}>
+                          <td>{new Date(mov.createdAt).toLocaleString()}</td>
+                          <td>
+                            <strong>{mov.product?.name}</strong>
+                            <small style={{ color: "var(--muted)", display: "block" }}>
+                              SKU: {mov.product?.sku}
+                            </small>
+                          </td>
+                          <td>
+                            <Badge tone={isPositive ? "green" : "amber"}>{mov.type}</Badge>
+                          </td>
+                          <td>
+                            <strong style={{ color: isPositive ? "#15803d" : "#b91c1c" }}>
+                              {isPositive ? `+${mov.quantity}` : `-${mov.quantity}`} {mov.product?.unit}
+                            </strong>
+                          </td>
+                          <td>
+                            <strong>
+                              {mov.balanceAfter} {mov.product?.unit}
+                            </strong>
+                          </td>
+                          <td>{mov.reason || mov.reference || "—"}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards View */}
+              <div className="mobile-cards-view">
                 {movements.map((mov) => {
                   const isPositive =
                     mov.type === "PURCHASE" ||
@@ -619,33 +719,42 @@ function InventoryContent() {
                     mov.type === "ADJUSTMENT_IN";
 
                   return (
-                    <tr key={mov.id}>
-                      <td>{new Date(mov.createdAt).toLocaleString()}</td>
-                      <td>
-                        <strong>{mov.product?.name}</strong>
-                        <small style={{ color: "var(--muted)", display: "block" }}>
-                          SKU: {mov.product?.sku}
-                        </small>
-                      </td>
-                      <td>
+                    <div key={mov.id} className="mobile-record-card">
+                      <div className="mobile-card-header">
+                        <div>
+                          <div className="mobile-card-name">{mov.product?.name || "Product"}</div>
+                          <div className="mobile-card-subtext">
+                            SKU: {mov.product?.sku} · {new Date(mov.createdAt).toLocaleDateString()}
+                          </div>
+                        </div>
                         <Badge tone={isPositive ? "green" : "amber"}>{mov.type}</Badge>
-                      </td>
-                      <td>
-                        <strong style={{ color: isPositive ? "#15803d" : "#b91c1c" }}>
-                          {isPositive ? `+${mov.quantity}` : `-${mov.quantity}`} {mov.product?.unit}
-                        </strong>
-                      </td>
-                      <td>
-                        <strong>
-                          {mov.balanceAfter} {mov.product?.unit}
-                        </strong>
-                      </td>
-                      <td>{mov.reason || mov.reference || "—"}</td>
-                    </tr>
+                      </div>
+
+                      <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                        <div>
+                          <div className="mobile-card-label">Quantity Change</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 750, color: isPositive ? "#15803d" : "#b91c1c" }}>
+                            {isPositive ? `+${mov.quantity}` : `-${mov.quantity}`} {mov.product?.unit}
+                          </div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="mobile-card-label">Balance After</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 700 }}>
+                            {mov.balanceAfter} {mov.product?.unit}
+                          </div>
+                        </div>
+                      </div>
+
+                      {(mov.reason || mov.reference) && (
+                        <div style={{ marginTop: 8, paddingTop: 8, borderTop: "1px dashed #e2e8f0", fontSize: 12, color: "#64748b" }}>
+                          <strong>Note: </strong>{mov.reason || mov.reference}
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
+              </div>
+            </>
           )}
         </div>
       )}

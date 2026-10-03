@@ -2360,12 +2360,12 @@ function PeopleContent() {
 
       {/* 🏷️ Quick Fee & Plan Filters Bar */}
       <div
+        className="fee-filter-bar"
         style={{
           display: "flex",
           alignItems: "center",
           gap: 8,
           margin: "12px 0 10px 0",
-          flexWrap: "wrap",
           padding: "8px 12px",
           background: "#ffffff",
           borderRadius: 10,
@@ -2601,8 +2601,11 @@ function PeopleContent() {
           }
         />
       ) : (
-        <div className="table-wrap">
-          <table className="data-table">
+        <>
+          {/* Desktop View: Full Data Table */}
+          <div className="desktop-table-view">
+            <div className="table-wrap">
+              <table className="data-table">
             <thead>
               <tr>
                 <th>Person / Member</th>
@@ -2914,7 +2917,175 @@ function PeopleContent() {
             </tbody>
           </table>
         </div>
-      )}
+      </div>
+
+      {/* Mobile View: High Performance Responsive Cards */}
+      <div className="mobile-cards-view">
+        {displayedPeople.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "36px 16px", background: "#ffffff", borderRadius: 10, border: "1px solid var(--line)" }}>
+            <div style={{ fontSize: 14, fontWeight: 750, color: "var(--ink)", marginBottom: 4 }}>
+              No members match "{feeFilter === "PENDING" ? "Pending Fees" : feeFilter === "PAID" ? "Paid Fees" : "Upcoming Fees"}"
+            </div>
+            <p style={{ margin: "0 0 12px 0", fontSize: 12.5, color: "var(--muted)" }}>
+              Try selecting "All Records" or changing the directory tab above.
+            </p>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => setFeeFilter("ALL")}
+              type="button"
+            >
+              Reset Fee Filter
+            </button>
+          </div>
+        ) : (
+          displayedPeople.map((person) => {
+            const feeDetails = getPersonFeeDetails(person);
+            return (
+              <div
+                key={`m-${person.id}`}
+                className="mobile-record-card"
+                onClick={() => setDetailPerson(person)}
+              >
+                {/* Top: Avatar, Name, Member ID, Status Pill */}
+                <div className="mobile-card-header">
+                  <div className="mobile-card-avatar">
+                    {person.displayName.slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className="mobile-card-title-col">
+                    <div className="mobile-card-title-row">
+                      <strong className="mobile-card-name">{person.displayName}</strong>
+                      {feeDetails.memberId && (
+                        <span className="mobile-card-id-badge">
+                          {feeDetails.memberId}
+                        </span>
+                      )}
+                    </div>
+                    {(feeDetails.standard || feeDetails.batch) && (
+                      <div className="mobile-card-package">
+                        {feeDetails.standard && <span>{feeDetails.standard}</span>}
+                        {feeDetails.batch && <span> · Slot: {feeDetails.batch}</span>}
+                      </div>
+                    )}
+                  </div>
+                  <span
+                    className="mobile-card-status-badge"
+                    style={{
+                      background: feeDetails.statusBadgeBg,
+                      color: feeDetails.statusBadgeColor,
+                      borderColor: feeDetails.statusBadgeBorder,
+                    }}
+                  >
+                    {feeDetails.statusBadgeLabel}
+                  </span>
+                </div>
+
+                {/* Middle: Plan info & Expiry */}
+                <div className="mobile-card-meta-row">
+                  <div>
+                    <small>Plan / Validity</small>
+                    <strong style={{ color: "var(--ink)" }}>{feeDetails.planLabel}</strong>
+                    {feeDetails.feeAmountMinor > 0 && (
+                      <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
+                        ₹{(feeDetails.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: "right" }}>
+                    <small>Valid Until / Expiry</small>
+                    <strong style={{ color: feeDetails.feeStatus === "OVERDUE" ? "#dc2626" : "var(--ink)" }}>
+                      {feeDetails.validUntilStr || "—"}
+                    </strong>
+                    {feeDetails.daysRemaining !== null && (
+                      <div
+                        style={{
+                          fontSize: 10.5,
+                          fontWeight: 650,
+                          marginTop: 1,
+                          color: feeDetails.daysRemaining < 0 ? "#dc2626" : feeDetails.daysRemaining <= 7 ? "#b45309" : "#16a34a",
+                        }}
+                      >
+                        {feeDetails.daysRemaining < 0
+                          ? `Overdue by ${Math.abs(feeDetails.daysRemaining)}d`
+                          : feeDetails.daysRemaining === 0
+                          ? "Expires today"
+                          : `${feeDetails.daysRemaining} days left`}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Contact info row */}
+                <div className="mobile-card-contact-row">
+                  {person.primaryPhone && (
+                    <a
+                      href={`tel:${person.primaryPhone}`}
+                      onClick={(e) => e.stopPropagation()}
+                      className="mobile-call-link"
+                    >
+                      <Icon name="phone" size={13} />
+                      <span>{person.primaryPhone}</span>
+                    </a>
+                  )}
+                  {person.email && (
+                    <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                      {person.email}
+                    </span>
+                  )}
+                  {person.address?.city && (
+                    <span style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                      · {person.address.city}
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions footer */}
+                <div className="mobile-card-footer" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm mobile-collect-btn"
+                    onClick={() => openRenewalModal(person)}
+                  >
+                    <Icon name="finance" size={13} />
+                    <span>Collect Fees / Renew</span>
+                  </button>
+                  <div className="mobile-card-icon-actions">
+                    <button
+                      type="button"
+                      className="btn-icon"
+                      title="Edit Details"
+                      onClick={() => openEditModal(person)}
+                    >
+                      <Icon name="edit" size={15} />
+                    </button>
+                    {person.status === "ACTIVE" ? (
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="Archive"
+                        onClick={() => setArchiveCandidate(person)}
+                      >
+                        <Icon name="trash" size={15} />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn-icon"
+                        title="Restore"
+                        onClick={() => setUnarchiveCandidate(person)}
+                        style={{ color: "#059669" }}
+                      >
+                        <Icon name="refresh" size={15} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </>
+  )}
 
       {/* Person Detail Drawer */}
       <Drawer
