@@ -119,7 +119,7 @@ export function MoreMenuScreen() {
               <Badge tone="blue">Admin</Badge>
             </View>
             <Text style={styles.profileOrg}>
-              🏢 {activeOrg?.name || "CRMKaro Business OS"}
+              {activeOrg?.name || "CRMKaro Business OS"}
             </Text>
             <Text style={styles.profileEmail}>{user?.email || "Signed in"}</Text>
           </View>

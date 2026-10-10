@@ -208,24 +208,55 @@ export function saveCachedWorkspaceContext(ctx: Partial<WorkspaceContext>) {
   } catch {}
 }
 
-export function buildNavItems(activeServices: string[]): NavItem[] {
+export function isSchoolWorkspace(businessType?: string): boolean {
+  if (!businessType) return false;
+  const bt = businessType.toLowerCase();
+  return bt.includes("school") || bt.includes("formal") || bt.includes("institute") || bt.includes("k-12");
+}
+
+export const SCHOOL_SERVICE_NAV_MAP: Record<string, NavItem> = {
+  groups: { label: "Classes & Sections", icon: "activity", href: "/groups" },
+  students: { label: "Daily Attendance", icon: "student", href: "/students" },
+  people: { label: "Students & Parents", icon: "people", href: "/people" },
+  finance: { label: "School Fees", icon: "finance", href: "/finance" },
+  "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
+  transactions: { label: "Fee Receipts", icon: "transactions", href: "/transactions" },
+  payroll: { label: "Teachers & Staff", icon: "payroll", href: "/payroll" },
+  crm: { label: "Admissions & Inquiries", icon: "crm", href: "/crm" },
+  inventory: { label: "Books & Inventory", icon: "inventory", href: "/inventory" },
+};
+
+export function buildNavItems(activeServices: string[], businessType?: string): NavItem[] {
+  const isSchool = isSchoolWorkspace(businessType);
+  const map = isSchool ? SCHOOL_SERVICE_NAV_MAP : SERVICE_NAV_MAP;
   const codes = activeServices && activeServices.length > 0 ? activeServices : DEFAULT_SERVICE_CODES;
   const codesSet = new Set(codes);
 
-  const orderedCodes = [
-    "people",
-    "groups",
-    "quick-collect",
-    "transactions",
-    "students",
-    "crm",
-    "finance",
-    "payroll",
-    "inventory",
-  ];
+  const orderedCodes = isSchool
+    ? [
+        "groups",
+        "students",
+        "people",
+        "finance",
+        "quick-collect",
+        "transactions",
+        "payroll",
+      ]
+    : [
+        "people",
+        "groups",
+        "quick-collect",
+        "transactions",
+        "students",
+        "crm",
+        "finance",
+        "payroll",
+        "inventory",
+      ];
+
   const serviceNavItems = orderedCodes
     .filter((code) => codesSet.has(code))
-    .map((code) => SERVICE_NAV_MAP[code])
+    .map((code) => map[code] || SERVICE_NAV_MAP[code])
     .filter((item): item is NavItem => Boolean(item));
 
   return [
@@ -351,8 +382,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [refreshWorkspace]);
 
   const navItems = useMemo(
-    () => buildNavItems(context.activeServices),
-    [context.activeServices],
+    () => buildNavItems(context.activeServices, context.businessType),
+    [context.activeServices, context.businessType],
   );
 
   const value = useMemo<WorkspaceContextValue>(
@@ -392,7 +423,7 @@ export function useWorkspace(): WorkspaceContextValue {
       businessType: cached.businessType || "Business",
       activeServices: cached.activeServices,
       organisations: inMemoryOrganisations,
-      navItems: buildNavItems(cached.activeServices),
+      navItems: buildNavItems(cached.activeServices, cached.businessType),
       isHydrated: true,
       updateWorkspace: saveCachedWorkspaceContext,
       setOrganisations: () => {},

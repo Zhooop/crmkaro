@@ -12,6 +12,9 @@ export function getApiUrl(): string {
 
 export function authHeaders(extraHeaders?: HeadersInit): HeadersInit {
   const headers = new Headers(extraHeaders);
+  if (!headers.has("x-client-platform")) {
+    headers.set("x-client-platform", "web");
+  }
   if (typeof window !== "undefined") {
     const token = localStorage.getItem("crmkaro_token");
     if (token && !headers.has("Authorization")) {

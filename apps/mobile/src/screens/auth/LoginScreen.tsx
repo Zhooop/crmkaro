@@ -232,7 +232,7 @@ export function LoginScreen() {
           {/* Messages */}
           {Boolean(error) && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
+              <Text style={styles.errorText}>{error}</Text>
               {tab === "login" && error && (error.toLowerCase().includes("no account found") || error.toLowerCase().includes("register")) ? (
                 <TouchableOpacity
                   style={styles.inlineActionBtn}
@@ -249,7 +249,7 @@ export function LoginScreen() {
 
           {Boolean(infoMessage) && (
             <View style={styles.infoBox}>
-              <Text style={styles.infoText}>✉️ {infoMessage}</Text>
+              <Text style={styles.infoText}>{infoMessage}</Text>
             </View>
           )}
 

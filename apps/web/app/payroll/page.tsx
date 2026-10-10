@@ -1231,10 +1231,10 @@ export default function PayrollPage() {
           <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 10, border: "1px solid var(--line)", display: "flex", flexDirection: "column", gap: 10 }}>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
               <span style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)" }}>
-                💰 Monthly Salary Package & Compensation
+                Monthly Salary Package & Compensation
               </span>
               <span style={{ fontSize: 11, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "2px 6px", borderRadius: 4, fontWeight: 650 }}>
-                📅 Payout Due: 1st of month
+                Payout Due: 1st of month
               </span>
             </div>
 
@@ -1266,7 +1266,7 @@ export default function PayrollPage() {
                     cursor: "pointer",
                   }}
                 >
-                  ⚡ {pkg.label}
+                  {pkg.label}
                 </button>
               ))}
             </div>
@@ -1362,7 +1362,7 @@ export default function PayrollPage() {
           {/* 1-Click Salary Package Presets */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 750, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              ⚡ 1-Click Salary Templates:
+              Salary Templates:
             </label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {[
@@ -1612,7 +1612,7 @@ export default function PayrollPage() {
             border: "1px solid rgba(255, 255, 255, 0.15)",
           }}
         >
-          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: toast.type === "success" ? "#22c55e" : "#ef4444" }} />
           <span>{toast.message}</span>
           <button
             type="button"

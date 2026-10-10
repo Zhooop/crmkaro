@@ -45,7 +45,10 @@ export type IconName =
   | "CheckCircle2"
   | "ChevronDown"
   | "ArrowUpRight"
-  | "ArrowDownRight";
+  | "ArrowDownRight"
+  | "Send"
+  | "ExternalLink"
+  | "RotateCcw";
 
 type IconProps = {
   name: IconName;

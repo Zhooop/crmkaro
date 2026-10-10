@@ -809,7 +809,7 @@ function TransactionsContent() {
                     fontWeight: 650,
                   }}
                 >
-                  ⚠️ {paymentError}
+                  {paymentError}
                 </div>
               )}
               <div className="form-group">

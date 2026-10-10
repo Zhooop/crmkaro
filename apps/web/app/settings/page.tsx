@@ -213,7 +213,7 @@ export default function SettingsPage() {
       showToast("Optimizing and compressing logo...", "success");
       const compressed = await compressImage(file, 500, 500, 0.82);
       setFormLogoUrl(compressed);
-      showToast("✨ Logo optimized! Click Save to apply.", "success");
+      showToast("Logo optimized! Click Save to apply.", "success");
     } catch {
       showToast("Failed to process logo image.", "error");
     }
@@ -242,7 +242,7 @@ export default function SettingsPage() {
         const updated = await res.json();
         setOrgDetails(updated);
         updateWorkspace({ orgName: updated.name, businessType: updated.businessType || undefined });
-        showToast("✨ Organisation branding & logo saved successfully! PDFs will now include this branding.", "success");
+        showToast("Organisation branding & logo saved successfully! PDFs will now include this branding.", "success");
       } else {
         const err = await res.json().catch(() => ({}));
         showToast(err.message || "Failed to save branding.", "error");
@@ -408,7 +408,7 @@ export default function SettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setPayouts(data);
-        showToast("🏦 Bank account & payout settlement settings saved successfully!", "success");
+        showToast("Bank account & payout settlement settings saved successfully!", "success");
       } else {
         const err = await res.json().catch(() => ({}));
         showToast(err.message || "Failed to update payout settings.", "error");
@@ -705,7 +705,7 @@ export default function SettingsPage() {
                       border: "none",
                     }}
                   >
-                    {savingBranding ? "Saving Branding..." : "💾 Save Branding & Details"}
+                    {savingBranding ? "Saving Branding..." : "Save Branding & Details"}
                   </button>
                 </div>
               </div>
@@ -836,7 +836,7 @@ export default function SettingsPage() {
         <div style={{ maxWidth: 840 }}>
           <div style={{ marginBottom: 20, padding: "16px 20px", background: "#f8fafc", borderRadius: 12, border: "1px solid #e2e8f0" }}>
             <h3 style={{ margin: "0 0 6px", fontSize: 15, fontWeight: 750, color: "var(--ink)" }}>
-              🧩 Active Workspace Services & Navigation Visibility
+              Active Workspace Services & Navigation Visibility
             </h3>
             <p style={{ fontSize: 13, color: "var(--muted)", margin: 0 }}>
               Enable or archive business services. <strong>Archived / disabled services are immediately hidden from the sidebar menu</strong> across all pages and protected from unauthorized data entry.
@@ -948,7 +948,7 @@ export default function SettingsPage() {
             <div>
               <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 4 }}>
                 <h3 style={{ margin: 0, fontSize: 16, fontWeight: 750, color: "var(--ink)" }}>
-                  🏦 Bank Account & Payment Settlements
+                  Bank Account & Payment Settlements
                 </h3>
                 <span
                   style={{
@@ -1139,7 +1139,7 @@ export default function SettingsPage() {
               {/* Online Payment Gateway Preference */}
               <div style={{ marginTop: 24, paddingTop: 20, borderTop: "1px solid #e2e8f0" }}>
                 <div style={{ fontSize: 13.5, fontWeight: 750, color: "var(--ink)", marginBottom: 12 }}>
-                  ⚡ Online Payment Gateway Preference
+                  Online Payment Gateway Preference
                 </div>
 
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))", gap: 14 }}>
@@ -1252,7 +1252,7 @@ export default function SettingsPage() {
                     boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)",
                   }}
                 >
-                  {savingPayouts ? "Saving Bank Settings…" : "💾 Save Bank & Payout Settings"}
+                  {savingPayouts ? "Saving Bank Settings…" : "Save Bank & Payout Settings"}
                 </button>
               </div>
             </form>

@@ -55,6 +55,32 @@ type DashboardData = {
     createdAt: string;
     metadata?: any;
   }>;
+  academySummary?: {
+    activeStudents: number;
+    thisMonthCollectedMinor: number;
+    thisMonthPendingMinor: number;
+    currentCyclePendingMinor?: number;
+    backlogPendingMinor?: number;
+    monthName?: string;
+    attendancePercentage?: number;
+    todayPresent?: number;
+    todayAbsent?: number;
+    pendingDues?: Array<{
+      id: string;
+      studentProfileId: string;
+      displayName: string;
+      rollNumber: string | null;
+      standard: string | null;
+      batch: string | null;
+      phone: string | null;
+      guardianPhone: string | null;
+      pendingMinor: number;
+      paidMinor: number;
+      status: string;
+      dueDate: string | null;
+    }>;
+    totalPendingCount?: number;
+  };
 };
 
 function humanizeAction(action: string): string {
@@ -299,6 +325,111 @@ export function DashboardScreen() {
           </View>
         )}
 
+        {/* Academy / Student Fees Overview Widget */}
+        {dashboard?.academySummary && (
+          <View style={styles.academyWidgetCard}>
+            <View style={styles.academyWidgetHeader}>
+              <View style={styles.academyWidgetTitleRow}>
+                <View style={[styles.activityIconCircle, { backgroundColor: "#dbeafe" }]}>
+                  <Icon name="GraduationCap" size={16} color="#1d4ed8" />
+                </View>
+                <View>
+                  <Text style={styles.academyWidgetTitle}>
+                    {dashboard.academySummary.monthName || "Current Month"} Student Fees
+                  </Text>
+                  <Text style={styles.academyWidgetSub}>
+                    {dashboard.academySummary.activeStudents} active enrolled students
+                  </Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Students")}
+                style={styles.academyWidgetLink}
+              >
+                <Text style={styles.academyWidgetLinkText}>View Students →</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* 3 Metric Mini Breakdown Ribbon */}
+            <View style={styles.academyMetricsRibbon}>
+              <View style={styles.academyMetricItem}>
+                <Text style={[styles.academyMetricLabel, { color: "#047857" }]}>
+                  {dashboard.academySummary.monthName ? `${dashboard.academySummary.monthName.slice(0, 3)} Collections` : "Collections"}
+                </Text>
+                <Text style={[styles.academyMetricValue, { color: "#047857" }]}>
+                  {formatRupees(dashboard.academySummary.thisMonthCollectedMinor)}
+                </Text>
+                <Text style={styles.academyMetricSub}>Recorded this month</Text>
+              </View>
+
+              <View style={styles.academyMetricDivider} />
+
+              <View style={styles.academyMetricItem}>
+                <Text style={[styles.academyMetricLabel, { color: "#b45309" }]}>
+                  {dashboard.academySummary.monthName ? `${dashboard.academySummary.monthName.slice(0, 3)} Cycle Dues` : "Cycle Dues"}
+                </Text>
+                <Text style={[styles.academyMetricValue, { color: "#b45309" }]}>
+                  {formatRupees(dashboard.academySummary.currentCyclePendingMinor ?? dashboard.academySummary.thisMonthPendingMinor)}
+                </Text>
+                <Text style={styles.academyMetricSub}>Current cycle unpaid</Text>
+              </View>
+
+              <View style={styles.academyMetricDivider} />
+
+              <View style={styles.academyMetricItem}>
+                <Text style={[styles.academyMetricLabel, { color: "#dc2626" }]}>
+                  Total Dues
+                </Text>
+                <Text style={[styles.academyMetricValue, { color: "#dc2626" }]}>
+                  {formatRupees(dashboard.academySummary.thisMonthPendingMinor)}
+                </Text>
+                <Text style={styles.academyMetricSub}>
+                  {dashboard.academySummary.backlogPendingMinor && dashboard.academySummary.backlogPendingMinor > 0
+                    ? `Incl. ₹${(dashboard.academySummary.backlogPendingMinor / 100).toLocaleString("en-IN")} backlog`
+                    : "All active dues"}
+                </Text>
+              </View>
+            </View>
+
+            {/* Top Pending Dues List */}
+            {dashboard.academySummary.pendingDues && dashboard.academySummary.pendingDues.length > 0 && (
+              <View style={styles.academyDuesList}>
+                {dashboard.academySummary.pendingDues.slice(0, 3).map((item, idx) => (
+                  <View
+                    key={item.studentProfileId || idx}
+                    style={[
+                      styles.academyDueItem,
+                      idx !== Math.min(2, (dashboard.academySummary?.pendingDues?.length ?? 1) - 1) && styles.academyDueItemBorder,
+                    ]}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.academyDueName}>{item.displayName}</Text>
+                      <Text style={styles.academyDueMeta}>
+                        {item.standard ? `${item.standard}` : "Student"} • Due: {item.dueDate || "Immediate"}
+                      </Text>
+                    </View>
+                    <View style={{ alignItems: "flex-end" }}>
+                      <Text style={styles.academyDueAmount}>{formatRupees(item.pendingMinor)}</Text>
+                      <Badge tone={item.status === "OVERDUE" ? "rose" : "amber"}>
+                        {item.status === "OVERDUE" ? "Overdue" : "Pending"}
+                      </Badge>
+                    </View>
+                  </View>
+                ))}
+
+                <View style={styles.academyWidgetFooterRow}>
+                  <TouchableOpacity
+                    onPress={() => navigation.navigate("Finance")}
+                    style={styles.ledgerShortcutBtn}
+                  >
+                    <Text style={styles.ledgerShortcutText}>View Multi-Month Finance Ledger →</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Fast Action Launcher - 4 Squircle Actions */}
         <View style={styles.sectionHeaderRow}>
           <Text style={styles.sectionHeader}>Quick Actions</Text>
@@ -378,7 +509,7 @@ export function DashboardScreen() {
                   ]}
                 >
                   <View style={styles.activityDot}>
-                    <Text style={styles.activityDotIcon}>⚡</Text>
+                    <Icon name="Activity" size={12} color={colors.brand} />
                   </View>
                   <View style={styles.activityMeta}>
                     <Text style={styles.activitySummary}>{humanizeAction(act.action)}</Text>
@@ -725,5 +856,129 @@ const styles = StyleSheet.create({
     textAlign: "center",
     lineHeight: 17,
     maxWidth: 260,
+  },
+  academyWidgetCard: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.xl,
+    padding: spacing.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+    marginBottom: spacing.lg,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  academyWidgetHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: spacing.md,
+  },
+  academyWidgetTitleRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    flex: 1,
+  },
+  academyWidgetTitle: {
+    fontSize: 14,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  academyWidgetSub: {
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 1,
+  },
+  academyWidgetLink: {
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+  },
+  academyWidgetLinkText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.brand,
+  },
+  academyMetricsRibbon: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#f8fafc",
+    borderRadius: radius.md,
+    padding: spacing.sm + 2,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    marginBottom: spacing.md,
+  },
+  academyMetricItem: {
+    flex: 1,
+    alignItems: "center",
+  },
+  academyMetricLabel: {
+    fontSize: 9.5,
+    fontWeight: "800",
+    textTransform: "uppercase",
+    letterSpacing: 0.3,
+  },
+  academyMetricValue: {
+    fontSize: 14,
+    fontWeight: "900",
+    marginTop: 2,
+  },
+  academyMetricSub: {
+    fontSize: 9,
+    color: colors.muted,
+    marginTop: 1,
+  },
+  academyMetricDivider: {
+    width: 1,
+    height: 24,
+    backgroundColor: "#cbd5e1",
+  },
+  academyDuesList: {
+    marginTop: spacing.xs,
+  },
+  academyDueItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingVertical: spacing.sm,
+  },
+  academyDueItemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineLight,
+  },
+  academyDueName: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  academyDueMeta: {
+    fontSize: 11,
+    color: colors.muted,
+    marginTop: 1,
+  },
+  academyDueAmount: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.danger,
+    marginBottom: 2,
+  },
+  academyWidgetFooterRow: {
+    marginTop: spacing.sm,
+    paddingTop: spacing.xs,
+    borderTopWidth: 1,
+    borderTopColor: colors.lineLight,
+    alignItems: "center",
+  },
+  ledgerShortcutBtn: {
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+  },
+  ledgerShortcutText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.brand,
   },
 });

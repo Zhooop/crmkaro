@@ -11,6 +11,7 @@ import {
   RefreshControl,
   ScrollView,
 } from "react-native";
+import { useNavigation } from "@react-navigation/native";
 import { AppHeader } from "../../components/AppHeader";
 import { SearchInput } from "../../components/SearchInput";
 import { Badge } from "../../components/Badge";
@@ -18,6 +19,7 @@ import { BottomSheet } from "../../components/BottomSheet";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { Icon } from "../../components/Icon";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 import { colors, radius, spacing } from "../../theme/colors";
 
 export type Person = {
@@ -365,6 +367,31 @@ export function getPersonPaidMonths(person: Person, currentYear?: number): Set<s
 }
 
 export function PeopleListScreen() {
+  const navigation = useNavigation<any>();
+  const { activeOrg } = useAuth();
+
+  const isAcademyOrSchool = (() => {
+    const bt = (activeOrg?.businessType || "").toLowerCase();
+    const name = (activeOrg?.name || "").toLowerCase();
+    return (
+      bt.includes("academy") ||
+      bt.includes("school") ||
+      bt.includes("formal") ||
+      bt.includes("coaching") ||
+      bt.includes("tuition") ||
+      bt.includes("institute") ||
+      bt.includes("classes") ||
+      bt.includes("education") ||
+      bt.includes("gym") ||
+      bt.includes("fitness") ||
+      name.includes("academy") ||
+      name.includes("school") ||
+      name.includes("coaching") ||
+      name.includes("institute") ||
+      name.includes("gym")
+    );
+  })();
+
   const [people, setPeople] = useState<Person[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -726,15 +753,52 @@ export function PeopleListScreen() {
   return (
     <View style={styles.container}>
       <AppHeader
-        title="People Directory"
-        subtitle="Manage students, members and fee billing"
+        title={isAcademyOrSchool ? "Students & Directory" : "People Directory"}
+        subtitle={isAcademyOrSchool ? "Manage student admissions, batch roster & fees" : "Manage students, members and fee billing"}
         rightAction={
-          <TouchableOpacity
-            onPress={openCreateModal}
-            style={styles.addBtn}
-          >
-            <Icon name="UserPlus" size={16} color="#ffffff" />
-          </TouchableOpacity>
+          isAcademyOrSchool ? (
+            <View style={{ flexDirection: "row", gap: 8, alignItems: "center" }}>
+              <TouchableOpacity
+                onPress={openCreateModal}
+                style={[
+                  styles.addBtn,
+                  {
+                    backgroundColor: colors.surface,
+                    borderWidth: 1,
+                    borderColor: colors.lineLight,
+                  },
+                ]}
+                accessibilityLabel="Add Staff / Contact"
+              >
+                <Icon name="UserPlus" size={15} color={colors.ink} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("Students", { openAdmission: true })}
+                style={[
+                  styles.addBtn,
+                  {
+                    backgroundColor: colors.brand,
+                    paddingHorizontal: 10,
+                    width: "auto",
+                    flexDirection: "row",
+                    gap: 5,
+                    alignItems: "center",
+                  },
+                ]}
+                accessibilityLabel="New Admission"
+              >
+                <Icon name="GraduationCap" size={15} color="#ffffff" />
+                <Text style={{ color: "#ffffff", fontSize: 12, fontWeight: "700" }}>+ Admission</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <TouchableOpacity
+              onPress={openCreateModal}
+              style={styles.addBtn}
+            >
+              <Icon name="UserPlus" size={16} color="#ffffff" />
+            </TouchableOpacity>
+          )
         }
       />
 
@@ -1368,7 +1432,7 @@ export function PeopleListScreen() {
                         onPress={() => quickSelectRenewalMonths(opt.count)}
                         style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "650", color: colors.ink }}>{opt.label}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}>{opt.label}</Text>
                       </TouchableOpacity>
                     ))}
                     {renewalSelectedMonths.length > 0 && (
@@ -1376,7 +1440,7 @@ export function PeopleListScreen() {
                         onPress={() => setRenewalSelectedMonths([])}
                         style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fff1f2", marginLeft: "auto" }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "650", color: "#b91c1c" }}>Clear</Text>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#b91c1c" }}>Clear</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1424,7 +1488,7 @@ export function PeopleListScreen() {
                             alignItems: "center",
                           }}
                         >
-                          <Text style={{ fontSize: 11.5, fontWeight: "750", color: txtColor }}>{mName}</Text>
+                          <Text style={{ fontSize: 11.5, fontWeight: "700", color: txtColor }}>{mName}</Text>
                           {isPaid ? (
                             <Text style={{ fontSize: 8.5, fontWeight: "800", color: "#166534", marginTop: 2 }}>PAID</Text>
                           ) : isSelected ? (
@@ -1527,8 +1591,8 @@ export function PeopleListScreen() {
       <BottomSheet
         visible={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={editingPerson ? "Edit Member Details" : "Add New Member"}
-        subtitle="Complete Member Registration Form"
+        title={editingPerson ? "Edit Member Details" : (isAcademyOrSchool ? "Add Staff or Contact" : "Add New Member")}
+        subtitle={isAcademyOrSchool ? "Staff & Contact Registration Form" : "Complete Member Registration Form"}
         footer={
           <View style={styles.modalFooterRow}>
             <PrimaryButton

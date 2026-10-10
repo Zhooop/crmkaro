@@ -446,7 +446,9 @@ function InventoryContent() {
         <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#eff6ff", borderRadius: 10, border: "1px solid #bfdbfe", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>📦</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#dbeafe", color: "#1d4ed8", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="inventory" size={18} />
+              </div>
               <div>
                 <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Product Catalog & Stock Levels</strong>
                 <div style={{ fontSize: 12, color: "#2563eb" }}>
@@ -640,7 +642,9 @@ function InventoryContent() {
         <div className="table-wrap">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f8fafc", borderRadius: 10, border: "1px solid #cbd5e1", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>📊</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#f1f5f9", color: "#475569", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <Icon name="activity" size={18} />
+              </div>
               <div>
                 <strong style={{ fontSize: 13, color: "#334155" }}>Stock Movement Ledger & Audit History</strong>
                 <div style={{ fontSize: 12, color: "#64748b" }}>
@@ -777,7 +781,7 @@ function InventoryContent() {
           {/* 1-Click Product Templates */}
           <div>
             <label style={{ fontSize: 11, fontWeight: 750, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              ⚡ 1-Click Product Templates:
+              Quick Product Templates:
             </label>
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
               {[
@@ -990,12 +994,12 @@ function InventoryContent() {
               value={adjustType}
               onChange={(e) => setAdjustType(e.target.value as any)}
             >
-              <option value="PURCHASE">📥 Purchase (+ Stock In - Bought new inventory)</option>
-              <option value="SALE">📤 Sale (- Stock Out - Dispatched to customer)</option>
-              <option value="RETURN_IN">🔄 Customer Return (+ Stock In - Returned by student/customer)</option>
-              <option value="RETURN_OUT">↩️ Vendor Return (- Stock Out - Returned to supplier)</option>
-              <option value="ADJUSTMENT_IN">➕ Audit Surplus (+ Stock In - Inventory count correction)</option>
-              <option value="ADJUSTMENT_OUT">➖ Damage / Loss (- Stock Out - Damaged, lost, expired)</option>
+              <option value="PURCHASE">Purchase (+ Stock In - Bought new inventory)</option>
+              <option value="SALE">Sale (- Stock Out - Dispatched to customer)</option>
+              <option value="RETURN_IN">Customer Return (+ Stock In - Returned by student/customer)</option>
+              <option value="RETURN_OUT">Vendor Return (- Stock Out - Returned to supplier)</option>
+              <option value="ADJUSTMENT_IN">Audit Surplus (+ Stock In - Inventory count correction)</option>
+              <option value="ADJUSTMENT_OUT">Damage / Loss (- Stock Out - Damaged, lost, expired)</option>
             </select>
           </div>
 
@@ -1056,7 +1060,7 @@ function InventoryContent() {
             border: "1px solid rgba(255, 255, 255, 0.15)",
           }}
         >
-          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <span style={{ width: 8, height: 8, borderRadius: "50%", background: toast.type === "success" ? "#10b981" : "#ef4444" }} />
           <span>{toast.message}</span>
           <button
             type="button"

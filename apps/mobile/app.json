@@ -21,7 +21,8 @@
       "adaptiveIcon": {
         "backgroundColor": "#ffffff"
       },
-      "package": "com.crmkaro.app"
+      "package": "com.crmkaro.app",
+      "versionCode": 2
     },
     "web": {
       "favicon": "./assets/favicon.png"

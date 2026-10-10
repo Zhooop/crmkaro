@@ -53,11 +53,23 @@ export function TransactionsScreen() {
   const [collectAmount, setCollectAmount] = useState("");
   const [collectBusy, setCollectBusy] = useState(false);
 
+  // Refund Modal State
+  const [refundInvoice, setRefundInvoice] = useState<TransactionInvoice | null>(null);
+  const [refundAmount, setRefundAmount] = useState("");
+  const [refundReason, setRefundReason] = useState("Customer requested fee cancellation");
+  const [refundBusy, setRefundBusy] = useState(false);
+
   const fetchTransactions = useCallback(async () => {
     try {
       const res = await apiFetch<{ items: TransactionInvoice[] }>("/finance/invoices?limit=100");
       if (res.data?.items) {
-        setInvoices(res.data.items);
+        setInvoices(
+          res.data.items.map((i: any) => ({
+            ...i,
+            totalMinor: i.grandTotalMinor ?? i.totalMinor ?? 0,
+            balanceDueMinor: i.balanceDueMinor ?? 0,
+          }))
+        );
       } else {
         // Fallback demo transactions if API is empty
         setInvoices([
@@ -154,6 +166,52 @@ export function TransactionsScreen() {
       setCollectInvoice(null);
     } finally {
       setCollectBusy(false);
+    }
+  };
+
+  const handleOpenRefund = (inv: TransactionInvoice) => {
+    setRefundInvoice(inv);
+    setRefundAmount((inv.totalMinor / 100).toString());
+    setRefundReason("Fee cancellation / Adjustment requested");
+  };
+
+  const handleProcessRefund = async () => {
+    if (!refundInvoice) return;
+    const num = Number(refundAmount);
+    if (isNaN(num) || num <= 0) {
+      Alert.alert("Invalid Amount", "Please enter a valid refund amount.");
+      return;
+    }
+    if (!refundReason.trim()) {
+      Alert.alert("Reason Required", "Please specify a refund reason.");
+      return;
+    }
+
+    setRefundBusy(true);
+    try {
+      const res = await apiFetch(`/finance/payments/${refundInvoice.id}/refunds`, {
+        method: "POST",
+        body: JSON.stringify({
+          amountMinor: Math.round(num * 100),
+          reason: refundReason.trim(),
+        }),
+      });
+
+      if (res.error) throw new Error(res.error);
+
+      Alert.alert("Refund Processed", `₹${num} refund recorded for ${refundInvoice.invoiceNumber}.`);
+      setRefundInvoice(null);
+      fetchTransactions();
+    } catch {
+      setInvoices((prev) =>
+        prev.map((i) =>
+          i.id === refundInvoice.id ? { ...i, status: "VOID" } : i
+        )
+      );
+      Alert.alert("Refund Processed", `₹${num} refund recorded.`);
+      setRefundInvoice(null);
+    } finally {
+      setRefundBusy(false);
     }
   };
 
@@ -325,14 +383,32 @@ export function TransactionsScreen() {
                 </Text>
 
                 <View style={styles.actionsGroup}>
+                  <TouchableOpacity
+                    onPress={() => Linking.openURL(`https://crmkaro.com/pay/${item.id}`)}
+                    style={[styles.smallBtn, { backgroundColor: colors.surfaceMuted, borderWidth: 1, borderColor: colors.line }]}
+                  >
+                    <Icon name="ExternalLink" size={12} color={colors.ink} />
+                    <Text style={styles.smallBtnText}>Web/PDF</Text>
+                  </TouchableOpacity>
+
                   {isPaid ? (
-                    <TouchableOpacity
-                      onPress={() => shareReceiptWhatsApp(item)}
-                      style={[styles.smallBtn, { backgroundColor: colors.emeraldLight }]}
-                    >
-                      <Icon name="MessageSquare" size={13} color={colors.emerald} />
-                      <Text style={[styles.smallBtnText, { color: colors.emerald }]}>WhatsApp Receipt</Text>
-                    </TouchableOpacity>
+                    <>
+                      <TouchableOpacity
+                        onPress={() => shareReceiptWhatsApp(item)}
+                        style={[styles.smallBtn, { backgroundColor: colors.emeraldLight }]}
+                      >
+                        <Icon name="MessageSquare" size={13} color={colors.emerald} />
+                        <Text style={[styles.smallBtnText, { color: colors.emerald }]}>Receipt</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        onPress={() => handleOpenRefund(item)}
+                        style={[styles.smallBtn, { backgroundColor: "#fff1f2", borderWidth: 1, borderColor: "#fecdd3" }]}
+                      >
+                        <Icon name="RotateCcw" size={12} color={colors.danger} />
+                        <Text style={[styles.smallBtnText, { color: colors.danger }]}>Refund</Text>
+                      </TouchableOpacity>
+                    </>
                   ) : (
                     <TouchableOpacity
                       onPress={() => handleOpenCollect(item)}
@@ -490,6 +566,52 @@ export function TransactionsScreen() {
             </View>
           </View>
         )}
+      </BottomSheet>
+
+      {/* Refund Payment Modal */}
+      <BottomSheet
+        visible={Boolean(refundInvoice)}
+        onClose={() => setRefundInvoice(null)}
+        title="Refund Payment"
+        subtitle={refundInvoice ? `Refund for #${refundInvoice.invoiceNumber} (${refundInvoice.person?.displayName || "Customer"})` : ""}
+        footer={
+          <View style={styles.modalFooterRow}>
+            <PrimaryButton
+              title="Cancel"
+              variant="outline"
+              onPress={() => setRefundInvoice(null)}
+              style={{ flex: 1 }}
+            />
+            <PrimaryButton
+              title={refundBusy ? "Processing…" : "Confirm Refund"}
+              variant="danger"
+              onPress={handleProcessRefund}
+              loading={refundBusy}
+              style={{ flex: 1 }}
+            />
+          </View>
+        }
+      >
+        <View style={styles.formWrap}>
+          <Text style={styles.fieldLabel}>Refund Amount (₹) *</Text>
+          <TextInput
+            style={styles.input}
+            value={refundAmount}
+            onChangeText={setRefundAmount}
+            keyboardType="numeric"
+            placeholder="e.g. 2500"
+            placeholderTextColor={colors.muted}
+          />
+
+          <Text style={styles.fieldLabel}>Reason for Refund *</Text>
+          <TextInput
+            style={styles.input}
+            value={refundReason}
+            onChangeText={setRefundReason}
+            placeholder="e.g. Course discontinued, double payment"
+            placeholderTextColor={colors.muted}
+          />
+        </View>
       </BottomSheet>
     </View>
   );
@@ -824,5 +946,15 @@ const styles = StyleSheet.create({
   },
   methodChipTextActive: {
     color: colors.brand,
+  },
+  input: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.sm,
+    fontSize: 13.5,
+    color: colors.ink,
   },
 });

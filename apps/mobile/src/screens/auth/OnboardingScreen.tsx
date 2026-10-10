@@ -141,7 +141,7 @@ export function OnboardingScreen() {
         <View style={styles.card}>
           {Boolean(error) && (
             <View style={styles.errorBox}>
-              <Text style={styles.errorText}>⚠️ {error}</Text>
+              <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
 

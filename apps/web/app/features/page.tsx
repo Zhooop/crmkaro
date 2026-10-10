@@ -17,42 +17,42 @@ export default function FeaturesPage() {
 
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 20, margin: "30px 0" }}>
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>🎓 Student Fees & Month-Wise Billing</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Student Fees & Month-Wise Billing</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             1-Click 12-Month Academic Fee selection (April to March session), quarterly term billing, multi-time installment collection, and pending dues tracking.
           </p>
         </div>
 
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>🧾 Send Receipts & GST Invoicing</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Send Receipts & GST Invoicing</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             Direct PDF download and instant WhatsApp sharing with student name, month fees, and balance amount clearly formatted.
           </p>
         </div>
 
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>📈 Collect Leads & Sales CRM</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Collect Leads & Sales CRM</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             Visual Kanban pipeline, inquiry stages, 1-click follow-up presets, call logs, and instant conversion to enrolled students or active clients.
           </p>
         </div>
 
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>👥 Staff Salaries & Automated Payroll</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Staff Salaries & Automated Payroll</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             Unified 1-step staff enrollment with monthly salary structure, monthly payroll runs, salary slips, and disbursement tracking.
           </p>
         </div>
 
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>💸 Kharcha (Expense Management)</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Expense Management (Kharcha)</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             Log daily operating expenses (rent, electricity, tools, vendor bills) with instant category analytics and cashflow calculations.
           </p>
         </div>
 
         <div style={{ background: "#ffffff", padding: 24, borderRadius: 12, border: "1.5px solid #dbeafe", boxShadow: "0 2px 8px rgba(0,0,0,0.04)" }}>
-          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>📦 Inventory & Stock Ledger</h3>
+          <h3 style={{ fontSize: 18, color: "#1e3a8a", marginTop: 0 }}>Inventory & Stock Ledger</h3>
           <p style={{ color: "#475569", fontSize: 14 }}>
             Maintain product catalog, uniform and study kit stocks with low stock reorder alerts and audited movement logs.
           </p>

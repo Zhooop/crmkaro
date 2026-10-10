@@ -53,6 +53,8 @@ export async function apiFetch<T = any>(
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Accept: "application/json",
+    "x-client-platform": "mobile",
+    "User-Agent": "CRMKaro-Mobile/1.0",
     ...(options.headers as Record<string, string>),
   };
 

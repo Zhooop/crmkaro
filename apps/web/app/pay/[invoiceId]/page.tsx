@@ -243,7 +243,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
     return (
       <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", background: "#f8fafc", padding: 20, fontFamily: "sans-serif" }}>
         <div style={{ maxWidth: 440, width: "100%", background: "#ffffff", padding: 32, borderRadius: 16, border: "1px solid #e2e8f0", textAlign: "center", boxShadow: "0 10px 25px rgba(0,0,0,0.05)" }}>
-          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, margin: "0 auto 16px" }}>⚠️</div>
+          <div style={{ width: 56, height: 56, borderRadius: "50%", background: "#fee2e2", color: "#dc2626", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20, fontWeight: 800, margin: "0 auto 16px" }}>!</div>
           <h2 style={{ margin: "0 0 8px", fontSize: 18, color: "#0f172a" }}>Invoice Unavailable</h2>
           <p style={{ color: "#64748b", fontSize: 13.5, lineHeight: 1.5, margin: "0 0 20px" }}>{error || "The payment link you followed is invalid or has expired."}</p>
           <a href="/" style={{ display: "inline-block", background: "#2563eb", color: "#fff", padding: "10px 20px", borderRadius: 8, fontSize: 13, fontWeight: 700, textDecoration: "none" }}>Go to CRMKaro</a>
@@ -396,7 +396,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                     boxShadow: "0 4px 14px rgba(5, 150, 105, 0.3)",
                   }}
                 >
-                  <span>🖨️ Print / Save Official Receipt</span>
+                  <span>Print / Save Official Receipt</span>
                 </button>
                 <div style={{ textAlign: "center", fontSize: 11.5, color: "#64748b", marginTop: 4 }}>
                   Payment settled and verified in {invoice.organisation.name}&apos;s database.
@@ -432,7 +432,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                         transition: "all 0.15s ease",
                       }}
                     >
-                      ⚡ Pay Online (Cards / UPI)
+                      Pay Online (Cards / UPI)
                     </button>
                     <button
                       type="button"
@@ -451,7 +451,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                         transition: "all 0.15s ease",
                       }}
                     >
-                      📲 Direct Scan & Pay (0% Fee)
+                      Direct Scan & Pay (0% Fee)
                     </button>
                   </div>
                 )}
@@ -481,18 +481,18 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                         transition: "all 0.18s ease",
                       }}
                     >
-                      <span>⚡ Pay {formatMoney(invoice.balanceDueMinor, invoice.currency)} Now</span>
+                      <span>Pay {formatMoney(invoice.balanceDueMinor, invoice.currency)} Now</span>
                       <span style={{ fontSize: 12, background: "rgba(255,255,255,0.25)", padding: "2px 8px", borderRadius: 6 }}>
                         UPI / Card / NetBanking
                       </span>
                     </button>
 
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 14, color: "#64748b", fontSize: 11, fontWeight: 600 }}>
-                      <span>🔒 256-Bit Encrypted</span>
+                      <span>256-Bit Encrypted</span>
                       <span>·</span>
-                      <span>⚡ Instant Razorpay Auto-Receipt</span>
+                      <span>Instant Razorpay Auto-Receipt</span>
                       <span>·</span>
-                      <span>🏦 Auto-Settled (T+1)</span>
+                      <span>Auto-Settled (T+1)</span>
                     </div>
                   </div>
                 ) : (
@@ -564,7 +564,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
                                 textDecoration: "none",
                               }}
                             >
-                              <span>📱 Tap to Open in Google Pay / PhonePe / Paytm</span>
+                              <span>Tap to Open in Google Pay / PhonePe / Paytm</span>
                             </a>
 
                             <div style={{ fontSize: 12, color: "#334155", marginTop: 2 }}>

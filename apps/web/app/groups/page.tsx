@@ -15,6 +15,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
+  isSchoolWorkspace,
 } from "@/lib/nav";
 
 type GroupItem = {
@@ -116,7 +117,8 @@ function GroupsContent() {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [activeGroupTab, setActiveGroupTab] = useState<string>("dashboard");
 
-  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
+  const isSchool = isSchoolWorkspace(businessType);
 
   // Groups List States
   const [groups, setGroups] = useState<GroupItem[]>([]);
@@ -578,9 +580,9 @@ function GroupsContent() {
           <div className="page-heading">
             <div>
               <p className="eyebrow">
-                <Icon name="activity" size={14} /> Batches & Rosters
+                <Icon name="activity" size={14} /> {isSchool ? "Classes & Rosters" : "Batches & Rosters"}
               </p>
-              <h1>Active Groups</h1>
+              <h1>{isSchool ? "Classes & Sections" : "Active Groups"}</h1>
             </div>
 
             <div className="toolbar-actions">
@@ -590,9 +592,9 @@ function GroupsContent() {
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 style={{ width: 140 }}
               >
-                <option value="ACTIVE">Active groups</option>
-                <option value="INACTIVE">Inactive groups</option>
-                <option value="ALL">All groups</option>
+                <option value="ACTIVE">{isSchool ? "Active classes" : "Active groups"}</option>
+                <option value="INACTIVE">{isSchool ? "Archived classes" : "Inactive groups"}</option>
+                <option value="ALL">{isSchool ? "All classes" : "All groups"}</option>
               </select>
 
               <button
@@ -601,10 +603,10 @@ function GroupsContent() {
                   resetWizard();
                   setViewMode("new");
                 }}
-                style={{ background: "#059669", borderColor: "#059669", fontWeight: 700 }}
+                style={{ background: "#2563eb", borderColor: "#2563eb", fontWeight: 700 }}
               >
                 <Icon name="plus" size={15} />
-                <span>New Group</span>
+                <span>{isSchool ? "Add Class & Section" : "New Group"}</span>
               </button>
             </div>
           </div>
@@ -642,13 +644,15 @@ function GroupsContent() {
           ) : groups.length === 0 ? (
             <EmptyState
               icon="activity"
-              title="No groups found"
+              title={isSchool ? "No classes found" : "No groups found"}
               description={
                 search
-                  ? "No groups matched your search query."
-                  : "Organize students, members or learners into batches to manage fees and attendance."
+                  ? (isSchool ? "No classes matched your search query." : "No groups matched your search query.")
+                  : (isSchool
+                      ? "Create your school classes (e.g. Class 1st to 12th) and sections to organize student attendance and term fees."
+                      : "Organize students, members or learners into batches to manage fees and attendance.")
               }
-              actionLabel="Create First Group"
+              actionLabel={isSchool ? "Create First Class" : "Create First Group"}
               onAction={() => {
                 resetWizard();
                 setViewMode("new");
@@ -833,13 +837,13 @@ function GroupsContent() {
 
             <div className={`group-wizard-step ${wizardStep === 2 ? "active" : ""}`}>
               <div className="group-wizard-step-dot">2</div>
-              <span>Add members</span>
+              <span>{isSchool ? "Add students" : "Add members"}</span>
             </div>
           </div>
 
           {wizardError && (
             <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12.5, marginBottom: 16 }}>
-              ⚠️ {wizardError}
+              {wizardError}
             </div>
           )}
 
@@ -868,7 +872,7 @@ function GroupsContent() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    color: "#059669",
+                    color: "#2563eb",
                     background: "#f8fafc",
                     fontSize: 22,
                   }}
@@ -879,7 +883,7 @@ function GroupsContent() {
                 <div style={{ flex: 1 }}>
                   <input
                     type="text"
-                    placeholder="Eg: Dance Class A"
+                    placeholder={isSchool ? "Eg: Class 9-A or Class 10-B" : "Eg: Dance Class A"}
                     value={groupName}
                     onChange={(e) => {
                       setGroupName(e.target.value);
@@ -1441,7 +1445,7 @@ function GroupsContent() {
                   {/* Insights Header */}
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16 }}>💡</span>
+                      <Icon name="activity" size={16} />
                       <h3 style={{ fontSize: 15, fontWeight: 800, margin: 0 }}>Insights</h3>
                     </div>
 
@@ -1661,7 +1665,7 @@ function GroupsContent() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
                   <div style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: 12, padding: 16 }}>
                     <strong style={{ color: "#166534", fontSize: 14 }}>
-                      ⚡ 1-Click WhatsApp Payment Reminders & Fee Collection
+                      Instant WhatsApp Payment Reminders & Fee Collection
                     </strong>
                     <p style={{ fontSize: 12.5, color: "#15803d", margin: "4px 0 0" }}>
                       Send customized payment link messages to all members with pending dues in {groupDetail.name}.
@@ -1946,28 +1950,60 @@ function GroupsContent() {
                     const total = groupDetail.members.length;
                     const pct = total > 0 ? Math.round((pCount / total) * 100) : 0;
                     return (
-                      <div
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 16,
-                          background: "#f8fafc",
-                          border: "1px solid #e2e8f0",
-                          borderRadius: 10,
-                          padding: "10px 16px",
-                          fontSize: 12.5,
-                          fontWeight: 700,
-                          flexWrap: "wrap",
-                        }}
-                      >
-                        <span style={{ color: "var(--ink)" }}>Total: {total} Members</span>
-                        <span style={{ color: "#059669" }}>• Present: {pCount}</span>
-                        <span style={{ color: "#b91c1c" }}>• Absent: {aCount}</span>
-                        <span style={{ color: "#b45309" }}>• Leave: {lCount}</span>
-                        <span style={{ marginLeft: "auto", color: "var(--primary)", fontWeight: 800 }}>
-                          Attendance: {pct}%
-                        </span>
-                      </div>
+                      <>
+                        <div
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 16,
+                            background: "#f8fafc",
+                            border: "1px solid #e2e8f0",
+                            borderRadius: 10,
+                            padding: "10px 16px",
+                            fontSize: 12.5,
+                            fontWeight: 700,
+                            flexWrap: "wrap",
+                          }}
+                        >
+                          <span style={{ color: "var(--ink)" }}>Total: {total} {isSchool ? "Students" : "Members"}</span>
+                          <span style={{ color: "#059669" }}>• Present: {pCount}</span>
+                          <span style={{ color: "#b91c1c" }}>• Absent: {aCount}</span>
+                          <span style={{ color: "#b45309" }}>• Leave: {lCount}</span>
+                          <span style={{ marginLeft: "auto", color: "var(--primary)", fontWeight: 800 }}>
+                            Attendance: {pct}%
+                          </span>
+                        </div>
+                        {isSchool && aCount > 0 && (
+                          <div
+                            style={{
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "space-between",
+                              background: "#fef2f2",
+                              border: "1px solid #fecaca",
+                              borderRadius: 10,
+                              padding: "10px 16px",
+                              flexWrap: "wrap",
+                              gap: 10,
+                            }}
+                          >
+                            <span style={{ fontSize: 12.5, color: "#991b1b", fontWeight: 700 }}>
+                              {aCount} {aCount === 1 ? "student is" : "students are"} marked absent today.
+                            </span>
+                            <button
+                              type="button"
+                              className="btn btn-secondary btn-sm"
+                              style={{ color: "#065f46", background: "#d1fae5", borderColor: "#a7f3d0", fontWeight: 700, fontSize: 12 }}
+                              onClick={() => {
+                                const text = encodeURIComponent(`School Attendance Notice (${attendanceDate}):\nDear Parent, your child in ${groupDetail.name} was marked absent today. If this is an error or planned leave, please contact the school office.`);
+                                window.open(`https://wa.me/?text=${text}`, "_blank");
+                              }}
+                            >
+                              Broadcast WhatsApp Absent Notice
+                            </button>
+                          </div>
+                        )}
+                      </>
                     );
                   })()}
 

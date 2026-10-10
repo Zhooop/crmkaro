@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "noted-terra-511108-a9",
+  "private_key_id": "9e240e69f34eb5f628bd008fe9b3280e7c8ec1bc",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQCq3jvBfdoNmt5/\ns09B5b1HMox1VXsYDlhjrPewCkyw6ZmD767zN2RcG80Qluz20rpD0IeKv/BN3dxZ\nYOZ50A3EAFG99YSlhI8vWoyWkiFydSZ8l8pTHY2IK7mCyraJXfI573/Q7iQyiA0R\nxVarpZfgMKQDo5Wb35ttrXTH9wnenB/5kh2W70OOVrL8pjcEt9SpDCD784tqu4Fj\n2UOqdnSUfL0ZLatzhXSAY9kKkInRLPc/m/3LHlfpwo2C7ke4CV3nDOC2Jv3Yw3i/\nYRwB57KpZHymTf9+fCvuLhEM42opa1RMBIlTcpMZ6k/y9r1RWnlcYXZInGvXgy47\nSU4TJuGlAgMBAAECggEAMiXwTs0jirup0rvrJpGJWFSPIb65VmmbaoGw3kNfl8qv\nqifV5n8a3uev608IdDaLwWx543CK1CepzLeiXR0BdUWMuB5PVI7PwVuniGeSFngo\nmAeqs3Mof08p7qeVJELk3Tkb/9Ns30HL6CvNUKpUpVFRSdoghjN9+BYhALFR/bnE\ntP8ZYfuAF40gCtR/P0H3/U2WOdP7mPE3rn91ZlnIG7s5rWbCeAiteYbFZAYr3L8H\nMKZHCwcxUFSjNILZx1u53vO3te0SsFBz3ynp8win39soU/ag21WWvsxqvw/11s6O\nZvdfZ6TKMIwlZW14E/k0qVSdeKpYpuic+n1HQ02BPwKBgQDdsI/QFOtFDoB7Uw6l\nmsaG+Mi5i086hdjVJL3vmU/lXle5FsW5wLQscTV6s/5DaHW10hnvOh014Tjwj1/v\norEmnuvUSOR14aeAoynJKYEG907iNgkNq7zGKmN+wNPGmCdopBJo52eFjc6KoRDW\nE12e6swyhUSZMm2Ag17X0jZYvwKBgQDFUBlNlHoxr8tcw1hjHst0cSK+C6dkNrUi\nDU0RKcArrUXTGHlQjQKZc0jeYKOeZF14mX7/9IyQg7eETOUOx2r6qxVcV15n+kL/\nH2t9Bgfvevg7zOIr0cv3mrCNC/ye/65/46505Y454hU1wcP4idqxYIKTAqAHYv5E\n0aIFpfRamwKBgQDOtTcjWp4VAfSjCUr691ptt8PR3ie99de8xkmkA1wQDuvU1XsA\nPMLDPbwT8Yj/6YL4SjOMcK+T8bFZ/RYDJ7vuuvhCNMVxdTruIzVvMJfymt6e5quC\nZ8PZMuUa50mQP4dfdr0Du+E3EoanlI9STTRaXayQ3tqbzf10ewoQSx4JmQKBgBW7\nNq42tiaWx/0Vfryb/ah7dWoc+nitFdIESQKk6Idm9BPF1Eas4SZpbhMf7aVaRHkt\n3rDuDDU2bJXjqi6wg/XLtfSPotQs2ggjO8FvUpxrnL9pV1egKajBnsRKF66jVmK7\nftFdHwb9AX0ENENBW5bBnF/4oAtwObT2qbOZjYoVAoGAPT4J7okgu/Poi/Jkd2PA\nbiKgbiWs9iW7v+E+c9Hs29YE2wZdqB+uWCIxgGEDKlBRoufdTHpzjVmSCYZI47Fj\nBSmV2+sHxgoODxTl7YRJedhoN6Q04Rv6rGbpETWWmnvB7+fJx756pmMxeFrrzA2Z\n85Vjw1L2M3VijHir6A1BIFQ=\n-----END PRIVATE KEY-----\n",
+  "client_email": "antigravity-play@noted-terra-511108-a9.iam.gserviceaccount.com",
+  "client_id": "113105138110701235115",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/antigravity-play%40noted-terra-511108-a9.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

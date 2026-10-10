@@ -314,11 +314,11 @@ export class DashboardService {
           orderBy: { dueDate: "asc" },
         });
 
-        const openInvoiceByPerson = new Map<string, (typeof openInvoices)[0]>();
+        const openInvoicesByPerson = new Map<string, typeof openInvoices>();
         for (const inv of openInvoices) {
-          if (!openInvoiceByPerson.has(inv.personId)) {
-            openInvoiceByPerson.set(inv.personId, inv);
-          }
+          const arr = openInvoicesByPerson.get(inv.personId) || [];
+          arr.push(inv);
+          openInvoicesByPerson.set(inv.personId, arr);
         }
 
         const nowMs = now.getTime();
@@ -327,6 +327,8 @@ export class DashboardService {
 
         let totalExpectedMinor = 0;
         let totalPendingMinor = 0;
+        let currentCyclePendingMinor = 0;
+        let backlogPendingMinor = 0;
         const pendingDuesList: Array<{
           id: string;
           studentProfileId: string;
@@ -346,53 +348,37 @@ export class DashboardService {
           const feePlan = std.feeAmountMinor || 0;
           totalExpectedMinor += feePlan;
 
-          // Determine plan validity in months (1 to 12 months)
-          const addr = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
-          let planMonths = 1;
-          if (addr.planValidityMonths) {
-            const parsed = parseInt(addr.planValidityMonths, 10);
-            if (!isNaN(parsed) && parsed > 0) planMonths = parsed;
-          } else if (std.feeFrequency === "ANNUAL") {
-            planMonths = 12;
-          } else if (std.feeFrequency === "QUARTERLY") {
-            planMonths = 3;
-          } else if (std.person.notes) {
-            const mMatch = std.person.notes.match(/(\d+)\s*(?:month|mahina|mahine)/i);
-            if (mMatch && mMatch[1]) {
-              const p = parseInt(mMatch[1], 10);
-              if (!isNaN(p) && p > 0 && p <= 12) planMonths = p;
-            }
-          }
+          const studentOpenInvoices = openInvoicesByPerson.get(std.personId) || [];
+          const customFields = (std.person.address && typeof std.person.address === "object" ? std.person.address : {}) as Record<string, any>;
+          let validUntil: Date | null = customFields.membershipValidUntil ? new Date(customFields.membershipValidUntil) : null;
+          const paidMonthsList = (customFields.paidMonths as string[]) || [];
+          const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+          const openInv = studentOpenInvoices[0];
+          const personPayments = paymentsByPerson.get(std.personId) || [];
+          const planMonths = std.feeFrequency === "ANNUAL" ? 12 : std.feeFrequency === "QUARTERLY" ? 3 : 1;
 
-          const paidMonthsList: string[] = Array.isArray(addr.paidMonths)
-            ? addr.paidMonths.filter((m: string) => typeof m === "string" && /^\d{4}-\d{2}$/.test(m)).sort()
-            : [];
+          const oldestInv = studentOpenInvoices[0];
 
-          let validUntil: Date | null = null;
-          if (paidMonthsList.length > 0) {
-            const lastYm = paidMonthsList[paidMonthsList.length - 1];
-            if (lastYm) {
-              const parts = lastYm.split("-");
-              const yStr = parts[0] ?? "";
-              const mStr = parts[1] ?? "";
-              const y = parseInt(yStr, 10);
-              const m = parseInt(mStr, 10);
-              if (!isNaN(y) && !isNaN(m)) {
-                validUntil = new Date(y, m, 0); // Last calendar day of the last paid month
+          // Case 1: Student has actual open fee slips/invoices (accumulate all multi-month dues!)
+          if (studentOpenInvoices.length > 0 && oldestInv) {
+            const studentTotalPending = studentOpenInvoices.reduce((sum, inv) => sum + inv.balanceDueMinor, 0);
+            const studentTotalPaid = studentOpenInvoices.reduce((sum, inv) => sum + inv.paidTotalMinor, 0);
+            const isOverdue = oldestInv.dueDate ? new Date(oldestInv.dueDate).getTime() < nowMs : false;
+
+            totalPendingMinor += studentTotalPending;
+
+            for (const inv of studentOpenInvoices) {
+              const isCurrentCycle = (inv.notes && inv.notes.includes(currentMonthKey)) ||
+                (inv.issueDate && new Date(inv.issueDate).toISOString().slice(0, 7) === currentMonthKey);
+              if (isCurrentCycle) {
+                currentCyclePendingMinor += inv.balanceDueMinor;
+              } else {
+                backlogPendingMinor += inv.balanceDueMinor;
               }
             }
-          }
 
-          const personPayments = paymentsByPerson.get(std.personId) || [];
-          const openInv = openInvoiceByPerson.get(std.personId);
-
-          // Real partial payment balance (e.g. paid ₹500 out of ₹1500)
-          if (openInv && openInv.paidTotalMinor > 0 && openInv.balanceDueMinor > 0) {
-            const paid = openInv.paidTotalMinor;
-            const balance = openInv.balanceDueMinor;
-            totalPendingMinor += balance;
             pendingDuesList.push({
-              id: openInv.id,
+              id: oldestInv.id,
               studentProfileId: std.id,
               displayName: std.person.displayName,
               rollNumber: std.rollNumber,
@@ -400,10 +386,10 @@ export class DashboardService {
               batch: std.batch,
               phone: std.person.primaryPhone,
               guardianPhone: std.guardianPhone,
-              pendingMinor: balance,
-              paidMinor: paid,
-              status: "PARTIALLY_PAID",
-              dueDate: openInv.dueDate ? openInv.dueDate.toISOString().slice(0, 10) : null,
+              pendingMinor: studentTotalPending,
+              paidMinor: studentTotalPaid,
+              status: isOverdue ? "OVERDUE" : (studentTotalPaid > 0 ? "PARTIALLY_PAID" : "ISSUED"),
+              dueDate: oldestInv.dueDate ? oldestInv.dueDate.toISOString().slice(0, 10) : null,
             });
             continue;
           }
@@ -437,6 +423,7 @@ export class DashboardService {
             const isExpiringSoon = calcValidMs > nowMs;
             const dueDateStr = validUntil.toISOString().slice(0, 10);
             totalPendingMinor += feePlan;
+            currentCyclePendingMinor += feePlan;
             pendingDuesList.push({
               id: openInv?.id || latestPay.invoiceId || std.id,
               studentProfileId: std.id,
@@ -457,6 +444,7 @@ export class DashboardService {
             const dueDateStr = (openInv?.dueDate ? openInv.dueDate : admDate).toISOString().slice(0, 10);
             const pendingAmount = openInv?.balanceDueMinor || feePlan;
             totalPendingMinor += pendingAmount;
+            currentCyclePendingMinor += pendingAmount;
             pendingDuesList.push({
               id: openInv?.id || std.id,
               studentProfileId: std.id,
@@ -487,6 +475,8 @@ export class DashboardService {
           activeStudents: studentCount,
           thisMonthCollectedMinor,
           thisMonthPendingMinor: totalPendingMinor,
+          currentCyclePendingMinor,
+          backlogPendingMinor,
           thisMonthExpectedMinor: totalExpectedMinor,
           monthName: currentMonthLabel,
           todayPresent: presentToday,
@@ -589,7 +579,7 @@ export class DashboardService {
           key: "inventory",
           label: "Stock & Products",
           value: products.length,
-          detail: low > 0 ? `⚠️ ${low} items low in stock` : "All stock levels healthy",
+          detail: low > 0 ? `${low} items low in stock` : "All stock levels healthy",
           format: "number",
           tone: "teal",
         });

@@ -15,6 +15,7 @@ import { Suspense, useCallback, useEffect, useMemo, useState, type FormEvent } f
 import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
+  isSchoolWorkspace,
   useWorkspace,
 } from "@/lib/nav";
 
@@ -73,6 +74,8 @@ type Person = {
     admissionDate?: string;
     guardianRelation?: string;
     guardianPhone?: string;
+    standard?: string;
+    batch?: string;
     planValidityMonths?: string;
   } | null;
   notes: string | null;
@@ -374,6 +377,12 @@ export function getPersonFeeDetails(person: Person): PersonFeeDetails {
     paidDateStr,
     paidMethod,
     memberId,
+    standard,
+    batch,
+    guardianName,
+    guardianPhone,
+    guardianRelation,
+    admissionDateStr,
   };
 }
 
@@ -403,7 +412,7 @@ export function getPersonPaidMonths(person: Person, currentYear?: number): Set<s
       if (inv.notes) {
         const matches = inv.notes.matchAll(/(\d{4}-\d{2})/g);
         for (const m of matches) {
-          paidSet.add(m[1]);
+          if (m[1]) paidSet.add(m[1]);
         }
       }
     }
@@ -495,7 +504,34 @@ function PeopleContent() {
     });
   }, [people, feeFilter]);
 
-  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
+
+  const isSchool = isSchoolWorkspace(businessType) || (orgName || "").toLowerCase().includes("school") || (orgName || "").toLowerCase().includes("vidyalaya");
+  const isAcademy = (() => {
+    const bt = (businessType || "").toLowerCase();
+    const on = (orgName || "").toLowerCase();
+    return (
+      isSchool ||
+      bt.includes("academy") ||
+      bt.includes("coaching") ||
+      bt.includes("tuition") ||
+      bt.includes("institute") ||
+      bt.includes("classes") ||
+      bt.includes("education") ||
+      bt.includes("gym") ||
+      bt.includes("fitness") ||
+      bt.includes("sports") ||
+      bt.includes("dance") ||
+      bt.includes("yoga") ||
+      bt.includes("martial") ||
+      on.includes("academy") ||
+      on.includes("coaching") ||
+      on.includes("institute") ||
+      on.includes("classes") ||
+      on.includes("gym") ||
+      on.includes("fitness")
+    );
+  })();
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
@@ -506,8 +542,10 @@ function PeopleContent() {
     Array<{
       id: string;
       invoiceNumber: string;
-      totalMinor: number;
+      grandTotalMinor?: number;
+      totalMinor?: number;
       balanceDueMinor: number;
+      paidTotalMinor?: number;
       status: string;
       issueDate: string;
     }>
@@ -1323,7 +1361,7 @@ function PeopleContent() {
       <div className="add-member-content">
         {formError && (
           <div style={{ padding: "10px 12px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
-            ⚠️ {formError}
+            {formError}
           </div>
         )}
 
@@ -1340,44 +1378,7 @@ function PeopleContent() {
           </div>
         )}
 
-        {/* Student Admission Guidance Banner */}
-        <div
-          style={{
-            padding: "10px 14px",
-            background: "#eff6ff",
-            border: "1px solid #bfdbfe",
-            borderRadius: 8,
-            fontSize: 12.5,
-            color: "#1e40af",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 10,
-          }}
-        >
-          <div>
-            <strong>Enrolling a Student or Member with Fees & Plan?</strong>
-            <p style={{ margin: "2px 0 0", color: "#3b82f6", fontSize: 11.5 }}>
-              Use the dedicated Admissions & Packages portal to configure monthly/term fee plans, batch rosters & admission dates.
-            </p>
-          </div>
-          <a
-            href="/students?action=new-admission"
-            style={{
-              padding: "5px 12px",
-              background: "#2563eb",
-              color: "#ffffff",
-              borderRadius: 6,
-              fontWeight: 700,
-              fontSize: 11.5,
-              textDecoration: "none",
-              whiteSpace: "nowrap",
-              flexShrink: 0,
-            }}
-          >
-            + Go to Admissions
-          </a>
-        </div>
+
 
         {/* Section 1: Personal Information */}
         <section
@@ -2342,23 +2343,58 @@ function PeopleContent() {
             <span>Export CSV</span>
           </a>
           {activeTab !== "ARCHIVED" && (
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => {
-                resetForm();
-                setCreateOpen(true);
-              }}
-            >
-              <Icon name="plus" size={15} />
-              <span>Add Member</span>
-            </button>
+            isAcademy ? (
+              <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => {
+                    resetForm();
+                    setCreateOpen(true);
+                  }}
+                  title="Add Staff, Teacher, Vendor or General Contact"
+                >
+                  <Icon name="plus" size={14} />
+                  <span>Add Staff / Contact</span>
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={() => router.push("/students?action=new-admission")}
+                  style={{
+                    background: "#2563eb",
+                    color: "#ffffff",
+                    fontWeight: 700,
+                    boxShadow: "0 2px 8px rgba(37, 99, 235, 0.25)",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <Icon name="student" size={15} />
+                  <span>{isSchool ? "Admit New Student" : "New Student Admission"}</span>
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-sm"
+                onClick={() => {
+                  resetForm();
+                  setCreateOpen(true);
+                }}
+              >
+                <Icon name="plus" size={15} />
+                <span>Add Member</span>
+              </button>
+            )
           )}
         </div>
       </div>
 
       <Tabs items={tabItems} active={activeTab} onChange={setActiveTab} />
 
-      {/* 🏷️ Quick Fee & Plan Filters Bar */}
+      {/* Quick Fee & Plan Filters Bar */}
       <div
         className="fee-filter-bar"
         style={{
@@ -3125,9 +3161,39 @@ function PeopleContent() {
               </div>
             </div>
 
-            {/* 🌟 Membership Fee & Payment Details Card */}
+            {/* Membership Fee & Payment Details Card */}
             {(() => {
-              const feeInfo = getPersonFeeDetails(detailPerson);
+              if (invoicesLoading && (!detailPerson.invoices || detailPerson.invoices.length === 0)) {
+                return (
+                  <div
+                    style={{
+                      background: "#f8fafc",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 12,
+                      padding: "14px 16px",
+                      boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+                      <div style={{ height: 14, width: 150, background: "#e2e8f0", borderRadius: 4 }} className="skeleton-pulse" />
+                      <div style={{ height: 20, width: 60, background: "#e2e8f0", borderRadius: 6 }} className="skeleton-pulse" />
+                    </div>
+                    <div className="drawer-details-grid">
+                      <div>
+                        <div style={{ height: 11, width: 90, background: "#f1f5f9", borderRadius: 4, marginBottom: 4 }} className="skeleton-pulse" />
+                        <div style={{ height: 14, width: 120, background: "#e2e8f0", borderRadius: 4 }} className="skeleton-pulse" />
+                      </div>
+                      <div>
+                        <div style={{ height: 11, width: 90, background: "#f1f5f9", borderRadius: 4, marginBottom: 4 }} className="skeleton-pulse" />
+                        <div style={{ height: 14, width: 120, background: "#e2e8f0", borderRadius: 4 }} className="skeleton-pulse" />
+                      </div>
+                    </div>
+                  </div>
+                );
+              }
+
+              const enrichedInvoices = personInvoices.length > 0 ? personInvoices : (detailPerson.invoices || []);
+              const feeInfo = getPersonFeeDetails({ ...detailPerson, invoices: enrichedInvoices as any });
               return (
                 <div
                   style={{
@@ -3276,7 +3342,7 @@ function PeopleContent() {
                       className="btn btn-secondary btn-sm"
                       style={{ flex: 1, justifyContent: "center", textDecoration: "none", fontSize: 12, fontWeight: 650, display: "inline-flex", alignItems: "center", gap: 6 }}
                     >
-                      <Icon name="file" size={14} />
+                      <Icon name="finance" size={14} />
                       <span>New Invoice</span>
                     </a>
                   </div>
@@ -3418,7 +3484,7 @@ function PeopleContent() {
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  🎓 Fees & Monthly Billing
+                  Fees & Monthly Billing
                 </label>
                 <a
                   href={`/finance?action=new-invoice&personId=${detailPerson.id}`}
@@ -3438,129 +3504,195 @@ function PeopleContent() {
               </div>
 
               {/* Month-Wise 1-Click Fee Selector */}
-              <div style={{ background: "#f0fdf4", padding: "10px 12px", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 12 }}>
-                <div style={{ fontSize: 11, fontWeight: 750, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                  <span>⚡ 1-Click Month Fee Bill ({new Date().getFullYear()}–{new Date().getFullYear() + 1})</span>
-                  <span style={{ fontSize: 10, fontWeight: 600, color: "#15803d" }}>₹3,500/mo</span>
-                </div>
-                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                  {[
-                    "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
-                  ].map((m) => {
-                    const fullMonth = {
-                      Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
-                      Sep: "September", Oct: "October", Nov: "November", Dec: "December",
-                      Jan: "January", Feb: "February", Mar: "March"
-                    }[m] || m;
-                    const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
-                    const feeDesc = `🎓 Monthly Academic / Tuition Fees — ${fullMonth} ${year}`;
-                    return (
-                      <a
-                        key={m}
-                        href={`/finance?action=new-invoice&personId=${detailPerson.id}&description=${encodeURIComponent(feeDesc)}&price=3500`}
-                        style={{
-                          padding: "3px 8px",
-                          borderRadius: 6,
-                          border: "1px solid #86efac",
-                          background: "#ffffff",
-                          color: "#166534",
-                          fontSize: 11,
-                          fontWeight: 700,
-                          textDecoration: "none",
-                          display: "inline-flex",
-                          alignItems: "center",
-                          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
-                        }}
-                        title={`Generate fee bill for ${fullMonth} ${year}`}
-                      >
-                        + {m}
-                      </a>
-                    );
-                  })}
-                </div>
-              </div>
+              {(() => {
+                const planAmountMinor = detailPerson.studentProfile?.feeAmountMinor || 350000;
+                const planAmountRs = Math.round(planAmountMinor / 100);
+                const rawAdmDate = detailPerson.studentProfile?.admissionDate || detailPerson.address?.admissionDate || detailPerson.createdAt;
+                let admYyyyMm = "2026-01";
+                let admLabel = "January 2026";
+                if (rawAdmDate) {
+                  try {
+                    const ad = new Date(rawAdmDate);
+                    if (!isNaN(ad.getTime())) {
+                      admYyyyMm = `${ad.getFullYear()}-${String(ad.getMonth() + 1).padStart(2, "0")}`;
+                      admLabel = ad.toLocaleDateString("en-IN", { month: "short", year: "numeric" });
+                    }
+                  } catch {}
+                }
 
-              {/* Invoices List / Payment Status */}
-              {invoicesLoading ? (
-                <div style={{ fontSize: 12, color: "var(--muted)", padding: "8px 0" }}>Loading fee history…</div>
-              ) : personInvoices.length > 0 ? (
-                <div>
-                  <div style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 12 }}>
-                    <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
-                      <small style={{ color: "var(--muted)", fontSize: 10 }}>Total Billed</small>
-                      <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>
-                        ₹{(personInvoices.reduce((acc, inv) => acc + inv.totalMinor, 0) / 100).toLocaleString("en-IN")}
+                const totalBilledMinor = personInvoices.reduce((acc, inv) => {
+                  const val = Number(inv.grandTotalMinor ?? (inv as any).totalMinor ?? 0);
+                  return acc + (isNaN(val) ? 0 : val);
+                }, 0);
+
+                const pendingDuesMinor = personInvoices.reduce((acc, inv) => {
+                  const val = Number(inv.balanceDueMinor ?? 0);
+                  return acc + (isNaN(val) ? 0 : val);
+                }, 0);
+
+                return (
+                  <>
+                    <div style={{ background: "#f0fdf4", padding: "10px 12px", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 750, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span>1-Click Month Fee Bill ({new Date().getFullYear()}–{new Date().getFullYear() + 1})</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d" }}>₹{planAmountRs.toLocaleString("en-IN")}/mo</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "#166534", marginBottom: 6 }}>
+                        Admitted: <strong>{admLabel}</strong> · Bills start from admission month onwards:
+                      </div>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {[
+                          "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
+                        ].map((m) => {
+                          const mNumMap: Record<string, string> = {
+                            Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09",
+                            Oct: "10", Nov: "11", Dec: "12", Jan: "01", Feb: "02", Mar: "03"
+                          };
+                          const fullMonthMap: Record<string, string> = {
+                            Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
+                            Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+                            Jan: "January", Feb: "February", Mar: "March"
+                          };
+                          const fullMonth = fullMonthMap[m] || m;
+                          const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
+                          const thisYyyyMm = `${year}-${mNumMap[m]}`;
+                          const isPreAdmission = thisYyyyMm < admYyyyMm;
+                          const feeDesc = `Monthly Academic / Tuition Fees — ${fullMonth} ${year}`;
+
+                          if (isPreAdmission) {
+                            return (
+                              <span
+                                key={m}
+                                style={{
+                                  padding: "3px 8px",
+                                  borderRadius: 6,
+                                  border: "1px dashed #cbd5e1",
+                                  background: "#f1f5f9",
+                                  color: "#94a3b8",
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  cursor: "not-allowed",
+                                }}
+                                title={`Pre-admission month (${fullMonth} ${year}) — Student admitted in ${admLabel}`}
+                              >
+                                {m} (Pre-Adm)
+                              </span>
+                            );
+                          }
+
+                          return (
+                            <a
+                              key={m}
+                              href={`/finance?action=new-invoice&personId=${detailPerson.id}&description=${encodeURIComponent(feeDesc)}&price=${planAmountRs}`}
+                              style={{
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                border: "1px solid #86efac",
+                                background: "#ffffff",
+                                color: "#166534",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textDecoration: "none",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                              }}
+                              title={`Generate fee bill for ${fullMonth} ${year}`}
+                            >
+                              + {m}
+                            </a>
+                          );
+                        })}
                       </div>
                     </div>
-                    <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
-                      <small style={{ color: "var(--muted)", fontSize: 10 }}>Pending Dues</small>
-                      <div style={{ fontWeight: 800, color: personInvoices.some(i => i.balanceDueMinor > 0) ? "#b91c1c" : "#15803d", fontSize: 14 }}>
-                        ₹{(personInvoices.reduce((acc, inv) => acc + inv.balanceDueMinor, 0) / 100).toLocaleString("en-IN")}
-                      </div>
-                    </div>
-                  </div>
 
-                  <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
-                    {personInvoices.map((inv) => (
-                      <li
-                        key={inv.id}
-                        style={{
-                          padding: "8px 10px",
-                          background: "#ffffff",
-                          border: "1px solid var(--line)",
-                          borderRadius: 8,
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          fontSize: 12,
-                        }}
-                      >
-                        <div>
-                          <strong>{inv.invoiceNumber}</strong>
-                          <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                            {new Date(inv.issueDate).toLocaleDateString()} · ₹{(inv.totalMinor / 100).toLocaleString("en-IN")}
+                    {/* Invoices List / Payment Status */}
+                    {invoicesLoading ? (
+                      <div style={{ fontSize: 12, color: "var(--muted)", padding: "8px 0" }}>Loading fee history…</div>
+                    ) : personInvoices.length > 0 ? (
+                      <div>
+                        <div style={{ display: "flex", gap: 8, marginBottom: 8, fontSize: 12 }}>
+                          <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
+                            <small style={{ color: "var(--muted)", fontSize: 10 }}>Total Billed</small>
+                            <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>
+                              ₹{(totalBilledMinor / 100).toLocaleString("en-IN")}
+                            </div>
+                          </div>
+                          <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
+                            <small style={{ color: "var(--muted)", fontSize: 10 }}>Pending Dues</small>
+                            <div style={{ fontWeight: 800, color: pendingDuesMinor > 0 ? "#b91c1c" : "#15803d", fontSize: 14 }}>
+                              ₹{(pendingDuesMinor / 100).toLocaleString("en-IN")}
+                            </div>
                           </div>
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                          <span
-                            style={{
-                              padding: "2px 6px",
-                              borderRadius: 4,
-                              fontSize: 10,
-                              fontWeight: 700,
-                              background:
-                                inv.status === "PAID"
-                                  ? "#dcfce7"
-                                  : inv.status === "PARTIALLY_PAID"
-                                    ? "#fef3c7"
-                                    : "#dbeafe",
-                              color:
-                                inv.status === "PAID"
-                                  ? "#15803d"
-                                  : inv.status === "PARTIALLY_PAID"
-                                    ? "#b45309"
-                                    : "#1d4ed8",
-                            }}
-                          >
-                            {inv.status}
-                          </span>
-                          <a
-                            href={`/finance?invoiceId=${inv.id}`}
-                            className="btn btn-secondary btn-sm"
-                            style={{ padding: "2px 8px", fontSize: 11, height: 26 }}
-                          >
-                            {inv.balanceDueMinor > 0 ? "Collect Due" : "View"}
-                          </a>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : (
-                <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 0" }}>
-                  No fee bills issued yet for this member.
-                </div>
-              )}
+
+                        <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                          {personInvoices.map((inv) => {
+                            const invAmount = Number(inv.grandTotalMinor ?? (inv as any).totalMinor ?? 0);
+                            return (
+                              <li
+                                key={inv.id}
+                                style={{
+                                  padding: "8px 10px",
+                                  background: "#ffffff",
+                                  border: "1px solid var(--line)",
+                                  borderRadius: 8,
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  fontSize: 12,
+                                }}
+                              >
+                                <div>
+                                  <strong>{inv.invoiceNumber}</strong>
+                                  <div style={{ fontSize: 11, color: "var(--muted)" }}>
+                                    {new Date(inv.issueDate).toLocaleDateString()} · ₹{(invAmount / 100).toLocaleString("en-IN")}
+                                  </div>
+                                </div>
+                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <span
+                                    style={{
+                                      padding: "2px 6px",
+                                      borderRadius: 4,
+                                      fontSize: 10,
+                                      fontWeight: 700,
+                                      background:
+                                        inv.status === "PAID"
+                                          ? "#dcfce7"
+                                          : inv.status === "PARTIALLY_PAID"
+                                            ? "#fef3c7"
+                                            : "#dbeafe",
+                                      color:
+                                        inv.status === "PAID"
+                                          ? "#15803d"
+                                          : inv.status === "PARTIALLY_PAID"
+                                            ? "#b45309"
+                                            : "#1d4ed8",
+                                    }}
+                                  >
+                                    {inv.status}
+                                  </span>
+                                  <a
+                                    href={`/finance?invoiceId=${inv.id}`}
+                                    className="btn btn-secondary btn-sm"
+                                    style={{ padding: "2px 8px", fontSize: 11, height: 26 }}
+                                  >
+                                    {inv.balanceDueMinor > 0 ? "Collect Due" : "View"}
+                                  </a>
+                                </div>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 0" }}>
+                        No fee bills issued yet for this member.
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             {/* Quick module links */}
@@ -3652,12 +3784,12 @@ function PeopleContent() {
         )}
       </Drawer>
 
-      {/* Add Member Modal */}
+      {/* Add Member / Staff Modal */}
       <Modal
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
-        title="Add Member"
-        subtitle="Enter personal information, address details and more"
+        title={isAcademy ? "Add Staff or General Contact" : "Add Member"}
+        subtitle={isAcademy ? "Enter staff or contact information to add to the directory" : "Enter personal information, address details and more"}
         maxWidth={780}
       >
         <form onSubmit={handleCreate} style={{ display: "flex", flexDirection: "column" }}>

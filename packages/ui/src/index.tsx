@@ -428,6 +428,8 @@ export function AppShell({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
+  const [navProgress, setNavProgress] = useState<number>(0);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
@@ -437,6 +439,36 @@ export function AppShell({
   useEffect(() => {
     setIsClient(true);
   }, []);
+
+  // Smooth top progress bar animation when navigating
+  useEffect(() => {
+    if (pendingNavPath) {
+      const t1 = setTimeout(() => setNavProgress(75), 80);
+      const t2 = setTimeout(() => {
+        setNavProgress(100);
+        setTimeout(() => {
+          setPendingNavPath(null);
+          setNavProgress(0);
+        }, 180);
+      }, 550);
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+      };
+    }
+  }, [pendingNavPath]);
+
+  // When route changes, complete the progress bar immediately
+  useEffect(() => {
+    if (pendingNavPath && currentPath === pendingNavPath) {
+      setNavProgress(100);
+      const timer = setTimeout(() => {
+        setPendingNavPath(null);
+        setNavProgress(0);
+      }, 150);
+      return () => clearTimeout(timer);
+    }
+  }, [currentPath, pendingNavPath]);
 
   const handleLinkClick =
     (href?: string, extraOnClick?: () => void) =>
@@ -457,6 +489,8 @@ export function AppShell({
       }
       if (onNavigate) {
         e.preventDefault();
+        setPendingNavPath(href);
+        setNavProgress(35);
         onNavigate(href);
         setOpen(false);
         setSearchOpen(false);
@@ -586,6 +620,24 @@ export function AppShell({
 
   return (
     <div className={`app-shell${dark ? " admin-theme" : ""}`}>
+      {navProgress > 0 && (
+        <div
+          className="app-top-progress-bar"
+          style={{
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: `${navProgress}%`,
+            height: 3,
+            background: "linear-gradient(90deg, #2563eb 0%, #3b82f6 50%, #60a5fa 100%)",
+            boxShadow: "0 0 10px rgba(37, 99, 235, 0.7), 0 0 4px rgba(96, 165, 250, 0.9)",
+            zIndex: 999999,
+            pointerEvents: "none",
+            transition: navProgress === 100 ? "width 0.15s ease, opacity 0.2s ease 0.1s" : "width 0.25s cubic-bezier(0.16, 1, 0.3, 1)",
+            opacity: navProgress === 100 ? 0 : 1,
+          }}
+        />
+      )}
       <a className="skip-link" href="#main-content">
         Skip to content
       </a>
@@ -690,9 +742,10 @@ export function AppShell({
 
         <nav aria-label="Main navigation" suppressHydrationWarning>
           {nav.map((item) => {
+            const effectivePath = pendingNavPath || currentPath;
             const isActive =
-              currentPath === item.href ||
-              (item.href !== "/" && currentPath?.startsWith(item.href ?? ""));
+              effectivePath === item.href ||
+              (item.href !== "/" && effectivePath?.startsWith(item.href ?? ""));
             return (
               <a
                 className={isActive ? "nav-link active" : "nav-link"}

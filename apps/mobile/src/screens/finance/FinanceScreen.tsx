@@ -31,6 +31,7 @@ type Invoice = {
   balanceDueMinor: number;
   person?: { displayName: string; primaryPhone?: string | null };
   items?: Array<{ description: string; quantity: number; unitPriceMinor: number }>;
+  notes?: string | null;
 };
 
 type Expense = {
@@ -63,12 +64,29 @@ export function FinanceScreen() {
   const [refreshing, setRefreshing] = useState(false);
 
   // Create Invoice Modal State
+  type LineItemForm = { description: string; quantity: string; unitPrice: string };
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [people, setPeople] = useState<Array<{ id: string; displayName: string }>>([]);
   const [selectedPersonId, setSelectedPersonId] = useState("");
-  const [itemDesc, setItemDesc] = useState("Academic Tuition Fees");
-  const [itemPrice, setItemPrice] = useState("2500");
+  const [lineItems, setLineItems] = useState<LineItemForm[]>([
+    { description: "Academic Tuition Fees", quantity: "1", unitPrice: "2500" },
+  ]);
   const [createBusy, setCreateBusy] = useState(false);
+
+  const handleAddLineItem = () => {
+    setLineItems((prev) => [...prev, { description: "", quantity: "1", unitPrice: "1000" }]);
+  };
+
+  const handleRemoveLineItem = (index: number) => {
+    if (lineItems.length <= 1) return;
+    setLineItems((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateLineItem = (index: number, field: "description" | "quantity" | "unitPrice", val: string) => {
+    setLineItems((prev) =>
+      prev.map((it, i) => (i === index ? { ...it, [field]: val } : it))
+    );
+  };
 
   // Record Payment Modal State
   const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
@@ -87,6 +105,9 @@ export function FinanceScreen() {
   // Share Bill Modal
   const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
 
+  // Period Filter state
+  const [periodFilter, setPeriodFilter] = useState<"ALL" | "THIS_MONTH">("ALL");
+
   const fetchFinanceData = useCallback(async () => {
     try {
       const [invRes, peopleRes, expRes] = await Promise.all([
@@ -96,7 +117,13 @@ export function FinanceScreen() {
       ]);
 
       if (invRes.data?.items) {
-        setInvoices(invRes.data.items);
+        setInvoices(
+          invRes.data.items.map((i: any) => ({
+            ...i,
+            totalMinor: i.grandTotalMinor ?? i.totalMinor ?? 0,
+            balanceDueMinor: i.balanceDueMinor ?? 0,
+          }))
+        );
       }
       if (peopleRes.data?.items) {
         setPeople(peopleRes.data.items);
@@ -158,9 +185,11 @@ export function FinanceScreen() {
       Alert.alert("Required", "Please select a member.");
       return;
     }
-    const num = Number(itemPrice);
-    if (!num || num <= 0) {
-      Alert.alert("Required", "Please enter a valid item price.");
+    const validItems = lineItems.filter(
+      (it) => it.description.trim() && Number(it.unitPrice) > 0
+    );
+    if (validItems.length === 0) {
+      Alert.alert("Required", "Please enter at least one item with a valid price.");
       return;
     }
 
@@ -171,13 +200,11 @@ export function FinanceScreen() {
         body: JSON.stringify({
           personId: selectedPersonId,
           issueDate: new Date().toISOString(),
-          items: [
-            {
-              description: itemDesc.trim() || "Service Fees",
-              quantity: 1,
-              unitPriceMinor: Math.round(num * 100),
-            },
-          ],
+          items: validItems.map((it) => ({
+            description: it.description.trim(),
+            quantity: Math.max(1, Number(it.quantity) || 1),
+            unitPriceMinor: Math.round(Number(it.unitPrice) * 100),
+          })),
         }),
       });
 
@@ -185,6 +212,7 @@ export function FinanceScreen() {
 
       Alert.alert("Success", "Invoice generated!");
       setIsCreateOpen(false);
+      setLineItems([{ description: "Academic Tuition Fees", quantity: "1", unitPrice: "2500" }]);
       fetchFinanceData();
     } catch (err: any) {
       Alert.alert("Error", err.message || "Failed to create invoice.");
@@ -303,14 +331,25 @@ export function FinanceScreen() {
     setShareInvoice(null);
   };
 
-  const totalCollected = invoices
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const currentMonthName = new Date().toLocaleString("en-IN", { month: "short", year: "numeric" });
+
+  const displayedInvoices = periodFilter === "THIS_MONTH"
+    ? invoices.filter((i) => {
+        const d = i.issueDate || (i as any).createdAt;
+        return (d && d.startsWith(currentMonthStr)) || (i.notes && i.notes.includes(currentMonthStr));
+      })
+    : invoices;
+
+  const totalCollected = displayedInvoices
     .filter((i) => i.status === "PAID")
     .reduce((sum, i) => sum + i.totalMinor, 0);
 
-  const totalOutstanding = invoices
+  const totalOutstanding = displayedInvoices
     .filter((i) => i.status !== "PAID" && i.status !== "VOID")
     .reduce((sum, i) => sum + i.balanceDueMinor, 0);
 
+  const totalBilled = displayedInvoices.reduce((sum, i) => sum + i.totalMinor, 0);
   const totalExpensesMinor = expenses.reduce((sum, e) => sum + e.amountMinor, 0);
 
   return (
@@ -356,7 +395,7 @@ export function FinanceScreen() {
 
       {activeTab === "invoices" ? (
         <FlatList
-          data={invoices}
+          data={displayedInvoices}
           keyExtractor={(item) => item.id}
           refreshControl={
             <RefreshControl
@@ -392,18 +431,52 @@ export function FinanceScreen() {
           }
           ListHeaderComponent={
             <>
+              {/* Period Filter Toggle */}
+              <View style={{ flexDirection: "row", backgroundColor: "#f1f5f9", padding: 3, borderRadius: 8, marginBottom: 12 }}>
+                <TouchableOpacity
+                  onPress={() => setPeriodFilter("ALL")}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 6,
+                    alignItems: "center",
+                    borderRadius: 6,
+                    backgroundColor: periodFilter === "ALL" ? "#ffffff" : "transparent",
+                    elevation: periodFilter === "ALL" ? 1 : 0,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: periodFilter === "ALL" ? "700" : "500", color: periodFilter === "ALL" ? colors.ink : colors.muted }}>
+                    All-Time Ledger
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => setPeriodFilter("THIS_MONTH")}
+                  style={{
+                    flex: 1,
+                    paddingVertical: 6,
+                    alignItems: "center",
+                    borderRadius: 6,
+                    backgroundColor: periodFilter === "THIS_MONTH" ? "#ffffff" : "transparent",
+                    elevation: periodFilter === "THIS_MONTH" ? 1 : 0,
+                  }}
+                >
+                  <Text style={{ fontSize: 12, fontWeight: periodFilter === "THIS_MONTH" ? "700" : "500", color: periodFilter === "THIS_MONTH" ? colors.ink : colors.muted }}>
+                    This Month ({currentMonthName})
+                  </Text>
+                </TouchableOpacity>
+              </View>
+
               {/* Quick Metrics */}
               <View style={styles.metricsRow}>
                 <View style={styles.metricCol}>
                   <StatCard
-                    label="Total Invoiced"
-                    value={formatRupees(totalCollected + totalOutstanding)}
+                    label={periodFilter === "THIS_MONTH" ? `Invoiced (${currentMonthName})` : "Total Invoiced (All-Time)"}
+                    value={formatRupees(totalBilled)}
                     tone="blue"
                   />
                 </View>
                 <View style={styles.metricCol}>
                   <StatCard
-                    label="Pending Dues"
+                    label={periodFilter === "THIS_MONTH" ? `Dues (${currentMonthName})` : "Pending Dues (All-Time)"}
                     value={formatRupees(totalOutstanding)}
                     tone="rose"
                   />
@@ -411,7 +484,9 @@ export function FinanceScreen() {
               </View>
 
               <View style={styles.listHeaderRow}>
-                <Text style={styles.sectionTitle}>Invoices Ledger ({invoices.length})</Text>
+                <Text style={styles.sectionTitle}>
+                  {periodFilter === "THIS_MONTH" ? `Invoices (${currentMonthName})` : `Invoices Ledger (${invoices.length})`}
+                </Text>
               </View>
             </>
           }
@@ -435,6 +510,14 @@ export function FinanceScreen() {
                 <View style={styles.invoiceRight}>
                   <Text style={styles.invoiceAmount}>{formatRupees(item.totalMinor)}</Text>
                   <View style={styles.actionButtonsCol}>
+                    <TouchableOpacity
+                      onPress={() => Linking.openURL(`https://crmkaro.com/pay/${item.id}`)}
+                      style={styles.webBillBtn}
+                    >
+                      <Icon name="ExternalLink" size={12} color={colors.brand} />
+                      <Text style={styles.webBillBtnText}>Web/PDF</Text>
+                    </TouchableOpacity>
+
                     {!isPaid ? (
                       <TouchableOpacity
                         onPress={() => handleOpenRecordPayment(item)}
@@ -694,24 +777,66 @@ export function FinanceScreen() {
             ))}
           </ScrollView>
 
-          <Text style={styles.fieldLabel}>Item Description *</Text>
-          <TextInput
-            style={styles.input}
-            value={itemDesc}
-            onChangeText={setItemDesc}
-            placeholder="e.g. Monthly Tuition Fee"
-            placeholderTextColor={colors.muted}
-          />
+          <View style={styles.lineItemsHeaderRow}>
+            <Text style={styles.fieldLabel}>Line Items & Fees ({lineItems.length})</Text>
+            <TouchableOpacity onPress={handleAddLineItem} style={styles.addItemBtn}>
+              <Icon name="Plus" size={12} color={colors.brand} />
+              <Text style={styles.addItemBtnText}>Add Item</Text>
+            </TouchableOpacity>
+          </View>
 
-          <Text style={styles.fieldLabel}>Total Amount (₹) *</Text>
-          <TextInput
-            style={styles.input}
-            value={itemPrice}
-            onChangeText={setItemPrice}
-            keyboardType="numeric"
-            placeholder="e.g. 2500"
-            placeholderTextColor={colors.muted}
-          />
+          {lineItems.map((item, idx) => (
+            <View key={idx} style={styles.lineItemCard}>
+              <View style={styles.lineItemTopRow}>
+                <Text style={styles.lineItemIndex}>#{idx + 1}</Text>
+                {lineItems.length > 1 && (
+                  <TouchableOpacity onPress={() => handleRemoveLineItem(idx)} style={styles.removeItemBtn}>
+                    <Icon name="Trash2" size={13} color={colors.danger} />
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              <TextInput
+                style={styles.input}
+                value={item.description}
+                onChangeText={(val) => handleUpdateLineItem(idx, "description", val)}
+                placeholder="Item name (e.g. Tuition Fee, Exam Kit)"
+                placeholderTextColor={colors.muted}
+              />
+
+              <View style={styles.row}>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.itemSubLabel}>Qty</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={item.quantity}
+                    onChangeText={(val) => handleUpdateLineItem(idx, "quantity", val)}
+                    keyboardType="numeric"
+                    placeholder="1"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+                <View style={{ flex: 2 }}>
+                  <Text style={styles.itemSubLabel}>Unit Price (₹)</Text>
+                  <TextInput
+                    style={styles.input}
+                    value={item.unitPrice}
+                    onChangeText={(val) => handleUpdateLineItem(idx, "unitPrice", val)}
+                    keyboardType="numeric"
+                    placeholder="2500"
+                    placeholderTextColor={colors.muted}
+                  />
+                </View>
+              </View>
+            </View>
+          ))}
+
+          <View style={styles.invoiceTotalBanner}>
+            <Text style={styles.invoiceTotalBannerLabel}>Total Invoice Amount:</Text>
+            <Text style={styles.invoiceTotalBannerValue}>
+              ₹{lineItems.reduce((acc, it) => acc + (Number(it.unitPrice) || 0) * (Number(it.quantity) || 1), 0).toLocaleString("en-IN")}
+            </Text>
+          </View>
         </View>
       </BottomSheet>
 
@@ -1136,5 +1261,93 @@ const styles = StyleSheet.create({
   emptyText: {
     fontSize: 13,
     color: colors.muted,
+  },
+  webBillBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandLight,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+  },
+  webBillBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.brand,
+  },
+  lineItemsHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginTop: spacing.xs,
+  },
+  addItemBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.brandLight,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  addItemBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.brand,
+  },
+  lineItemCard: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  lineItemTopRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  lineItemIndex: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.muted,
+  },
+  removeItemBtn: {
+    padding: 2,
+  },
+  itemSubLabel: {
+    fontSize: 10.5,
+    fontWeight: "700",
+    color: colors.muted,
+    marginBottom: 2,
+  },
+  invoiceTotalBanner: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: colors.brandLight,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    marginTop: 4,
+  },
+  invoiceTotalBannerLabel: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: colors.brand,
+  },
+  invoiceTotalBannerValue: {
+    fontSize: 15,
+    fontWeight: "900",
+    color: colors.brandNavy,
+  },
+  row: {
+    flexDirection: "row",
+    gap: spacing.sm,
   },
 });

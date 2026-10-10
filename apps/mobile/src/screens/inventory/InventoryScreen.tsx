@@ -4,6 +4,7 @@ import {
   Text,
   StyleSheet,
   FlatList,
+  ScrollView,
   TouchableOpacity,
   RefreshControl,
   TextInput,
@@ -17,6 +18,11 @@ import { PrimaryButton } from "../../components/PrimaryButton";
 import { apiFetch } from "../../api/client";
 import { colors, radius, spacing } from "../../theme/colors";
 
+type ProductCategory = {
+  id: string;
+  name: string;
+};
+
 type Product = {
   id: string;
   sku: string;
@@ -27,6 +33,8 @@ type Product = {
   sellingPriceMinor: number | null;
   currentStock: number;
   reorderPoint: number | null;
+  categoryId?: string | null;
+  category?: ProductCategory | null;
   createdAt: string;
 };
 
@@ -45,6 +53,8 @@ export function InventoryScreen() {
   const [activeTab, setActiveTab] = useState<"catalog" | "movements">("catalog");
   const [products, setProducts] = useState<Product[]>([]);
   const [movements, setMovements] = useState<StockMovement[]>([]);
+  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string>("ALL");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState("");
@@ -59,6 +69,7 @@ export function InventoryScreen() {
   const [formCost, setFormCost] = useState("");
   const [formStock, setFormStock] = useState("10");
   const [formReorder, setFormReorder] = useState("5");
+  const [formCategoryId, setFormCategoryId] = useState<string>("");
   const [addBusy, setAddBusy] = useState(false);
 
   // Stock Adjustment Modal
@@ -70,9 +81,10 @@ export function InventoryScreen() {
 
   const fetchInventory = useCallback(async () => {
     try {
-      const [prodRes, moveRes] = await Promise.all([
+      const [prodRes, moveRes, catRes] = await Promise.all([
         apiFetch<Product[]>("/inventory/products"),
         apiFetch<StockMovement[]>("/inventory/movements"),
+        apiFetch<ProductCategory[]>("/inventory/categories"),
       ]);
 
       if (Array.isArray(prodRes.data)) {
@@ -92,6 +104,7 @@ export function InventoryScreen() {
             sellingPriceMinor: 45000,
             currentStock: 4,
             reorderPoint: 5,
+            categoryId: "cat-1",
             createdAt: new Date().toISOString(),
           },
           {
@@ -104,6 +117,7 @@ export function InventoryScreen() {
             sellingPriceMinor: 65000,
             currentStock: 18,
             reorderPoint: 10,
+            categoryId: "cat-2",
             createdAt: new Date().toISOString(),
           },
           {
@@ -116,8 +130,21 @@ export function InventoryScreen() {
             sellingPriceMinor: 15000,
             currentStock: 2,
             reorderPoint: 10,
+            categoryId: "cat-3",
             createdAt: new Date().toISOString(),
           },
+        ]);
+      }
+
+      if (Array.isArray(catRes.data)) {
+        setCategories(catRes.data);
+      } else if ((catRes.data as any)?.items) {
+        setCategories((catRes.data as any).items);
+      } else {
+        setCategories([
+          { id: "cat-1", name: "Books & Study Material" },
+          { id: "cat-2", name: "Uniforms & Apparel" },
+          { id: "cat-3", name: "Stationery & ID Cards" },
         ]);
       }
 
@@ -156,6 +183,7 @@ export function InventoryScreen() {
         name: formName.trim(),
         sku: formSku.trim() || `SKU-${Date.now().toString().slice(-4)}`,
         unit: formUnit.trim() || "pcs",
+        categoryId: formCategoryId || undefined,
         sellingPriceMinor: Math.round(priceNum * 100),
         costPriceMinor: formCost ? Math.round(Number(formCost) * 100) : undefined,
         currentStock: Number(formStock) || 0,
@@ -175,6 +203,7 @@ export function InventoryScreen() {
       setFormSku("");
       setFormPrice("");
       setFormCost("");
+      setFormCategoryId("");
       fetchInventory();
     } catch (err: any) {
       // Local optimistic fallback
@@ -183,6 +212,7 @@ export function InventoryScreen() {
         name: formName.trim(),
         sku: formSku.trim() || `SKU-${Math.floor(Math.random() * 900 + 100)}`,
         unit: formUnit,
+        categoryId: formCategoryId || null,
         sellingPriceMinor: Math.round(priceNum * 100),
         costPriceMinor: formCost ? Math.round(Number(formCost) * 100) : null,
         currentStock: Number(formStock) || 0,
@@ -243,6 +273,9 @@ export function InventoryScreen() {
     const q = search.toLowerCase();
     const matchSearch = p.name.toLowerCase().includes(q) || p.sku.toLowerCase().includes(q);
     if (!matchSearch) return false;
+    if (selectedCategoryId !== "ALL" && p.categoryId !== selectedCategoryId) {
+      return false;
+    }
     if (lowStockOnly) {
       const reorder = p.reorderPoint ?? 5;
       return p.currentStock <= reorder;
@@ -320,6 +353,55 @@ export function InventoryScreen() {
                 Low Stock ({lowStockCount})
               </Text>
             </TouchableOpacity>
+          </View>
+
+          {/* Category Filter Chips Bar */}
+          <View style={styles.categoryBarWrap}>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryScroll}
+            >
+              <TouchableOpacity
+                onPress={() => setSelectedCategoryId("ALL")}
+                style={[
+                  styles.categoryChip,
+                  selectedCategoryId === "ALL" && styles.categoryChipActive,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.categoryChipText,
+                    selectedCategoryId === "ALL" && styles.categoryChipTextActive,
+                  ]}
+                >
+                  All Items ({products.length})
+                </Text>
+              </TouchableOpacity>
+
+              {categories.map((cat) => {
+                const count = products.filter((p) => p.categoryId === cat.id).length;
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    onPress={() => setSelectedCategoryId(cat.id)}
+                    style={[
+                      styles.categoryChip,
+                      selectedCategoryId === cat.id && styles.categoryChipActive,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryChipText,
+                        selectedCategoryId === cat.id && styles.categoryChipTextActive,
+                      ]}
+                    >
+                      {cat.name} ({count})
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
           </View>
 
           {/* Catalog List */}
@@ -524,6 +606,29 @@ export function InventoryScreen() {
                 style={styles.input}
               />
             </View>
+          </View>
+
+          <Text style={styles.fieldLabel}>Category</Text>
+          <View style={styles.chipsWrap}>
+            <TouchableOpacity
+              onPress={() => setFormCategoryId("")}
+              style={[styles.catModalChip, !formCategoryId && styles.catModalChipActive]}
+            >
+              <Text style={[styles.catModalChipText, !formCategoryId && styles.catModalChipTextActive]}>
+                General
+              </Text>
+            </TouchableOpacity>
+            {categories.map((cat) => (
+              <TouchableOpacity
+                key={cat.id}
+                onPress={() => setFormCategoryId(cat.id)}
+                style={[styles.catModalChip, formCategoryId === cat.id && styles.catModalChipActive]}
+              >
+                <Text style={[styles.catModalChipText, formCategoryId === cat.id && styles.catModalChipTextActive]}>
+                  {cat.name}
+                </Text>
+              </TouchableOpacity>
+            ))}
           </View>
 
           <View style={styles.row}>
@@ -903,6 +1008,64 @@ const styles = StyleSheet.create({
     color: colors.muted,
   },
   typeChipTextActive: {
+    color: colors.brand,
+    fontWeight: "800",
+  },
+  categoryBarWrap: {
+    paddingVertical: spacing.xs,
+    backgroundColor: colors.surface,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lineLight,
+  },
+  categoryScroll: {
+    paddingHorizontal: spacing.md,
+    gap: spacing.xs,
+  },
+  categoryChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  categoryChipActive: {
+    backgroundColor: colors.brandLight,
+    borderColor: colors.brand,
+  },
+  categoryChipText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  categoryChipTextActive: {
+    color: colors.brand,
+    fontWeight: "800",
+  },
+  chipsWrap: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+    marginVertical: 4,
+  },
+  catModalChip: {
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  catModalChipActive: {
+    backgroundColor: colors.brandLight,
+    borderColor: colors.brand,
+  },
+  catModalChipText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  catModalChipTextActive: {
     color: colors.brand,
     fontWeight: "800",
   },

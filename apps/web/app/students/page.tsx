@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
+  isSchoolWorkspace,
 } from "@/lib/nav";
 
 type StudentProfile = {
@@ -146,6 +147,8 @@ function StudentsContent() {
     );
   })();
 
+  const isSchool = isSchoolWorkspace(businessType) || (orgName || "").toLowerCase().includes("school") || (orgName || "").toLowerCase().includes("vidyalaya");
+
   // Students Directory State
   const [students, setStudents] = useState<StudentProfile[]>([]);
   const [loadingStudents, setLoadingStudents] = useState(true);
@@ -204,6 +207,7 @@ function StudentsContent() {
   const [detailDrawerOpen, setDetailDrawerOpen] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState<StudentProfile | null>(null);
   const [studentDetailFull, setStudentDetailFull] = useState<any>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Fee Collection Modal (12-Month Calendar Grid)
   const [collectFeeModalOpen, setCollectFeeModalOpen] = useState(false);
@@ -465,6 +469,8 @@ function StudentsContent() {
   // Fetch full student profile for drawer
   async function handleOpenDetail(student: StudentProfile) {
     setSelectedStudent(student);
+    setStudentDetailFull(null);
+    setDetailLoading(true);
     setDetailDrawerOpen(true);
     try {
       const res = await authFetch(`${api}/students/${student.id}`, { credentials: "include" });
@@ -474,6 +480,8 @@ function StudentsContent() {
       }
     } catch {
       // ignore
+    } finally {
+      setDetailLoading(false);
     }
   }
 
@@ -1138,25 +1146,25 @@ function StudentsContent() {
   const tabItems = [
     {
       id: "directory",
-      label: isGym ? "Members Directory" : "Student Directory",
+      label: isGym ? "Members Directory" : (isSchool ? "Students & Parents" : "Student Directory"),
       icon: (isGym ? "people" : "student") as IconName,
       count: students.length,
     },
     {
       id: "recurring-fees",
-      label: isGym ? "Upcoming Fees & Dues" : "Recurring Fees Cycle",
+      label: isGym ? "Upcoming Fees & Dues" : (isSchool ? "School Fees & Dues" : "Recurring Fees Cycle"),
       icon: "finance" as const,
       count: recurringFeesData?.pendingCount ?? 0,
       highlight: (recurringFeesData?.pendingCount ?? 0) > 0,
     },
     {
       id: "attendance",
-      label: isGym ? "Daily Check-in & Attendance" : "Daily Attendance Grid",
+      label: isGym ? "Daily Check-in & Attendance" : (isSchool ? "Daily Morning Attendance" : "Daily Attendance Grid"),
       icon: "calendar" as const,
     },
     {
       id: "summary",
-      label: isGym ? "Monthly Revenue Report" : "Monthly Summary Report",
+      label: isGym ? "Monthly Revenue Report" : (isSchool ? "Monthly Attendance %" : "Monthly Summary Report"),
       icon: "reports" as const,
     },
   ];
@@ -1227,15 +1235,17 @@ function StudentsContent() {
             }}
           >
             <Icon name={isGym ? "activity" : "student"} size={15} />{" "}
-            {isGym ? "Member Lifecycle & Fitness Portal" : "Student Lifecycle & Academy Portal"}
+            {isGym ? "Member Lifecycle & Fitness Portal" : (isSchool ? "Student Records & School Portal" : "Student Lifecycle & Academy Portal")}
           </div>
           <h1 style={{ fontSize: 26, fontWeight: 800, color: "var(--ink)", margin: 0, letterSpacing: "-0.02em" }}>
-            {isGym ? "Memberships & Gym Management" : "Students & Academy Management"}
+            {isGym ? "Memberships & Gym Management" : (isSchool ? "Students & Class Attendance" : "Students & Academy Management")}
           </h1>
           <p style={{ fontSize: 13.5, color: "var(--muted)", margin: "4px 0 0", maxWidth: 650 }}>
             {isGym
               ? "Track member enrollments, recurring membership fees rolling ledger, and 1-click check-ins."
-              : "Track one-time student admissions, automated recurring monthly fees rolling ledger, and 1-click attendance."}
+              : (isSchool
+                  ? "Track student admissions, class & section rosters, quarterly fees, and daily morning roll calls."
+                  : "Track one-time student admissions, automated recurring monthly fees rolling ledger, and 1-click attendance.")}
           </p>
         </div>
         <button
@@ -1257,16 +1267,16 @@ function StudentsContent() {
           }}
         >
           <Icon name="plus" size={16} />
-          <span>{isGym ? "New Member Admission" : "New Student Admission"}</span>
+          <span>{isGym ? "New Member Admission" : (isSchool ? "Admit New Student" : "New Student Admission")}</span>
         </button>
       </div>
 
       {/* Quick Summary Metric Cards */}
       <div className="stats-grid" style={{ marginBottom: 24 }}>
         <StatCard
-          label={isGym ? "Active Members" : "Active Students"}
+          label={isGym ? "Active Members" : (isSchool ? "Enrolled Students" : "Active Students")}
           value={students.filter((s) => s.status === "ACTIVE").length.toString()}
-          change={isGym ? `${distinctStandards.length} Plans · ${distinctBatches.length} Slots` : `${distinctStandards.length} Standards · ${distinctBatches.length} Batches`}
+          change={isGym ? `${distinctStandards.length} Plans · ${distinctBatches.length} Slots` : (isSchool ? `${distinctStandards.length} Classes · ${distinctBatches.length} Sections` : `${distinctStandards.length} Standards · ${distinctBatches.length} Batches`)}
           icon={isGym ? "people" : "student"}
           tone="teal"
         />
@@ -1809,54 +1819,63 @@ function StudentsContent() {
 
           {/* Rolling Fee Progress Ribbon */}
           {recurringFeesData && (
-            <div
-              style={{
-                padding: "18px 22px",
-                background: "#f8fafc",
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                marginBottom: 20,
-                display: "grid",
-                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-                gap: 18,
-              }}
-            >
-              <div>
-                <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
-                  Expected Fee ({recurringFeesData.cycleMonthLabel})
-                </span>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>
-                  {formatMoney(recurringFeesData.totalExpectedMinor, currency)}
+            <>
+              <div
+                style={{
+                  padding: "18px 22px",
+                  background: "#f8fafc",
+                  borderRadius: 12,
+                  border: "1px solid #e2e8f0",
+                  marginBottom: 12,
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                  gap: 18,
+                }}
+              >
+                <div>
+                  <span style={{ fontSize: 11, color: "var(--muted)", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
+                    Expected Fees ({recurringFeesData.cycleMonthLabel})
+                  </span>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "var(--ink)", marginTop: 2 }}>
+                    {formatMoney(recurringFeesData.totalExpectedMinor, currency)}
+                  </div>
+                  <small style={{ color: "var(--muted)", fontSize: 11.5 }}>
+                    {recurringFeesData.studentsCount} Active {isGym ? "members" : "students"} enrolled
+                  </small>
                 </div>
-                <small style={{ color: "var(--muted)", fontSize: 11.5 }}>
-                  {recurringFeesData.studentsCount} Active {isGym ? "members" : "students"} enrolled
-                </small>
+
+                <div>
+                  <span style={{ fontSize: 11, color: "#047857", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
+                    Collected ({recurringFeesData.cycleMonthLabel})
+                  </span>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#047857", marginTop: 2 }}>
+                    {formatMoney(recurringFeesData.totalCollectedMinor, currency)}
+                  </div>
+                  <small style={{ color: "#047857", fontSize: 11.5 }}>
+                    {recurringFeesData.paidCount} {isGym ? "members" : "students"} cleared
+                  </small>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: 11, color: "#b45309", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
+                    Cycle Dues ({recurringFeesData.cycleMonthLabel})
+                  </span>
+                  <div style={{ fontSize: 22, fontWeight: 800, color: "#b45309", marginTop: 2 }}>
+                    {formatMoney(recurringFeesData.totalPendingMinor, currency)}
+                  </div>
+                  <small style={{ color: "#b45309", fontSize: 11.5 }}>
+                    {recurringFeesData.pendingCount} {isGym ? "members" : "students"} pending
+                  </small>
+                </div>
               </div>
 
-              <div>
-                <span style={{ fontSize: 11, color: "#047857", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
-                  Collected Revenue
+              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 16, fontSize: 12, color: "#475569" }}>
+                <Icon name="activity" size={15} />
+                <span>
+                  Showing recurring cycle billing for <strong>{recurringFeesData.cycleMonthLabel}</strong> only. For cumulative multi-month accounts or previous backlog dues, view <strong>School Fees & Accounts</strong>.
                 </span>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#047857", marginTop: 2 }}>
-                  {formatMoney(recurringFeesData.totalCollectedMinor, currency)}
-                </div>
-                <small style={{ color: "#047857", fontSize: 11.5 }}>
-                  {recurringFeesData.paidCount} {isGym ? "members" : "students"} cleared
-                </small>
               </div>
-
-              <div>
-                <span style={{ fontSize: 11, color: "#b45309", textTransform: "uppercase", fontWeight: 750, letterSpacing: "0.04em" }}>
-                  Pending Dues
-                </span>
-                <div style={{ fontSize: 22, fontWeight: 800, color: "#b45309", marginTop: 2 }}>
-                  {formatMoney(recurringFeesData.totalPendingMinor, currency)}
-                </div>
-                <small style={{ color: "#b45309", fontSize: 11.5 }}>
-                  {recurringFeesData.pendingCount} {isGym ? "members" : "students"} pending
-                </small>
-              </div>
-            </div>
+            </>
           )}
 
           {/* Status Filter & Search Controls */}
@@ -5523,6 +5542,65 @@ function StudentsContent() {
 
             {/* LIVE FEE STATUS CARD (PAID / PENDING DUE) */}
             {(() => {
+              if (detailLoading || !studentDetailFull) {
+                return (
+                  <div
+                    style={{
+                      padding: "14px 16px",
+                      background: "#f8fafc",
+                      borderRadius: 12,
+                      border: "1px solid #e2e8f0",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div
+                        style={{
+                          width: 38,
+                          height: 38,
+                          borderRadius: "50%",
+                          background: "#e2e8f0",
+                        }}
+                        className="skeleton-pulse"
+                      />
+                      <div>
+                        <div
+                          style={{
+                            height: 14,
+                            width: 140,
+                            background: "#e2e8f0",
+                            borderRadius: 4,
+                            marginBottom: 6,
+                          }}
+                          className="skeleton-pulse"
+                        />
+                        <div
+                          style={{
+                            height: 11,
+                            width: 200,
+                            background: "#f1f5f9",
+                            borderRadius: 4,
+                          }}
+                          className="skeleton-pulse"
+                        />
+                      </div>
+                    </div>
+                    <div
+                      style={{
+                        height: 22,
+                        width: 50,
+                        background: "#e2e8f0",
+                        borderRadius: 6,
+                      }}
+                      className="skeleton-pulse"
+                    />
+                  </div>
+                );
+              }
+
               const invoices: any[] = studentDetailFull?.person?.invoices || [];
               const latestInv = invoices[0];
               const isCleared =
@@ -5912,7 +5990,49 @@ function StudentsContent() {
             </div>
 
             {/* Invoice & Payment History */}
-            {studentDetailFull?.person?.invoices && (
+            {detailLoading ? (
+              <div>
+                <div
+                  style={{
+                    height: 12,
+                    width: 160,
+                    background: "#e2e8f0",
+                    borderRadius: 4,
+                    marginBottom: 10,
+                  }}
+                  className="skeleton-pulse"
+                />
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div
+                    style={{
+                      padding: "14px",
+                      border: "1px solid #e2e8f0",
+                      borderRadius: 10,
+                      background: "#f8fafc",
+                    }}
+                    className="skeleton-pulse"
+                  >
+                    <div
+                      style={{
+                        height: 13,
+                        width: "35%",
+                        background: "#e2e8f0",
+                        borderRadius: 4,
+                        marginBottom: 6,
+                      }}
+                    />
+                    <div
+                      style={{
+                        height: 10,
+                        width: "55%",
+                        background: "#f1f5f9",
+                        borderRadius: 4,
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ) : studentDetailFull?.person?.invoices && (
               <div>
                 <strong
                   style={{

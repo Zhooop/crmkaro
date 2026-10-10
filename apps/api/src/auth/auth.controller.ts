@@ -22,9 +22,20 @@ const adminLoginSchema = z.object({
 });
 
 function clientMetadata(request: Request) {
+  const platformHeader = (request.get("x-client-platform") || "").toLowerCase();
+  const ua = (request.get("user-agent") || "").toLowerCase();
+  const isMobile =
+    platformHeader === "mobile" ||
+    ua.includes("crmkaro-mobile") ||
+    ua.includes("mobile") ||
+    ua.includes("android") ||
+    ua.includes("iphone");
+  const platform = isMobile ? "MOBILE" : "WEB";
+
   return {
     ipAddress: request.ip,
     userAgent: request.get("user-agent"),
+    platform,
   };
 }
 

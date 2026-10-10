@@ -72,6 +72,8 @@ type Dashboard = {
     activeStudents: number;
     thisMonthCollectedMinor: number;
     thisMonthPendingMinor: number;
+    currentCyclePendingMinor?: number;
+    backlogPendingMinor?: number;
     thisMonthExpectedMinor: number;
     monthName: string;
     todayPresent: number;
@@ -309,22 +311,12 @@ function DashboardLoading() {
 }
 
 const BUSINESS_TYPE_OPTIONS = [
-  "Beauty, Salon & Spa",
   "Coaching & Education Institute",
-  "Real Estate & Property Consulting",
-  "Healthcare, Clinic & Diagnostic",
-  "Automotive & Dealership",
-  "Software, IT & SaaS Agency",
-  "Retail & E-commerce Store",
-  "Restaurant, Cafe & Hospitality",
-  "Manufacturing & Distribution",
-  "Financial & Legal Consulting",
-  "Event Management & Wedding Planning",
+  "Schools, Colleges & Formal Institutes",
+  "Tuition & Training Center",
+  "Dance, Music & Art Academy",
   "Fitness, Gym & Sports Club",
-  "Construction & Interior Design",
-  "Logistics, Transport & Supply Chain",
-  "Trading & Wholesale",
-  "Marketing & Advertising Agency",
+  "Beauty, Salon & Spa",
   "Other",
 ];
 
@@ -373,6 +365,7 @@ const SOLUTION_PRESETS = [
     isPopular: true,
     color: "#2563eb",
     bgColor: "#eff6ff",
+    disabled: false,
   },
   {
     id: "school",
@@ -383,6 +376,7 @@ const SOLUTION_PRESETS = [
     isPopular: false,
     color: "#0891b2",
     bgColor: "#ecfeff",
+    disabled: false,
   },
   {
     id: "crm",
@@ -393,6 +387,7 @@ const SOLUTION_PRESETS = [
     isPopular: false,
     color: "#ea580c",
     bgColor: "#fff7ed",
+    disabled: true,
   },
   {
     id: "retail",
@@ -403,6 +398,7 @@ const SOLUTION_PRESETS = [
     isPopular: false,
     color: "#7c3aed",
     bgColor: "#faf5ff",
+    disabled: true,
   },
 ] as const;function getDateBoundsForPreset(
   preset: string,
@@ -473,6 +469,7 @@ export default function HomePage() {
   const api = getApiUrl();
 
   function handleSelectPreset(preset: (typeof SOLUTION_PRESETS)[number]) {
+    if ("disabled" in preset && preset.disabled) return;
     setSelectedPresetId(preset.id);
     setSelectedServices([...preset.modules]);
   }
@@ -575,8 +572,11 @@ export default function HomePage() {
     setDatePreset(preset);
     if (preset !== "custom") {
       setDashboardLoading(true);
+      setError("");
       try {
         await loadDashboard(preset, customStartDate, customEndDate);
+      } catch (err: any) {
+        setError(err.message || "Failed to load date preset.");
       } finally {
         setDashboardLoading(false);
       }
@@ -586,8 +586,11 @@ export default function HomePage() {
   async function handleApplyCustomDate() {
     if (!customStartDate || !customEndDate) return;
     setDashboardLoading(true);
+    setError("");
     try {
       await loadDashboard("custom", customStartDate, customEndDate);
+    } catch (err: any) {
+      setError(err.message || "Failed to apply custom date range.");
     } finally {
       setDashboardLoading(false);
     }
@@ -681,77 +684,98 @@ export default function HomePage() {
       />
     );
   }
-
   if (needsSetup)
     return (
       <main className="onboarding-page">
         <section className="onboarding-card">
+          {/* ── Left intro panel ────────────────────────── */}
           <div className="onboarding-intro">
-            <div>
-              <span className="onboarding-mark" aria-hidden="true" />
-              <p className="eyebrow" style={{ color: "#2563eb", fontWeight: 800, letterSpacing: "0.04em" }}>First Workspace Setup</p>
-              <h1>Let’s set up your business.</h1>
-              <p>
-                Choose your solution package. CRMKaro will automatically configure your navigation, rosters, and ledger workflows.
+            <div className="onboarding-intro-top">
+              <div className="onboarding-brand-badge">
+                <span className="onboarding-mark" aria-hidden="true" />
+                <span className="onboarding-pill">
+                  <span className="onboarding-pill-dot" />
+                  Quick 1-Min Setup
+                </span>
+              </div>
+              <h1>Let's set up your business.</h1>
+              <p className="onboarding-sub">
+                Choose your solution package. CRMKaro will configure your navigation, rosters, and billing workflows automatically.
               </p>
             </div>
 
-            <div style={{ marginTop: 20, display: "flex", flexDirection: "column", gap: 9 }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
-                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
-                <span>Multi-tenant isolated & secure</span>
+            <div className="onboarding-trust-list">
+              <div className="onboarding-trust-item">
+                <span className="onboarding-trust-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  </svg>
+                </span>
+                <span>Multi-tenant isolated &amp; secure</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
-                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
+              <div className="onboarding-trust-item">
+                <span className="onboarding-trust-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                  </svg>
+                </span>
                 <span>1-Click WhatsApp payment reminders</span>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12, color: "#334155", fontWeight: 550 }}>
-                <span style={{ width: 20, height: 20, borderRadius: "50%", background: "#eff6ff", color: "#2563eb", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 800, fontSize: 11, border: "1px solid #bfdbfe" }}>✓</span>
-                <span>Cloud PostgreSQL & instant sync</span>
+              <div className="onboarding-trust-item">
+                <span className="onboarding-trust-icon">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/>
+                  </svg>
+                </span>
+                <span>Cloud database &amp; instant sync</span>
               </div>
             </div>
-          </div>
-          <form className="onboarding-form" onSubmit={createWorkspace}>
-            <label htmlFor="organisation-name">
-              Business or workspace name <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <input
-              id="organisation-name"
-              value={organisationName}
-              onChange={(e) => setOrganisationName(e.target.value)}
-              placeholder="e.g. Acme Classes or Sharma Enterprises"
-              required
-            />
 
-            <label htmlFor="business-type">
-              Industry or Business Model <span style={{ color: "#ef4444" }}>*</span>
-            </label>
-            <select
-              id="business-type"
-              value={selectedBusinessType}
-              onChange={(e) => setSelectedBusinessType(e.target.value)}
-              required
-            >
-              <option value="">Select your business type…</option>
-              {BUSINESS_TYPE_OPTIONS.map((opt) => (
-                <option key={opt} value={opt}>
-                  {opt}
-                </option>
-              ))}
-            </select>
+            <div className="onboarding-intro-footer">
+              Trusted by 1,200+ coaching centres &amp; academies
+            </div>
+          </div>
+
+          {/* ── Right form panel ────────────────────────── */}
+          <form className="onboarding-form" onSubmit={createWorkspace}>
+            {/* 2-Column Responsive Input Row */}
+            <div className="onboarding-input-grid">
+              <div className="onboarding-field">
+                <label htmlFor="organisation-name">
+                  <span>Workspace Name <span style={{ color: "#ef4444" }}>*</span></span>
+                </label>
+                <input
+                  id="organisation-name"
+                  value={organisationName}
+                  onChange={(e) => setOrganisationName(e.target.value)}
+                  placeholder="e.g. Acme Classes or Sharma Enterprises"
+                  required
+                />
+              </div>
+
+              <div className="onboarding-field">
+                <label htmlFor="business-type">
+                  <span>Industry / Category <span style={{ color: "#ef4444" }}>*</span></span>
+                </label>
+                <select
+                  id="business-type"
+                  value={selectedBusinessType}
+                  onChange={(e) => setSelectedBusinessType(e.target.value)}
+                  required
+                >
+                  <option value="">Select your business type…</option>
+                  {BUSINESS_TYPE_OPTIONS.map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
 
             {selectedBusinessType === "Other" && (
-              <div className="onboarding-custom-field" style={{ marginTop: 4, marginBottom: 12 }}>
-                <label
-                  htmlFor="custom-business-type"
-                  style={{
-                    display: "block",
-                    marginBottom: 4,
-                    fontSize: 11,
-                    fontWeight: 750,
-                    color: "var(--ink)",
-                  }}
-                >
+              <div className="onboarding-custom-field">
+                <label htmlFor="custom-business-type">
                   Describe your business <span style={{ color: "#ef4444" }}>*</span>
                 </label>
                 <input
@@ -760,83 +784,109 @@ export default function HomePage() {
                   onChange={(e) => setCustomBusinessType(e.target.value)}
                   placeholder="e.g. Dance Academy, Solar Installation, Dental Clinic"
                   required
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: 8,
-                    border: "1px solid var(--line)",
-                    fontSize: 12.5,
-                    background: "#ffffff",
-                    color: "var(--ink)",
-                    boxSizing: "border-box",
-                  }}
                 />
               </div>
             )}
 
-            {/* Smart Solution Presets Selection - Compact Zero-Scroll */}
-            <fieldset className="service-selection-fieldset" style={{ marginTop: 8 }}>
-              <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", flexWrap: "wrap", gap: 6, marginBottom: 1 }}>
-                <legend style={{ fontSize: 12.5, fontWeight: 800, color: "var(--ink)", margin: 0 }}>
+            {/* Solution Package Selector */}
+            <fieldset className="service-selection-fieldset">
+              <div className="onboarding-section-header">
+                <legend className="onboarding-section-title">
                   Choose Your Solution Package
                 </legend>
-                <span style={{ fontSize: 10.5, fontWeight: 700, color: "#2563eb" }}>
-                  ✓ Instant 1-Click Setup
-                </span>
+                <span className="onboarding-instant-badge">✓ Instant 1-Click Setup</span>
               </div>
-              <p style={{ fontSize: 11, color: "var(--muted)", margin: "0 0 6px 0" }}>
-                Select your business model. CRMKaro will automatically configure your navigation, rosters, and ledger.
+              <p className="onboarding-section-sub">
+                Select your business model. CRMKaro will configure your navigation, rosters, and ledger.
               </p>
 
               <div className="preset-grid">
                 {SOLUTION_PRESETS.map((preset) => {
                   const isSelected = selectedPresetId === preset.id;
+                  const isDisabled = Boolean("disabled" in preset && preset.disabled);
                   return (
                     <div
                       key={preset.id}
-                      className={`preset-card preset-card-${preset.id} ${isSelected ? "active" : ""}`}
-                      onClick={() => handleSelectPreset(preset)}
-                      role="button"
-                      tabIndex={0}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          handleSelectPreset(preset);
-                        }
-                      }}
+                      className={`preset-card preset-card-${preset.id} ${isSelected ? "active" : ""} ${isDisabled ? "disabled" : ""}`}
+                      onClick={isDisabled ? undefined : () => handleSelectPreset(preset)}
+                      role={isDisabled ? "presentation" : "button"}
+                      tabIndex={isDisabled ? -1 : 0}
+                      aria-disabled={isDisabled ? "true" : undefined}
+                      style={
+                        isDisabled
+                          ? {
+                              opacity: 0.55,
+                              cursor: "not-allowed",
+                              backgroundColor: "#f8fafc",
+                              borderColor: "#e2e8f0",
+                              boxShadow: "none",
+                              transform: "none",
+                            }
+                          : undefined
+                      }
+                      onKeyDown={
+                        isDisabled
+                          ? undefined
+                          : (e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                handleSelectPreset(preset);
+                              }
+                            }
+                      }
                     >
                       <div className="preset-card-main">
-                        {/* Top row: icon + radio indicator */}
+                        {/* Top row: icon + radio indicator / coming soon badge */}
                         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between" }}>
-                          <div className="preset-icon-badge" style={{ background: preset.bgColor }}>
+                          <div className="preset-icon-badge" style={{ background: preset.bgColor, opacity: isDisabled ? 0.6 : 1 }}>
                             <PresetIcon id={preset.id} color={preset.color} />
                           </div>
-                          <div
-                            className={`preset-select-indicator ${isSelected ? "selected" : ""}`}
-                            aria-label={isSelected ? "Selected" : "Select"}
-                          >
-                            {isSelected ? (
-                              <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-                                <polyline points="20 6 9 17 4 12" />
-                              </svg>
-                            ) : null}
-                          </div>
+                          {isDisabled ? (
+                            <span
+                              style={{
+                                display: "inline-flex",
+                                alignItems: "center",
+                                gap: 3,
+                                background: "#f1f5f9",
+                                color: "#64748b",
+                                border: "1px solid #cbd5e1",
+                                borderRadius: 12,
+                                padding: "2px 7px",
+                                fontSize: 9.5,
+                                fontWeight: 700,
+                                letterSpacing: "0.02em",
+                              }}
+                            >
+                              Coming Soon
+                            </span>
+                          ) : (
+                            <div
+                              className={`preset-select-indicator ${isSelected ? "selected" : ""}`}
+                              aria-label={isSelected ? "Selected" : "Select"}
+                            >
+                              {isSelected ? (
+                                <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12" />
+                                </svg>
+                              ) : null}
+                            </div>
+                          )}
                         </div>
 
                         {/* Content */}
                         <div className="preset-text-col">
                           <div className="preset-title-line">
-                            <h3 className="preset-title">{preset.name}</h3>
-                            {preset.isPopular && (
+                            <h3 className="preset-title" style={isDisabled ? { color: "#64748b" } : undefined}>{preset.name}</h3>
+                            {preset.isPopular && !isDisabled && (
                               <span className="preset-popular-tag">★ Popular</span>
                             )}
                           </div>
-                          <p className="preset-desc">{preset.subtitle}</p>
+                          <p className="preset-desc" style={isDisabled ? { color: "#94a3b8" } : undefined}>{preset.subtitle}</p>
 
                           <div className="preset-chips-line">
                             {preset.highlights.map((h, idx) => (
-                              <span key={idx} className="preset-chip">
-                                <span style={{ color: "#16a34a", fontWeight: 800, fontSize: 11 }}>✓</span> {h}
+                              <span key={idx} className="preset-chip" style={isDisabled ? { background: "#f1f5f9", color: "#64748b", borderColor: "#e2e8f0" } : undefined}>
+                                <span style={{ color: isDisabled ? "#94a3b8" : "#16a34a", fontWeight: 800, fontSize: 10 }}>✓</span> {h}
                               </span>
                             ))}
                           </div>
@@ -847,24 +897,13 @@ export default function HomePage() {
                 })}
               </div>
 
-              {/* Talk to sales team for custom setup */}
-              <div style={{ marginTop: 8, display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 6, borderTop: "1px dashed var(--line)", flexWrap: "wrap", gap: 6 }}>
-                <p style={{ margin: 0, fontSize: 11, color: "var(--muted)" }}>
-                  Need custom modules or special workflow?
-                </p>
+              <div className="onboarding-sales-row">
+                <p>Need custom modules or special workflow?</p>
                 <a
                   href="https://wa.me/919004520400?text=Hello%20CRMKaro%20Team%2C%20I%20need%20a%20custom%20workflow%20setup%20for%20my%20business."
                   target="_blank"
                   rel="noreferrer"
-                  style={{
-                    color: "#2563eb",
-                    fontSize: 11.5,
-                    fontWeight: 700,
-                    textDecoration: "none",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    gap: 3,
-                  }}
+                  className="onboarding-sales-link"
                 >
                   <span>Talk to sales team →</span>
                 </a>
@@ -872,7 +911,7 @@ export default function HomePage() {
             </fieldset>
 
             <button
-              className="primary-button onboarding-submit"
+              className="onboarding-submit"
               disabled={
                 setupBusy ||
                 organisationName.trim().length < 2 ||
@@ -880,12 +919,11 @@ export default function HomePage() {
                 selectedServices.length === 0
               }
               type="submit"
-              style={{ marginTop: 10, background: "#2563eb", borderColor: "#2563eb", height: 40, fontSize: 13, fontWeight: 700, borderRadius: 8, boxShadow: "0 4px 12px rgba(37, 99, 235, 0.2)" }}
             >
               {setupBusy ? "Creating workspace…" : "Complete workspace setup →"}
             </button>
             {setupError ? (
-              <p className="form-error" role="alert">
+              <p className="onboarding-error" role="alert">
                 {setupError}
               </p>
             ) : null}
@@ -1017,6 +1055,20 @@ export default function HomePage() {
     );
   })();
 
+  const isSchool = (() => {
+    const bt = (data?.organisation?.businessType || "").toLowerCase();
+    const on = (data?.organisation?.name || "").toLowerCase();
+    return (
+      bt.includes("school") ||
+      bt.includes("formal") ||
+      bt.includes("institute") ||
+      bt.includes("k-12") ||
+      bt.includes("college") ||
+      on.includes("school") ||
+      on.includes("vidyalaya")
+    );
+  })();
+
   return (
     <AppShell
       currentPath="/"
@@ -1041,11 +1093,11 @@ export default function HomePage() {
         <>
       {error && data && (
         <div style={{ padding: "10px 16px", background: "#fef3c7", border: "1px solid #fde68a", color: "#92400e", borderRadius: 10, marginBottom: 12, display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 13, fontWeight: 600 }}>
-          <span>⚠️ Showing cached overview: {error}</span>
+          <span>Showing cached overview: {error}</span>
           <button className="btn btn-secondary btn-sm" onClick={() => { setError(""); loadDashboard(); }}>Sync Now</button>
         </div>
       )}
-      {/* 🌟 Modern Hero Banner */}
+      {/* Modern Hero Banner */}
       <div
         className="dashboard-hero"
         style={{
@@ -1073,7 +1125,7 @@ export default function HomePage() {
           }}
         />
 
-        {/* 🌟 ROW 1: Greeting, Category Badge & Date in ONE clean, aligned line */}
+        {/* ROW 1: Greeting, Category Badge & Date in ONE clean, aligned line */}
         <div
           style={{
             display: "flex",
@@ -1098,7 +1150,7 @@ export default function HomePage() {
               }}
               suppressHydrationWarning
             >
-              {getGreeting(displayName)} 👋
+              {getGreeting(displayName)}
             </h1>
 
             <span style={{ color: "rgba(255, 255, 255, 0.25)", fontSize: 13, margin: "0 2px" }}>|</span>
@@ -1148,7 +1200,7 @@ export default function HomePage() {
                 whiteSpace: "nowrap",
               }}
             >
-              📅 {todayFormatted}
+              {todayFormatted}
             </span>
           </div>
         </div>
@@ -1259,7 +1311,7 @@ export default function HomePage() {
                   }}
                 >
                   <Icon name="activity" size={12} />
-                  <span>{isGymOrStudio ? "+ New Batch / Group" : "+ New Group"}</span>
+                  <span>{isSchool ? "+ New Class & Section" : (isGymOrStudio ? "+ New Batch / Group" : "+ New Group")}</span>
                 </button>
               );
             }
@@ -1336,7 +1388,7 @@ export default function HomePage() {
             </button>
           )}
 
-          {data.services.includes("finance") && (
+          {data.services.includes("finance") && !isSchool && (
             <button
               onClick={() => router.push("/finance")}
               className="hero-launch-btn"
@@ -1378,7 +1430,7 @@ export default function HomePage() {
               }}
             >
               <Icon name="people" size={12} />
-              <span>{isGymOrStudio ? "+ Add Member" : "+ Add Person"}</span>
+              <span>{isSchool ? "+ Add Teacher / Staff" : isGymOrStudio ? "+ Add Member" : "+ Add Person"}</span>
             </button>
           )}
 
@@ -1482,7 +1534,7 @@ export default function HomePage() {
               { id: "this_week", label: "This Week" },
               { id: "this_month", label: "This Month" },
               { id: "last_month", label: "Last Month" },
-              { id: "custom", label: "Custom Range 📅" },
+              { id: "custom", label: "Custom Range" },
             ].map((p) => (
               <button
                 key={p.id}
@@ -1670,7 +1722,7 @@ export default function HomePage() {
                   </div>
                   <div>
                     <h2 style={{ fontSize: 16, fontWeight: 800, margin: 0, color: "var(--ink)", display: "flex", alignItems: "center", gap: 8 }}>
-                      <span>Today&apos;s Batches &amp; Schedule</span>
+                      <span>{isSchool ? "Today's Classes & Timetable" : "Today's Batches & Schedule"}</span>
                       <span
                         style={{
                           fontSize: 11,
@@ -1682,11 +1734,11 @@ export default function HomePage() {
                           border: "1px solid #c7dcfe",
                         }}
                       >
-                        {todayDayName} • {todaysBatches.length} {todaysBatches.length === 1 ? "Batch" : "Batches"}
+                        {todayDayName} • {todaysBatches.length} {todaysBatches.length === 1 ? (isSchool ? "Class" : "Batch") : (isSchool ? "Classes" : "Batches")}
                       </span>
                     </h2>
                     <p style={{ margin: "2px 0 0", fontSize: 12.5, color: "var(--muted)" }}>
-                      Active classes, schedules, and rapid attendance marking for today
+                      {isSchool ? "Active classes, section schedules, and roll call attendance for today" : "Active classes, schedules, and rapid attendance marking for today"}
                     </p>
                   </div>
                 </div>
@@ -1698,14 +1750,14 @@ export default function HomePage() {
                     style={{ fontSize: 12, padding: "5px 11px", fontWeight: 700 }}
                   >
                     <Icon name="plus" size={13} />
-                    <span>New Batch</span>
+                    <span>{isSchool ? "+ New Class & Section" : "New Batch"}</span>
                   </button>
                   <button
                     onClick={() => router.push("/groups")}
                     className="btn btn-secondary btn-sm"
                     style={{ fontSize: 12, padding: "5px 11px", color: "#3572e8" }}
                   >
-                    <span>View All Groups →</span>
+                    <span>{isSchool ? "View All Classes →" : "View All Groups →"}</span>
                   </button>
                 </div>
               </div>
@@ -1721,14 +1773,14 @@ export default function HomePage() {
                   }}
                 >
                   <p style={{ margin: 0, fontSize: 13, color: "var(--muted)" }}>
-                    No batches scheduled for {todayDayName}.
+                    {isSchool ? `No classes scheduled for ${todayDayName}.` : `No batches scheduled for ${todayDayName}.`}
                   </p>
                   <button
                     onClick={() => router.push("/groups?action=new")}
                     className="primary-button"
                     style={{ margin: "10px auto 0", fontSize: 12, padding: "6px 14px" }}
                   >
-                    <span>+ Create First Batch</span>
+                    <span>{isSchool ? "+ Create First Class & Section" : "+ Create First Batch"}</span>
                   </button>
                 </div>
               ) : (
@@ -1778,7 +1830,7 @@ export default function HomePage() {
                         </div>
 
                         <div className="today-batch-meta">
-                          <span><strong>{memberCount}</strong> Members</span>
+                          <span><strong>{memberCount}</strong> {isSchool ? "Students" : "Members"}</span>
                           <span>Fee: <strong>₹{dueFormatted}</strong></span>
                         </div>
 
@@ -1795,7 +1847,7 @@ export default function HomePage() {
                             onClick={() => router.push("/quick-collect")}
                             className="btn btn-secondary btn-sm"
                             style={{ padding: "6px 10px", fontSize: 12 }}
-                            title="Collect Fee"
+                            title={isSchool ? "Collect Student Fee" : "Collect Fee"}
                           >
                             <Icon name="zap" size={13} />
                           </button>
@@ -2007,12 +2059,12 @@ export default function HomePage() {
                     }}
                   >
                     {data.academySummary.thisMonthPendingMinor > 0
-                      ? `₹${((data.academySummary.thisMonthPendingMinor) / 100).toLocaleString("en-IN")} Pending (${data.academySummary.totalPendingCount} ${isGymOrStudio ? "Members" : "Students"})`
-                      : "All Cleared ✓"}
+                      ? `₹${((data.academySummary.thisMonthPendingMinor) / 100).toLocaleString("en-IN")} Total Dues (${data.academySummary.totalPendingCount} ${isGymOrStudio ? "Members" : "Students"})`
+                      : "All Cleared"}
                   </span>
                 </h2>
                 <p style={{ margin: "2px 0 0", fontSize: 12, color: "var(--muted)" }}>
-                  Outstanding fee dues for <strong>{data.academySummary.monthName}</strong> — manual contact and follow-up list
+                  Fee collections and outstanding dues for <strong>{data.academySummary.monthName}</strong> and previous academic cycles
                 </p>
               </div>
             </div>
@@ -2033,6 +2085,47 @@ export default function HomePage() {
               >
                 <span>View Full Fee Ledger →</span>
               </button>
+            </div>
+          </div>
+
+          {/* Mini Fee Scope Breakdown Ribbon */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 10, padding: "10px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0", marginBottom: 14 }}>
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#047857", textTransform: "uppercase" }}>
+                {data.academySummary.monthName} Collections
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#047857", marginTop: 2 }}>
+                ₹{((data.academySummary.thisMonthCollectedMinor) / 100).toLocaleString("en-IN")}
+              </div>
+              <div style={{ fontSize: 10.5, color: "#059669" }}>
+                Fee payments recorded this month
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#b45309", textTransform: "uppercase" }}>
+                {data.academySummary.monthName} Cycle Dues
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#b45309", marginTop: 2 }}>
+                ₹{(((data.academySummary.currentCyclePendingMinor ?? data.academySummary.thisMonthPendingMinor)) / 100).toLocaleString("en-IN")}
+              </div>
+              <div style={{ fontSize: 10.5, color: "#b45309" }}>
+                Unpaid balance for current cycle
+              </div>
+            </div>
+
+            <div>
+              <div style={{ fontSize: 11, fontWeight: 700, color: "#dc2626", textTransform: "uppercase" }}>
+                Total Student Dues
+              </div>
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#dc2626", marginTop: 2 }}>
+                ₹{((data.academySummary.thisMonthPendingMinor) / 100).toLocaleString("en-IN")}
+              </div>
+              <div style={{ fontSize: 10.5, color: "#ef4444" }}>
+                {data.academySummary.backlogPendingMinor && data.academySummary.backlogPendingMinor > 0
+                  ? `Incl. ₹${(data.academySummary.backlogPendingMinor / 100).toLocaleString("en-IN")} past backlog`
+                  : "All active student fee balances"}
+              </div>
             </div>
           </div>
 
@@ -2077,9 +2170,9 @@ export default function HomePage() {
                   <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                     <thead>
                       <tr style={{ borderBottom: "1px solid #e2e8f0", color: "#64748b", textAlign: "left" }}>
-                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Member" : "Student"}</th>
-                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Plan & Slot" : "Standard & Batch"}</th>
-                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>Contact (Manual Call)</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Member" : (isSchool ? "Student" : "Student / Member")}</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>{isGymOrStudio ? "Plan & Slot" : (isSchool ? "Class & Section" : "Standard & Batch")}</th>
+                        <th style={{ padding: "8px 10px", fontWeight: 650 }}>Contact (Parent / Phone)</th>
                         <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Pending Dues</th>
                         <th style={{ padding: "8px 10px", fontWeight: 650 }}>Status</th>
                         <th style={{ padding: "8px 10px", fontWeight: 650, textAlign: "right" }}>Action</th>
@@ -2120,7 +2213,7 @@ export default function HomePage() {
                                   </strong>
                                   {item.rollNumber && (
                                     <span style={{ fontSize: 11, color: "var(--muted)" }}>
-                                      ID #{item.rollNumber}
+                                      Roll #{item.rollNumber}
                                     </span>
                                   )}
                                 </div>
@@ -2155,7 +2248,8 @@ export default function HomePage() {
                                   }}
                                   title="Click to dial / call manually"
                                 >
-                                  <span>📞 {contactPhone}</span>
+                                  <Icon name="phone" size={12} />
+                                  <span>{contactPhone}</span>
                                 </a>
                               ) : (
                                 <span style={{ color: "var(--muted)", fontSize: 11.5 }}>No Phone</span>
@@ -2291,7 +2385,8 @@ export default function HomePage() {
                                 textDecoration: "none",
                               }}
                             >
-                              📞 {contactPhone}
+                              <Icon name="phone" size={12} />
+                              <span>{contactPhone}</span>
                             </a>
                           </div>
                         )}

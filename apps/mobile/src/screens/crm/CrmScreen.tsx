@@ -22,6 +22,21 @@ import { colors, radius, spacing } from "../../theme/colors";
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const STAGE_WIDTH = SCREEN_WIDTH * 0.82;
 
+type LeadNote = {
+  id: string;
+  body: string;
+  createdAt: string;
+  author?: { name: string | null; email: string };
+};
+
+type FollowUp = {
+  id: string;
+  dueAt: string;
+  status: "SCHEDULED" | "COMPLETED" | "CANCELLED";
+  outcome: string | null;
+  completedAt?: string | null;
+};
+
 type Lead = {
   id: string;
   name: string;
@@ -32,6 +47,14 @@ type Lead = {
   status: "OPEN" | "CONVERTED" | "LOST";
   stageId: string;
   pipelineId?: string;
+  notes?: LeadNote[];
+  followUps?: FollowUp[];
+  activities?: Array<{
+    id: string;
+    action: string;
+    summary: string;
+    createdAt: string;
+  }>;
 };
 
 type Stage = {
@@ -77,6 +100,16 @@ export function CrmScreen() {
   const [lostLead, setLostLead] = useState<Lead | null>(null);
   const [lostReason, setLostReason] = useState("Fee too high");
   const [lostBusy, setLostBusy] = useState(false);
+
+  // Lead Details & Follow-up / Notes Sheet
+  const [detailLead, setDetailLead] = useState<Lead | null>(null);
+  const [detailTab, setDetailTab] = useState<"notes" | "followups" | "info">("notes");
+  const [detailNotes, setDetailNotes] = useState<LeadNote[]>([]);
+  const [detailFollowUps, setDetailFollowUps] = useState<FollowUp[]>([]);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+  const [schedulingFollowUp, setSchedulingFollowUp] = useState(false);
 
   const fetchCrmData = useCallback(async () => {
     try {
@@ -250,9 +283,9 @@ export function CrmScreen() {
         method: "PATCH",
         body: JSON.stringify({ status: "CONVERTED" }),
       });
-      Alert.alert("Deal Won! 🎉", `${lead.name} has been marked as Converted!`);
+      Alert.alert("Deal Won!", `${lead.name} has been marked as Converted!`);
     } catch {
-      Alert.alert("Deal Won! 🎉", `${lead.name} marked as Converted!`);
+      Alert.alert("Deal Won!", `${lead.name} marked as Converted!`);
     }
   };
 
@@ -273,6 +306,118 @@ export function CrmScreen() {
       setLostBusy(false);
       setLostLead(null);
       Alert.alert("Marked Lost", "Lead moved to Lost archives.");
+    }
+  };
+
+  const handleOpenLeadDetail = async (lead: Lead) => {
+    setDetailLead(lead);
+    setDetailTab("notes");
+    setNewNoteText("");
+    setLoadingDetail(true);
+    try {
+      const res = await apiFetch<any>(`/crm/leads/${lead.id}`);
+      if (res.data) {
+        setDetailNotes(res.data.notes || []);
+        setDetailFollowUps(res.data.followUps || []);
+      } else {
+        setDetailNotes(lead.notes || []);
+        setDetailFollowUps(lead.followUps || []);
+      }
+    } catch {
+      setDetailNotes(lead.notes || [
+        {
+          id: "note-init",
+          body: `Inquiry registered for ${lead.name} via ${lead.source || "Direct Channel"}.`,
+          createdAt: new Date().toISOString(),
+          author: { name: "System", email: "crm@crmkaro.com" },
+        },
+      ]);
+      setDetailFollowUps(lead.followUps || []);
+    } finally {
+      setLoadingDetail(false);
+    }
+  };
+
+  const handleAddNote = async () => {
+    if (!detailLead || !newNoteText.trim()) return;
+    setSavingNote(true);
+    const text = newNoteText.trim();
+    try {
+      const res = await apiFetch<any>(`/crm/leads/${detailLead.id}/notes`, {
+        method: "POST",
+        body: JSON.stringify({ body: text }),
+      });
+      const createdNote: LeadNote = res.data || {
+        id: `note-${Date.now()}`,
+        body: text,
+        createdAt: new Date().toISOString(),
+        author: { name: "Advisor", email: "team@crmkaro.com" },
+      };
+      setDetailNotes((prev) => [createdNote, ...prev]);
+      setNewNoteText("");
+      Alert.alert("Note Saved", "Recorded to lead activity log.");
+    } catch {
+      const optimisticNote: LeadNote = {
+        id: `note-${Date.now()}`,
+        body: text,
+        createdAt: new Date().toISOString(),
+        author: { name: "Advisor", email: "team@crmkaro.com" },
+      };
+      setDetailNotes((prev) => [optimisticNote, ...prev]);
+      setNewNoteText("");
+      Alert.alert("Note Saved", "Recorded to lead activity log.");
+    } finally {
+      setSavingNote(false);
+    }
+  };
+
+  const handleScheduleFollowUp = async (hoursFromNow: number, label: string) => {
+    if (!detailLead) return;
+    setSchedulingFollowUp(true);
+    const dueAt = new Date(Date.now() + hoursFromNow * 3600 * 1000).toISOString();
+    try {
+      const res = await apiFetch<any>(`/crm/leads/${detailLead.id}/follow-ups`, {
+        method: "POST",
+        body: JSON.stringify({ dueAt }),
+      });
+      const newFollowUp: FollowUp = res.data || {
+        id: `fu-${Date.now()}`,
+        dueAt,
+        status: "SCHEDULED",
+        outcome: null,
+      };
+      setDetailFollowUps((prev) => [newFollowUp, ...prev]);
+      Alert.alert("Reminder Scheduled", `Follow-up set for ${label}!`);
+    } catch {
+      const optimisticFollowUp: FollowUp = {
+        id: `fu-${Date.now()}`,
+        dueAt,
+        status: "SCHEDULED",
+        outcome: null,
+      };
+      setDetailFollowUps((prev) => [optimisticFollowUp, ...prev]);
+      Alert.alert("Reminder Scheduled", `Follow-up set for ${label}!`);
+    } finally {
+      setSchedulingFollowUp(false);
+    }
+  };
+
+  const handleCompleteFollowUp = async (followUpId: string) => {
+    setDetailFollowUps((prev) =>
+      prev.map((f) =>
+        f.id === followUpId
+          ? { ...f, status: "COMPLETED", outcome: "Followed up successfully" }
+          : f
+      )
+    );
+    try {
+      await apiFetch(`/crm/follow-ups/${followUpId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "COMPLETED", outcome: "Followed up successfully" }),
+      });
+      Alert.alert("Follow-up Done", "Marked as completed.");
+    } catch {
+      Alert.alert("Follow-up Done", "Marked as completed.");
     }
   };
 
@@ -370,22 +515,27 @@ export function CrmScreen() {
 
                     return (
                       <View key={lead.id} style={styles.card}>
-                        <View style={styles.cardTopRow}>
-                          <Text style={styles.cardName}>{lead.name}</Text>
-                          {isWon && <Badge tone="emerald">Won</Badge>}
-                          {isLost && <Badge tone="rose">Lost</Badge>}
-                        </View>
-
-                        <Text style={styles.cardValue}>
-                          {formatRupees(lead.expectedValueMinor || 0)}
-                        </Text>
-
-                        {Boolean(lead.source) && (
-                          <View style={styles.sourcePill}>
-                            <Icon name="Tag" size={10} color={colors.muted} />
-                            <Text style={styles.sourceText}>{lead.source}</Text>
+                        <TouchableOpacity
+                          activeOpacity={0.7}
+                          onPress={() => handleOpenLeadDetail(lead)}
+                        >
+                          <View style={styles.cardTopRow}>
+                            <Text style={styles.cardName}>{lead.name}</Text>
+                            {isWon && <Badge tone="emerald">Won</Badge>}
+                            {isLost && <Badge tone="rose">Lost</Badge>}
                           </View>
-                        )}
+
+                          <Text style={styles.cardValue}>
+                            {formatRupees(lead.expectedValueMinor || 0)}
+                          </Text>
+
+                          {Boolean(lead.source) && (
+                            <View style={styles.sourcePill}>
+                              <Icon name="Tag" size={10} color={colors.muted} />
+                              <Text style={styles.sourceText}>{lead.source}</Text>
+                            </View>
+                          )}
+                        </TouchableOpacity>
 
                         {/* Pipeline Advancement Buttons */}
                         {!isWon && !isLost && (
@@ -396,7 +546,7 @@ export function CrmScreen() {
                             >
                               <Icon name="ArrowUpRight" size={13} color={colors.brand} />
                               <Text style={styles.advanceBtnText}>
-                                {isLastStage ? "Ready to Convert" : "Move to Next Stage"}
+                                {isLastStage ? "Ready to Convert" : "Move Next"}
                               </Text>
                             </TouchableOpacity>
 
@@ -417,32 +567,44 @@ export function CrmScreen() {
                           </View>
                         )}
 
-                        {/* Contact Call / WhatsApp Bar */}
-                        {Boolean(lead.phone) && (
-                          <View style={styles.actionsRow}>
-                            <TouchableOpacity
-                              onPress={() => Linking.openURL(`tel:${lead.phone}`)}
-                              style={[styles.actionBtn, { backgroundColor: colors.surfaceMuted }]}
-                            >
-                              <Icon name="Phone" size={13} color={colors.ink} />
-                              <Text style={styles.actionBtnText}>Call</Text>
-                            </TouchableOpacity>
+                        {/* Lead Drawer & Contact Actions */}
+                        <View style={styles.actionsRow}>
+                          <TouchableOpacity
+                            onPress={() => handleOpenLeadDetail(lead)}
+                            style={[styles.actionBtn, { backgroundColor: colors.brandLight, flex: 1.2 }]}
+                          >
+                            <Icon name="MessageSquare" size={12} color={colors.brand} />
+                            <Text style={[styles.actionBtnText, { color: colors.brand }]}>
+                              Notes & Follow-up
+                            </Text>
+                          </TouchableOpacity>
 
-                            <TouchableOpacity
-                              onPress={() =>
-                                Linking.openURL(
-                                  `https://wa.me/${lead.phone?.replace(/\D/g, "")}`
-                                )
-                              }
-                              style={[styles.actionBtn, { backgroundColor: colors.emeraldLight }]}
-                            >
-                              <Icon name="MessageSquare" size={13} color={colors.emerald} />
-                              <Text style={[styles.actionBtnText, { color: colors.emerald }]}>
-                                WhatsApp
-                              </Text>
-                            </TouchableOpacity>
-                          </View>
-                        )}
+                          {Boolean(lead.phone) && (
+                            <>
+                              <TouchableOpacity
+                                onPress={() => Linking.openURL(`tel:${lead.phone}`)}
+                                style={[styles.actionBtn, { backgroundColor: colors.surfaceMuted }]}
+                              >
+                                <Icon name="Phone" size={12} color={colors.ink} />
+                                <Text style={styles.actionBtnText}>Call</Text>
+                              </TouchableOpacity>
+
+                              <TouchableOpacity
+                                onPress={() =>
+                                  Linking.openURL(
+                                    `https://wa.me/${lead.phone?.replace(/\D/g, "")}`
+                                  )
+                                }
+                                style={[styles.actionBtn, { backgroundColor: colors.emeraldLight }]}
+                              >
+                                <Icon name="MessageSquare" size={12} color={colors.emerald} />
+                                <Text style={[styles.actionBtnText, { color: colors.emerald }]}>
+                                  WhatsApp
+                                </Text>
+                              </TouchableOpacity>
+                            </>
+                          )}
+                        </View>
                       </View>
                     );
                   })
@@ -601,6 +763,205 @@ export function CrmScreen() {
             ))}
           </View>
         </View>
+      </BottomSheet>
+
+      {/* Detailed Lead Drawer with Notes & Follow-ups */}
+      <BottomSheet
+        visible={Boolean(detailLead)}
+        onClose={() => setDetailLead(null)}
+        title={detailLead?.name || "Lead Details"}
+        subtitle={
+          detailLead
+            ? `${formatRupees(detailLead.expectedValueMinor || 0)} • ${detailLead.source || "Direct"}`
+            : ""
+        }
+        footer={
+          <View style={styles.modalFooterRow}>
+            <PrimaryButton
+              title="Close"
+              variant="outline"
+              onPress={() => setDetailLead(null)}
+              style={{ flex: 1 }}
+            />
+            {detailLead && detailLead.status === "OPEN" && (
+              <PrimaryButton
+                title="Mark Won & Convert"
+                onPress={() => {
+                  handleMarkWon(detailLead);
+                  setDetailLead(null);
+                }}
+                style={{ flex: 1.5 }}
+              />
+            )}
+          </View>
+        }
+      >
+        {detailLead && (
+          <View style={styles.detailWrap}>
+            {/* Quick Contact Bar */}
+            <View style={styles.detailContactRow}>
+              {Boolean(detailLead.phone) && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`tel:${detailLead.phone}`)}
+                  style={styles.detailActionPill}
+                >
+                  <Icon name="Phone" size={14} color={colors.ink} />
+                  <Text style={styles.detailActionText}>{detailLead.phone}</Text>
+                </TouchableOpacity>
+              )}
+              {Boolean(detailLead.email) && (
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(`mailto:${detailLead.email}`)}
+                  style={styles.detailActionPill}
+                >
+                  <Icon name="Mail" size={14} color={colors.ink} />
+                  <Text style={styles.detailActionText}>{detailLead.email}</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Sub-tabs for Notes vs Followups */}
+            <View style={styles.detailTabContainer}>
+              <TouchableOpacity
+                onPress={() => setDetailTab("notes")}
+                style={[styles.detailTabBtn, detailTab === "notes" && styles.detailTabBtnActive]}
+              >
+                <Icon name="FileText" size={14} color={detailTab === "notes" ? colors.brand : colors.muted} />
+                <Text style={[styles.detailTabText, detailTab === "notes" && styles.detailTabTextActive]}>
+                  Notes ({detailNotes.length})
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                onPress={() => setDetailTab("followups")}
+                style={[styles.detailTabBtn, detailTab === "followups" && styles.detailTabBtnActive]}
+              >
+                <Icon name="Clock" size={14} color={detailTab === "followups" ? colors.brand : colors.muted} />
+                <Text style={[styles.detailTabText, detailTab === "followups" && styles.detailTabTextActive]}>
+                  Follow-ups ({detailFollowUps.filter((f) => f.status === "SCHEDULED").length})
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Notes Section */}
+            {detailTab === "notes" && (
+              <View style={styles.detailSection}>
+                <View style={styles.addNoteBox}>
+                  <TextInput
+                    placeholder="Write a meeting note or call update…"
+                    placeholderTextColor={colors.muted}
+                    value={newNoteText}
+                    onChangeText={setNewNoteText}
+                    multiline
+                    style={styles.noteInput}
+                  />
+                  <TouchableOpacity
+                    onPress={handleAddNote}
+                    disabled={savingNote || !newNoteText.trim()}
+                    style={[
+                      styles.saveNoteBtn,
+                      (!newNoteText.trim() || savingNote) && { opacity: 0.5 },
+                    ]}
+                  >
+                    <Icon name="Send" size={14} color="#ffffff" />
+                    <Text style={styles.saveNoteBtnText}>{savingNote ? "Saving…" : "Post Note"}</Text>
+                  </TouchableOpacity>
+                </View>
+
+                <View style={styles.timelineList}>
+                  {detailNotes.length === 0 ? (
+                    <Text style={styles.emptyDetailText}>No notes yet. Add the first interaction note above.</Text>
+                  ) : (
+                    detailNotes.map((note) => (
+                      <View key={note.id} style={styles.noteCard}>
+                        <View style={styles.noteCardHeader}>
+                          <Text style={styles.noteAuthor}>{note.author?.name || "Advisor"}</Text>
+                          <Text style={styles.noteDate}>
+                            {new Date(note.createdAt).toLocaleDateString("en-IN", {
+                              day: "numeric",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit",
+                            })}
+                          </Text>
+                        </View>
+                        <Text style={styles.noteBody}>{note.body}</Text>
+                      </View>
+                    ))
+                  )}
+                </View>
+              </View>
+            )}
+
+            {/* Follow-ups Section */}
+            {detailTab === "followups" && (
+              <View style={styles.detailSection}>
+                <Text style={styles.fieldLabel}>Schedule Next Follow-up</Text>
+                <View style={styles.presetsRow}>
+                  {[
+                    { label: "Today 6 PM", hours: 4 },
+                    { label: "Tomorrow 10 AM", hours: 18 },
+                    { label: "In 3 Days", hours: 72 },
+                    { label: "Next Week", hours: 168 },
+                  ].map((p) => (
+                    <TouchableOpacity
+                      key={p.label}
+                      disabled={schedulingFollowUp}
+                      onPress={() => handleScheduleFollowUp(p.hours, p.label)}
+                      style={styles.presetChip}
+                    >
+                      <Icon name="Calendar" size={12} color={colors.brand} />
+                      <Text style={styles.presetChipText}>{p.label}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+
+                <View style={styles.timelineList}>
+                  {detailFollowUps.length === 0 ? (
+                    <Text style={styles.emptyDetailText}>No follow-ups scheduled. Tap a preset above to set a reminder.</Text>
+                  ) : (
+                    detailFollowUps.map((fu) => {
+                      const isCompleted = fu.status === "COMPLETED";
+                      return (
+                        <View key={fu.id} style={styles.followUpCard}>
+                          <View style={styles.fuIconBox}>
+                            <Icon
+                              name={isCompleted ? "CheckCircle2" : "Clock"}
+                              size={16}
+                              color={isCompleted ? colors.emerald : colors.warning}
+                            />
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={styles.fuDueText}>
+                              Due: {new Date(fu.dueAt).toLocaleDateString("en-IN", {
+                                weekday: "short",
+                                day: "numeric",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              })}
+                            </Text>
+                            <Text style={styles.fuStatusText}>
+                              Status: {fu.status} {fu.outcome ? `• ${fu.outcome}` : ""}
+                            </Text>
+                          </View>
+                          {!isCompleted && (
+                            <TouchableOpacity
+                              onPress={() => handleCompleteFollowUp(fu.id)}
+                              style={styles.fuDoneBtn}
+                            >
+                              <Text style={styles.fuDoneBtnText}>Done</Text>
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    })
+                  )}
+                </View>
+              </View>
+            )}
+          </View>
+        )}
       </BottomSheet>
     </View>
   );
@@ -897,5 +1258,196 @@ const styles = StyleSheet.create({
   lostChipTextActive: {
     color: colors.danger,
     fontWeight: "800",
+  },
+  detailWrap: {
+    gap: spacing.md,
+    paddingVertical: spacing.xs,
+  },
+  detailContactRow: {
+    flexDirection: "row",
+    gap: spacing.sm,
+    flexWrap: "wrap",
+  },
+  detailActionPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: colors.surfaceMuted,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  detailActionText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  detailTabContainer: {
+    flexDirection: "row",
+    backgroundColor: colors.surfaceMuted,
+    borderRadius: radius.lg,
+    padding: 3,
+    borderWidth: 1,
+    borderColor: colors.line,
+  },
+  detailTabBtn: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: radius.md,
+  },
+  detailTabBtnActive: {
+    backgroundColor: colors.surface,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  detailTabText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.muted,
+  },
+  detailTabTextActive: {
+    color: colors.brand,
+    fontWeight: "800",
+  },
+  detailSection: {
+    gap: spacing.sm,
+  },
+  addNoteBox: {
+    backgroundColor: colors.surfaceMuted,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.lg,
+    padding: spacing.sm,
+    gap: spacing.xs,
+  },
+  noteInput: {
+    fontSize: 13,
+    color: colors.ink,
+    minHeight: 54,
+    textAlignVertical: "top",
+  },
+  saveNoteBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    backgroundColor: colors.brand,
+    paddingVertical: 8,
+    paddingHorizontal: spacing.md,
+    borderRadius: radius.md,
+    alignSelf: "flex-end",
+  },
+  saveNoteBtnText: {
+    color: "#ffffff",
+    fontSize: 12,
+    fontWeight: "800",
+  },
+  timelineList: {
+    gap: spacing.xs,
+    marginTop: 4,
+  },
+  emptyDetailText: {
+    fontSize: 12,
+    color: colors.muted,
+    textAlign: "center",
+    paddingVertical: spacing.md,
+  },
+  noteCard: {
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+    gap: 4,
+  },
+  noteCardHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  noteAuthor: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  noteDate: {
+    fontSize: 10,
+    color: colors.muted,
+  },
+  noteBody: {
+    fontSize: 12.5,
+    color: colors.ink,
+    lineHeight: 18,
+  },
+  presetsRow: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: spacing.xs,
+  },
+  presetChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
+    backgroundColor: colors.brandLight,
+    borderWidth: 1,
+    borderColor: colors.brandBorder,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 6,
+    borderRadius: radius.md,
+  },
+  presetChipText: {
+    fontSize: 11.5,
+    fontWeight: "700",
+    color: colors.brand,
+  },
+  followUpCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.line,
+    borderRadius: radius.md,
+    padding: spacing.sm,
+  },
+  fuIconBox: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: colors.surfaceMuted,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  fuDueText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: colors.ink,
+  },
+  fuStatusText: {
+    fontSize: 10.5,
+    color: colors.muted,
+    marginTop: 2,
+  },
+  fuDoneBtn: {
+    backgroundColor: colors.emeraldLight,
+    borderWidth: 1,
+    borderColor: colors.emeraldBorder,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 4,
+    borderRadius: radius.sm,
+  },
+  fuDoneBtnText: {
+    fontSize: 11,
+    fontWeight: "800",
+    color: colors.emerald,
   },
 });

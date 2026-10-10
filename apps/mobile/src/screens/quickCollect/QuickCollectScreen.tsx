@@ -150,7 +150,7 @@ export function QuickCollectScreen() {
         {successInvoices ? (
           <View style={styles.successCard}>
             <Text style={styles.successHeading}>
-              🎉 {successInvoices.length} Requests Generated!
+              {successInvoices.length} Requests Generated!
             </Text>
             <Text style={styles.successSub}>
               Tap below to send 1-click WhatsApp payment reminders:

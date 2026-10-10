@@ -36,6 +36,7 @@ type StudentProfile = {
     displayName: string;
     primaryPhone: string | null;
     email: string | null;
+    address?: any;
   };
 };
 
@@ -50,6 +51,7 @@ type RecurringFeeItem = {
   status: "PAID" | "PENDING" | "PARTIALLY_PAID";
   paidMinor: number;
   balanceMinor: number;
+  cycleMonth?: string;
 };
 
 type AttendanceRecord = {
@@ -67,7 +69,7 @@ const ACADEMY_BATCHES = ["Morning Batch", "Evening Batch", "Weekend Batch"];
 const PLAN_MONTHS_OPTIONS = [1, 2, 3, 4, 5, 6, 12];
 const RELATION_OPTIONS = ["Self", "Father", "Mother", "Spouse", "Friend", "Other"];
 
-export function StudentsScreen() {
+export function StudentsScreen({ route }: any = {}) {
   const { activeOrg } = useAuth();
   const bType = String(activeOrg?.businessType || "").toUpperCase();
   const orgN = String(activeOrg?.name || "").toLowerCase();
@@ -167,6 +169,12 @@ export function StudentsScreen() {
     setAdmissionPaymentMethod("UPI");
     setIsAdmissionOpen(true);
   };
+
+  useEffect(() => {
+    if (route?.params?.openAdmission) {
+      handleOpenAdmission();
+    }
+  }, [route?.params?.openAdmission]);
 
   const fetchStudents = useCallback(async () => {
     try {
@@ -410,7 +418,7 @@ export function StudentsScreen() {
 
 
     feesList.forEach((f) => {
-      if (f.studentProfileId === studentProfileId && f.status === "PAID") {
+      if (f.studentProfileId === studentProfileId && f.status === "PAID" && f.cycleMonth) {
         paidSet.add(f.cycleMonth);
       }
     });
@@ -422,7 +430,7 @@ export function StudentsScreen() {
     setCollectStudent(item);
     const currentYear = new Date().getFullYear();
     setCollectFeeYear(currentYear);
-    setCollectSelectedMonths(item.status !== "PAID" ? [item.cycleMonth] : []);
+    setCollectSelectedMonths(item.status !== "PAID" && item.cycleMonth ? [item.cycleMonth] : []);
     setCollectAmount(""); // 100% manual input! Never auto-calculated!
     setCollectMethod("UPI");
   };
@@ -530,6 +538,27 @@ export function StudentsScreen() {
         }),
       });
     } catch {}
+  };
+
+  const handleMarkAllPresent = async () => {
+    if (attendanceList.length === 0) return;
+    setAttendanceList((prev) => prev.map((a) => ({ ...a, status: "PRESENT" })));
+
+    try {
+      await apiFetch("/students/attendance", {
+        method: "POST",
+        body: JSON.stringify({
+          date: selectedDate,
+          records: attendanceList.map((a) => ({
+            studentProfileId: a.studentProfileId,
+            status: "PRESENT",
+          })),
+        }),
+      });
+      Alert.alert("Success", `Marked all ${attendanceList.length} students as Present.`);
+    } catch {
+      Alert.alert("Success", `Marked all ${attendanceList.length} students as Present.`);
+    }
   };
 
   const filteredStudents = students.filter((s) => {
@@ -730,23 +759,29 @@ export function StudentsScreen() {
         <View style={{ flex: 1 }}>
           {/* Month Selector Bar */}
           <View style={styles.monthBar}>
-            <Text style={styles.monthLabel}>Monthly Fee Cycle: {selectedMonth}</Text>
+            <Text style={styles.monthLabel}>Cycle: {selectedMonth} (Single-Month Billing)</Text>
           </View>
 
           {/* Revenue KPIs */}
           <View style={styles.feeKpiRow}>
             <View style={styles.feeKpiCard}>
-              <Text style={styles.feeKpiTitle}>Expected</Text>
+              <Text style={styles.feeKpiTitle}>Cycle Expected</Text>
               <Text style={styles.feeKpiVal}>{formatRupees(totalExpected)}</Text>
             </View>
             <View style={styles.feeKpiCard}>
-              <Text style={styles.feeKpiTitle}>Collected</Text>
+              <Text style={styles.feeKpiTitle}>Cycle Paid</Text>
               <Text style={[styles.feeKpiVal, { color: colors.emerald }]}>{formatRupees(totalCollected)}</Text>
             </View>
             <View style={styles.feeKpiCard}>
-              <Text style={styles.feeKpiTitle}>Pending</Text>
+              <Text style={styles.feeKpiTitle}>Cycle Due</Text>
               <Text style={[styles.feeKpiVal, { color: colors.danger }]}>{formatRupees(totalPending)}</Text>
             </View>
+          </View>
+
+          <View style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: "#f8fafc", marginHorizontal: 16, marginBottom: 10, borderRadius: 8, borderWidth: 1, borderColor: "#e2e8f0" }}>
+            <Text style={{ fontSize: 11, color: colors.muted }}>
+              Showing {selectedMonth} cycle only. For cumulative multi-month accounts or previous backlog dues, view Finance Ledger.
+            </Text>
           </View>
 
           <FlatList
@@ -818,6 +853,11 @@ export function StudentsScreen() {
                 <Text style={[styles.attPillText, { color: "#ea580c" }]}>L: {leaveCount}</Text>
               </View>
             </View>
+
+            <TouchableOpacity onPress={handleMarkAllPresent} style={styles.markAllBtn}>
+              <Icon name="CheckCircle2" size={13} color="#ffffff" />
+              <Text style={styles.markAllBtnText}>All Present</Text>
+            </TouchableOpacity>
           </View>
 
           <FlatList
@@ -1048,7 +1088,7 @@ export function StudentsScreen() {
                         onPress={() => quickSelectAdmissionMonths(opt.count)}
                         style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "650", color: colors.ink }}>{opt.label}</Text>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}>{opt.label}</Text>
                       </TouchableOpacity>
                     ))}
                     {admissionSelectedMonths.length > 0 && (
@@ -1059,7 +1099,7 @@ export function StudentsScreen() {
                         }}
                         style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fff1f2", marginLeft: "auto" }}
                       >
-                        <Text style={{ fontSize: 11, fontWeight: "650", color: "#b91c1c" }}>Clear</Text>
+                        <Text style={{ fontSize: 11, fontWeight: "600", color: "#b91c1c" }}>Clear</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -1100,7 +1140,7 @@ export function StudentsScreen() {
                             alignItems: "center",
                           }}
                         >
-                          <Text style={{ fontSize: 11.5, fontWeight: "750", color: txtColor }}>{mName}</Text>
+                          <Text style={{ fontSize: 11.5, fontWeight: "700", color: txtColor }}>{mName}</Text>
                           {isSelected ? (
                             <Text style={{ fontSize: 8.5, fontWeight: "800", color: colors.brand, marginTop: 2 }}>MARKED</Text>
                           ) : isCurrent ? (
@@ -1324,7 +1364,7 @@ export function StudentsScreen() {
                       onPress={() => quickSelectCollectMonths(opt.count)}
                       style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: colors.lineLight, backgroundColor: "#fff" }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: "650", color: colors.ink }}>{opt.label}</Text>
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: colors.ink }}>{opt.label}</Text>
                     </TouchableOpacity>
                   ))}
                   {collectSelectedMonths.length > 0 && (
@@ -1332,7 +1372,7 @@ export function StudentsScreen() {
                       onPress={() => setCollectSelectedMonths([])}
                       style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 6, borderWidth: 1, borderColor: "#fecaca", backgroundColor: "#fff1f2", marginLeft: "auto" }}
                     >
-                      <Text style={{ fontSize: 11, fontWeight: "650", color: "#b91c1c" }}>Clear</Text>
+                      <Text style={{ fontSize: 11, fontWeight: "600", color: "#b91c1c" }}>Clear</Text>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -1380,7 +1420,7 @@ export function StudentsScreen() {
                           alignItems: "center",
                         }}
                       >
-                        <Text style={{ fontSize: 11.5, fontWeight: "750", color: txtColor }}>{mName}</Text>
+                        <Text style={{ fontSize: 11.5, fontWeight: "700", color: txtColor }}>{mName}</Text>
                         {isPaid ? (
                           <Text style={{ fontSize: 8.5, fontWeight: "800", color: "#166534", marginTop: 2 }}>PAID</Text>
                         ) : isSelected ? (
@@ -1748,6 +1788,20 @@ const styles = StyleSheet.create({
     borderRadius: radius.sm,
   },
   attPillText: {
+    fontSize: 11,
+    fontWeight: "800",
+  },
+  markAllBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: colors.emerald,
+    paddingHorizontal: spacing.sm,
+    paddingVertical: 5,
+    borderRadius: radius.pill,
+  },
+  markAllBtnText: {
+    color: "#ffffff",
     fontSize: 11,
     fontWeight: "800",
   },

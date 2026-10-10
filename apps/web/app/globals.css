@@ -455,3 +455,46 @@ input[type="number"] {
   }
 }
 
+/* ------------------------------------------------------------- */
+/* High Performance Smooth Transitions & Skeleton Pulse         */
+/* ------------------------------------------------------------- */
+@keyframes skeletonPulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.38;
+  }
+}
+
+.skeleton-pulse {
+  animation: skeletonPulse 1.3s ease-in-out infinite;
+}
+
+@keyframes contentFadeIn {
+  from {
+    opacity: 0.85;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-shell main,
+.app-shell .page-heading,
+.app-shell .stats-grid,
+.app-shell .table-wrapper {
+  animation: contentFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.nav-link {
+  transition: background-color 0.12s ease, color 0.12s ease, transform 0.1s ease !important;
+}
+
+.nav-link:active {
+  transform: scale(0.985);
+}
+
+

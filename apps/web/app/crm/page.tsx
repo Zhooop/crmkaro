@@ -722,7 +722,7 @@ function CrmContent() {
                             textDecoration: "none",
                           }}
                         >
-                          <span>📲 WhatsApp</span>
+                          <span>WhatsApp</span>
                         </a>
 
                         <a
@@ -742,7 +742,7 @@ function CrmContent() {
                             textDecoration: "none",
                           }}
                         >
-                          <span>📞 Call</span>
+                          <span>Call</span>
                         </a>
                       </>
                     )}
@@ -1188,28 +1188,28 @@ function CrmContent() {
                   onClick={() => setQuickFollowUpPreset("TODAY_5PM")}
                   style={{ padding: "4px 8px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                 >
-                  📞 Call Today 5 PM
+                  Call Today 5 PM
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUpPreset("TOMORROW_11AM")}
                   style={{ padding: "4px 8px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                 >
-                  💬 WhatsApp Tomorrow 11 AM
+                  WhatsApp Tomorrow 11 AM
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUpPreset("IN_3_DAYS")}
                   style={{ padding: "4px 8px", background: "#fefce8", border: "1px solid #fef08a", color: "#a16207", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                 >
-                  🤝 In 3 Days
+                  In 3 Days
                 </button>
                 <button
                   type="button"
                   onClick={() => setQuickFollowUpPreset("NEXT_WEEK")}
                   style={{ padding: "4px 8px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 6, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
                 >
-                  📅 Next Week Demo
+                  Next Week Demo
                 </button>
               </div>
 

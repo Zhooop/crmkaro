@@ -96,7 +96,7 @@ export class AuthService {
   async verifyEmailOtp(
     challengeId: string,
     code: string,
-    metadata: { ipAddress?: string; userAgent?: string },
+    metadata: { ipAddress?: string; userAgent?: string; platform?: string },
   ) {
     const user = await this.database.$transaction(async (transaction) => {
       const challenge = await transaction.emailOtpChallenge.findUnique({ where: { id: challengeId } });
@@ -126,15 +126,28 @@ export class AuthService {
       });
       if (consumed.count !== 1) return null;
 
+      const currentPlatform = metadata.platform || "WEB";
       return transaction.user.upsert({
         where: { email: challenge.email },
-        update: { lastLoginAt: new Date() },
-        create: { email: challenge.email, lastLoginAt: new Date() },
+        update: {
+          lastLoginAt: new Date(),
+          lastPlatform: currentPlatform,
+        },
+        create: {
+          email: challenge.email,
+          lastLoginAt: new Date(),
+          signupPlatform: currentPlatform,
+          lastPlatform: currentPlatform,
+        },
       });
     });
 
     if (!user) {
       throw new UnauthorizedException("Code is invalid or expired.");
+    }
+
+    if (user.status === "DISABLED") {
+      throw new UnauthorizedException(user.blockReason ? `Account is suspended: ${user.blockReason}` : "Account is suspended. Please contact support.");
     }
 
     return this.sessions.create(user.id, metadata);
@@ -189,7 +202,7 @@ export class AuthService {
   async completeGoogle(
     state: string,
     code: string,
-    metadata: { ipAddress?: string; userAgent?: string },
+    metadata: { ipAddress?: string; userAgent?: string; platform?: string },
   ) {
     const clientId = this.config.get("GOOGLE_CLIENT_ID", { infer: true });
     const clientSecret = this.config.get("GOOGLE_CLIENT_SECRET", { infer: true });
@@ -238,16 +251,24 @@ export class AuthService {
       throw new UnauthorizedException("A verified Google email is required.");
     }
 
+    const currentPlatform = metadata.platform || "WEB";
     const user = await this.database.$transaction(async (transaction) => {
       await transaction.oAuthState.update({ where: { id: oauthState.id }, data: { consumedAt: new Date() } });
       const account = await transaction.user.upsert({
         where: { email: profile.email!.toLowerCase() },
-        update: { name: profile.name, avatarUrl: profile.picture, lastLoginAt: new Date() },
+        update: {
+          name: profile.name,
+          avatarUrl: profile.picture,
+          lastLoginAt: new Date(),
+          lastPlatform: currentPlatform,
+        },
         create: {
           email: profile.email!.toLowerCase(),
           name: profile.name,
           avatarUrl: profile.picture,
           lastLoginAt: new Date(),
+          signupPlatform: currentPlatform,
+          lastPlatform: currentPlatform,
         },
       });
       await transaction.oAuthAccount.upsert({
@@ -257,6 +278,10 @@ export class AuthService {
       });
       return account;
     });
+
+    if (user.status === "DISABLED") {
+      throw new UnauthorizedException(user.blockReason ? `Account is suspended: ${user.blockReason}` : "Account is suspended. Please contact support.");
+    }
 
     const session = await this.sessions.create(user.id, metadata);
     let targetRedirectUri = oauthState.redirectUri;

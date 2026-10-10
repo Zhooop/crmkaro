@@ -14,11 +14,23 @@ import {
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
+import { UsersView } from "./components/users-view";
+import { CmsView } from "./components/cms-view";
+import { TransactionsView } from "./components/transactions-view";
+import { NotificationsView } from "./components/notifications-view";
+import { ReportsView } from "./components/reports-view";
+import { TeamView } from "./components/team-view";
 
 const nav: NavItem[] = [
   { label: "Platform Overview", icon: "home", href: "#overview" },
+  { label: "User Directory", icon: "people", href: "#users" },
+  { label: "CMS & Banners", icon: "services", href: "#cms" },
+  { label: "Payments & Refunds", icon: "finance", href: "#transactions" },
+  { label: "Broadcasts", icon: "bell", href: "#notifications" },
+  { label: "Business Reports", icon: "reports", href: "#reports" },
+  { label: "Team & Permissions", icon: "shield", href: "#team" },
   { label: "Organisations & Tenants", icon: "building", href: "#organisations" },
-  { label: "Services & Adoption", icon: "services", href: "#services" },
+  { label: "Services & Adoption", icon: "settings", href: "#services" },
   { label: "Platform Audit", icon: "shield", href: "#audit" },
   { label: "System Health", icon: "activity", href: "#health" },
 ];
@@ -139,7 +151,20 @@ export default function AdminHomePage() {
   const api = getApiUrl();
 
   // Navigation tab state
-  const [activeTab, setActiveTab] = useState<"overview" | "organisations" | "services" | "audit" | "health">("overview");
+  type PlatformTab =
+    | "overview"
+    | "users"
+    | "cms"
+    | "transactions"
+    | "notifications"
+    | "reports"
+    | "team"
+    | "organisations"
+    | "services"
+    | "audit"
+    | "health";
+
+  const [activeTab, setActiveTab] = useState<PlatformTab>("overview");
 
   // Data states
   const [data, setData] = useState<PlatformOverview | null>(null);
@@ -149,6 +174,11 @@ export default function AdminHomePage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [feedback, setFeedback] = useState<{ message: string; type: "success" | "error" } | null>(null);
+
+  const triggerFeedback = useCallback((message: string, type: "success" | "error") => {
+    setFeedback({ message, type });
+    setTimeout(() => setFeedback(null), 3500);
+  }, []);
 
   // Search & Filter states
   const [orgSearch, setOrgSearch] = useState("");
@@ -176,7 +206,20 @@ export default function AdminHomePage() {
   useEffect(() => {
     function handleHash() {
       const hash = window.location.hash.replace("#", "");
-      if (["overview", "organisations", "services", "audit", "health"].includes(hash)) {
+      const validTabs = [
+        "overview",
+        "users",
+        "cms",
+        "transactions",
+        "notifications",
+        "reports",
+        "team",
+        "organisations",
+        "services",
+        "audit",
+        "health",
+      ];
+      if (validTabs.includes(hash)) {
         setActiveTab(hash as any);
       }
     }
@@ -478,8 +521,14 @@ export default function AdminHomePage() {
       <div className="admin-nav-tabs" style={{ display: "flex", gap: 8, borderBottom: "1px solid #1e293b", paddingBottom: 12, marginBottom: 24, overflowX: "auto" }}>
         {[
           { key: "overview", label: "Platform Overview", icon: "home" },
+          { key: "users", label: "User Directory", icon: "people" },
+          { key: "cms", label: "CMS & Banners", icon: "services" },
+          { key: "transactions", label: "Payments & Refunds", icon: "finance" },
+          { key: "notifications", label: "Broadcasts", icon: "bell" },
+          { key: "reports", label: "Business Reports", icon: "reports" },
+          { key: "team", label: "Team & Permissions", icon: "shield" },
           { key: "organisations", label: `Tenants (${organisations.length})`, icon: "building" },
-          { key: "services", label: "Services & Adoption", icon: "services" },
+          { key: "services", label: "Services & Adoption", icon: "settings" },
           { key: "audit", label: `Audit Trail (${auditLogs.length})`, icon: "shield" },
           { key: "health", label: "System Health", icon: "activity" },
         ].map((tab) => {
@@ -700,6 +749,36 @@ export default function AdminHomePage() {
                 </SectionCard>
               </div>
             </>
+          )}
+
+          {/* TAB: USERS DIRECTORY */}
+          {activeTab === "users" && (
+            <UsersView onFeedback={triggerFeedback} />
+          )}
+
+          {/* TAB: CMS & BANNERS */}
+          {activeTab === "cms" && (
+            <CmsView onFeedback={triggerFeedback} />
+          )}
+
+          {/* TAB: PAYMENTS & TRANSACTIONS */}
+          {activeTab === "transactions" && (
+            <TransactionsView onFeedback={triggerFeedback} />
+          )}
+
+          {/* TAB: BROADCAST NOTIFICATIONS */}
+          {activeTab === "notifications" && (
+            <NotificationsView onFeedback={triggerFeedback} />
+          )}
+
+          {/* TAB: BUSINESS REPORTS */}
+          {activeTab === "reports" && (
+            <ReportsView onFeedback={triggerFeedback} />
+          )}
+
+          {/* TAB: TEAM & PERMISSIONS */}
+          {activeTab === "team" && (
+            <TeamView onFeedback={triggerFeedback} />
           )}
 
           {/* TAB 2: ORGANISATIONS & TENANTS */}

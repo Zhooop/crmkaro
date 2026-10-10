@@ -232,6 +232,69 @@ export function SettingsScreen() {
           </View>
         </View>
 
+        {/* Active Workspace Modules & Entitlements Card */}
+        <View style={styles.card}>
+          <Text style={styles.cardTitle}>Active Workspace Modules</Text>
+          <Text style={styles.cardSubtitle}>Enabled cloud services & modular entitlements</Text>
+
+          <View style={styles.modulesGrid}>
+            <View style={styles.moduleItem}>
+              <View style={[styles.moduleIconWrap, { backgroundColor: colors.brandLight }]}>
+                <Icon name="Users" size={16} color={colors.brand} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moduleName}>CRM & Pipelines</Text>
+                <Text style={styles.moduleDesc}>Lead management, logs & follow-ups</Text>
+              </View>
+              <Badge tone="emerald">Enabled</Badge>
+            </View>
+
+            <View style={styles.moduleItem}>
+              <View style={[styles.moduleIconWrap, { backgroundColor: colors.emeraldLight }]}>
+                <Icon name="CreditCard" size={16} color={colors.emerald} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moduleName}>Finance & Invoicing</Text>
+                <Text style={styles.moduleDesc}>GST invoices, payments & refunds</Text>
+              </View>
+              <Badge tone="emerald">Enabled</Badge>
+            </View>
+
+            <View style={styles.moduleItem}>
+              <View style={[styles.moduleIconWrap, { backgroundColor: "#fef3c7" }]}>
+                <Icon name="GraduationCap" size={16} color="#d97706" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moduleName}>Students & Members</Text>
+                <Text style={styles.moduleDesc}>Monthly recurring fees & daily check-ins</Text>
+              </View>
+              <Badge tone="emerald">Enabled</Badge>
+            </View>
+
+            <View style={styles.moduleItem}>
+              <View style={[styles.moduleIconWrap, { backgroundColor: "#f3e8ff" }]}>
+                <Icon name="Package" size={16} color="#9333ea" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moduleName}>Inventory & Catalog</Text>
+                <Text style={styles.moduleDesc}>Multi-category products & stock tracking</Text>
+              </View>
+              <Badge tone="emerald">Enabled</Badge>
+            </View>
+
+            <View style={styles.moduleItem}>
+              <View style={[styles.moduleIconWrap, { backgroundColor: "#e0f2fe" }]}>
+                <Icon name="FileText" size={16} color="#0284c7" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.moduleName}>Staff & Payroll</Text>
+                <Text style={styles.moduleDesc}>Salaries, attendance & advances</Text>
+              </View>
+              <Badge tone="emerald">Enabled</Badge>
+            </View>
+          </View>
+        </View>
+
         {/* Switch Workspace */}
         {organisations.length > 1 && (
           <View style={styles.card}>
@@ -496,6 +559,34 @@ const styles = StyleSheet.create({
     color: colors.ink,
   },
   gwSub: {
+    fontSize: 11,
+    color: colors.muted,
+  },
+  modulesGrid: {
+    gap: spacing.xs,
+    marginTop: spacing.sm,
+  },
+  moduleItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: spacing.sm,
+    paddingVertical: spacing.xs + 2,
+    borderTopWidth: 1,
+    borderTopColor: colors.lineLight,
+  },
+  moduleIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  moduleName: {
+    fontSize: 13,
+    fontWeight: "800",
+    color: colors.ink,
+  },
+  moduleDesc: {
     fontSize: 11,
     color: colors.muted,
   },

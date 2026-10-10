@@ -17,6 +17,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
+  isSchoolWorkspace,
 } from "@/lib/nav";
 
 const INVOICE_ITEM_PRESETS = [
@@ -118,31 +119,48 @@ function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
   }).format(amountMinor / 100);
 }
 
-function generateInvoiceShareText(inv: Invoice, orgName: string): string {
+function generateInvoiceShareText(inv: Invoice, orgName: string, isSchool?: boolean): string {
   const itemsText = (inv.items || [])
     .map(
       (it) =>
-        `• ${it.description} (Qty: ${it.quantity}) — ${formatMoney(it.lineTotalMinor ?? (Number(it.quantity) * it.unitPriceMinor))}`,
+        `* ${it.description} (Qty: ${it.quantity}) - ${formatMoney(it.lineTotalMinor ?? (Number(it.quantity) * it.unitPriceMinor))}`,
     )
     .join("\n");
 
+  if (isSchool) {
+    return (
+      `*SCHOOL FEE RECEIPT - ${orgName || "CRMKaro"}*\n\n` +
+      `*Student:* ${inv.person?.displayName || "—"}\n` +
+      `*Receipt / Slip No:* ${inv.invoiceNumber}\n` +
+      `*Date:* ${inv.issueDate ? new Date(inv.issueDate).toLocaleDateString("en-IN") : "Today"}\n` +
+      `*Due Date:* ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "Immediate / On Demand"}\n` +
+      `*Status:* ${inv.status}\n\n` +
+      (itemsText ? `*Fee Particulars:*\n${itemsText}\n\n` : "") +
+      `*Total Fee:* ${formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}\n` +
+      `*Fee Paid:* ${formatMoney(inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0)}\n` +
+      `*Balance Due:* ${formatMoney(inv.balanceDueMinor ?? 0)}\n\n` +
+      (inv.notes ? `*Notes:* ${inv.notes}\n\n` : "") +
+      `Thank you! - *${orgName || "CRMKaro"}*`
+    );
+  }
+
   return (
-    `🧾 *INVOICE / BILL — ${orgName || "CRMKaro"}*\n\n` +
-    `👤 *Customer / Student:* ${inv.person?.displayName || "—"}\n` +
-    `📄 *Invoice No:* ${inv.invoiceNumber}\n` +
-    `📅 *Date:* ${inv.issueDate ? new Date(inv.issueDate).toLocaleDateString("en-IN") : "Today"}\n` +
-    `⏰ *Due Date:* ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "Immediate / On Demand"}\n` +
-    `📌 *Status:* ${inv.status}\n\n` +
+    `*INVOICE / BILL - ${orgName || "CRMKaro"}*\n\n` +
+    `*Customer / Student:* ${inv.person?.displayName || "—"}\n` +
+    `*Invoice No:* ${inv.invoiceNumber}\n` +
+    `*Date:* ${inv.issueDate ? new Date(inv.issueDate).toLocaleDateString("en-IN") : "Today"}\n` +
+    `*Due Date:* ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "Immediate / On Demand"}\n` +
+    `*Status:* ${inv.status}\n\n` +
     (itemsText ? `*Items / Services:*\n${itemsText}\n\n` : "") +
-    `💰 *Total Amount:* ${formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}\n` +
-    `✅ *Amount Paid:* ${formatMoney(inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0)}\n` +
-    `⏳ *Balance Due:* ${formatMoney(inv.balanceDueMinor ?? 0)}\n\n` +
+    `*Total Amount:* ${formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}\n` +
+    `*Amount Paid:* ${formatMoney(inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0)}\n` +
+    `*Balance Due:* ${formatMoney(inv.balanceDueMinor ?? 0)}\n\n` +
     (inv.notes ? `*Notes:* ${inv.notes}\n\n` : "") +
-    `Thank you! — *${orgName || "CRMKaro"}*`
+    `Thank you! - *${orgName || "CRMKaro"}*`
   );
 }
 
-function printInvoiceHtml(invoice: Invoice, orgName: string) {
+function printInvoiceHtml(invoice: Invoice, orgName: string, isSchool?: boolean) {
   const printWindow = window.open("", "_blank");
   if (!printWindow) {
     alert("Please allow popups to print invoices");
@@ -197,7 +215,7 @@ function printInvoiceHtml(invoice: Invoice, orgName: string) {
     <!DOCTYPE html>
     <html>
       <head>
-        <title>Invoice - ${invoice.invoiceNumber}</title>
+        <title>${isSchool ? "Fee Receipt" : "Invoice"} - ${invoice.invoiceNumber}</title>
         <style>
           body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; margin: 40px; color: #0f172a; }
           .header { display: flex; justify-content: space-between; border-bottom: 2px solid #2457D6; padding-bottom: 20px; margin-bottom: 24px; }
@@ -232,8 +250,8 @@ function printInvoiceHtml(invoice: Invoice, orgName: string) {
           <div class="info-block">
             <h4>Billed To (Customer / Student)</h4>
             <p style="font-weight: 700; font-size: 15px;">${invoice.person?.displayName || "—"}</p>
-            ${invoice.person?.primaryPhone ? `<p>📞 ${invoice.person.primaryPhone}</p>` : ""}
-            ${invoice.person?.email ? `<p>✉️ ${invoice.person.email}</p>` : ""}
+            ${invoice.person?.primaryPhone ? `<p>Phone: ${invoice.person.primaryPhone}</p>` : ""}
+            ${invoice.person?.email ? `<p>Email: ${invoice.person.email}</p>` : ""}
           </div>
           <div class="info-block" style="text-align: right;">
             <h4>Invoice Dates</h4>
@@ -320,7 +338,8 @@ function FinanceContent() {
   const [invoiceStatusFilter, setInvoiceStatusFilter] = useState<string>("ALL");
   const [search, setSearch] = useState("");
 
-  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
+  const isSchool = isSchoolWorkspace(businessType);
 
   // Modals & Drawers
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
@@ -373,6 +392,9 @@ function FinanceContent() {
   // Share Bill Modal state
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [shareInvoice, setShareInvoice] = useState<Invoice | null>(null);
+
+  // Time period filter state for financial ledger
+  const [periodFilter, setPeriodFilter] = useState<"ALL" | "THIS_MONTH">("ALL");
 
   // Toast notification feedback state
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
@@ -595,23 +617,40 @@ function FinanceContent() {
   };
 
   // Calculate metrics
-  const totalBilledMinor = invoices.reduce(
+  const currentMonthStr = new Date().toISOString().slice(0, 7);
+  const currentMonthName = new Date().toLocaleString("en-IN", { month: "long", year: "numeric" });
+
+  const displayedInvoices = periodFilter === "THIS_MONTH"
+    ? invoices.filter((inv) => {
+        const d = inv.issueDate || inv.createdAt;
+        return (d && d.startsWith(currentMonthStr)) || (inv.notes && inv.notes.includes(currentMonthStr));
+      })
+    : invoices;
+
+  const totalBilledMinor = displayedInvoices.reduce(
     (acc, inv) => acc + (inv.grandTotalMinor ?? inv.totalMinor ?? 0),
     0,
   );
-  const totalPaidMinor = invoices.reduce(
+  const totalPaidMinor = displayedInvoices.reduce(
     (acc, inv) => acc + (inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0),
     0,
   );
-  const totalBalanceDueMinor = invoices
+  const totalBalanceDueMinor = displayedInvoices
     .filter((inv) => inv.status === "ISSUED" || inv.status === "PARTIALLY_PAID")
     .reduce((acc, inv) => acc + (inv.balanceDueMinor ?? 0), 0);
   const totalExpensesMinor = expenses
-    .filter((e) => e.status === "RECORDED")
+    .filter((e) => {
+      if (e.status !== "RECORDED") return false;
+      if (periodFilter === "THIS_MONTH") {
+        const ed = e.expenseDate || e.createdAt;
+        return ed && ed.startsWith(currentMonthStr);
+      }
+      return true;
+    })
     .reduce((acc, e) => acc + e.amountMinor, 0);
 
   // All recorded payments flat list
-  const allPayments = invoices.flatMap((inv) =>
+  const allPayments = displayedInvoices.flatMap((inv) =>
     (inv.payments || []).map((p) => ({
       ...p,
       invoice: { invoiceNumber: inv.invoiceNumber },
@@ -936,12 +975,12 @@ function FinanceContent() {
   }
 
   function applyMonthFee(monthName: string, year: number = new Date().getFullYear()) {
-    const feeDesc = `🎓 Monthly Academic / Tuition Fees — ${monthName} ${year}`;
+    const feeDesc = `Monthly Academic / Tuition Fees — ${monthName} ${year}`;
     applyPreset(feeDesc, "");
   }
 
   function applyQuarterFee(quarterName: string, year: number = new Date().getFullYear()) {
-    const feeDesc = `🎓 Quarterly Academic Fees — ${quarterName} ${year}`;
+    const feeDesc = `Quarterly Academic Fees — ${quarterName} ${year}`;
     applyPreset(feeDesc, "");
   }
 
@@ -989,9 +1028,9 @@ function FinanceContent() {
     : eligiblePeople.slice(0, 40);
 
   const tabItems = [
-    { id: "invoices", label: "Invoices & Student Fees", count: invoices.length },
-    { id: "payments", label: "Fee Collections & Receipts", count: allPayments.length },
-    { id: "expenses", label: "Kharcha / Expenses", count: expenses.length },
+    { id: "invoices", label: isSchool ? "Fee Demands & Slips" : "Invoices & Student Fees", count: invoices.length },
+    { id: "payments", label: isSchool ? "Fee Collections & Receipts" : "Fee Collections & Receipts", count: allPayments.length },
+    { id: "expenses", label: isSchool ? "School Expenses & Kharcha" : "Kharcha / Expenses", count: expenses.length },
   ];
 
   return (
@@ -1010,60 +1049,124 @@ function FinanceContent() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            <Icon name="finance" size={14} /> Revenue, Fees & Kharcha
+            <Icon name="finance" size={14} /> {isSchool ? "Student Fees & Accounts" : "Revenue, Fees & Kharcha"}
           </p>
-          <h1>Finance & Fees Billing</h1>
+          <h1>{isSchool ? "School Fees & Accounts" : "Finance & Fees Billing"}</h1>
           <p className="subheading">
-            Track student fees, issue client invoices, collect payments, and log company kharcha / operating expenses.
+            {isSchool
+              ? "Manage student fee structures, collect term fees, issue receipts, and track school operating kharcha."
+              : "Track student fees, issue client invoices, collect payments, and log company kharcha / operating expenses."}
           </p>
         </div>
         <div className="toolbar-actions">
           <button
             className="btn btn-secondary btn-sm"
             onClick={() => setCreateExpenseOpen(true)}
-            title="Log company operating expenses (rent, bills, ads, vendor costs)"
+            title={isSchool ? "Log school operating expenses (supplies, electricity, staff costs)" : "Log company operating expenses (rent, bills, ads, vendor costs)"}
           >
             <Icon name="rupee" size={15} />
-            <span>Record Kharcha (Expense)</span>
+            <span>{isSchool ? "Record Expense" : "Record Kharcha (Expense)"}</span>
           </button>
           <button
             className="btn btn-primary btn-sm"
             onClick={() => openCreateInvoiceModal()}
-            title="Generate a bill or invoice for your student or customer"
+            title={isSchool ? "Generate a fee slip or receipt for a student" : "Generate a bill or invoice for your student or customer"}
           >
             <Icon name="plus" size={15} />
-            <span>Create Invoice / Bill</span>
+            <span>{isSchool ? "Issue Fee Slip / Demand" : "Create Invoice / Bill"}</span>
           </button>
+        </div>
+      </div>
+
+      {/* Period Filter Toggle */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14, flexWrap: "wrap", gap: 10, padding: "8px 12px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#475569", marginRight: 4 }}>Period Scope:</span>
+          <button
+            type="button"
+            onClick={() => setPeriodFilter("ALL")}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: periodFilter === "ALL" ? 700 : 500,
+              background: periodFilter === "ALL" ? "#2563eb" : "#ffffff",
+              color: periodFilter === "ALL" ? "#ffffff" : "#475569",
+              border: periodFilter === "ALL" ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            All-Time Cumulative Ledger
+          </button>
+          <button
+            type="button"
+            onClick={() => setPeriodFilter("THIS_MONTH")}
+            style={{
+              padding: "6px 14px",
+              borderRadius: 7,
+              fontSize: 12,
+              fontWeight: periodFilter === "THIS_MONTH" ? 700 : 500,
+              background: periodFilter === "THIS_MONTH" ? "#2563eb" : "#ffffff",
+              color: periodFilter === "THIS_MONTH" ? "#ffffff" : "#475569",
+              border: periodFilter === "THIS_MONTH" ? "1px solid #1d4ed8" : "1px solid #cbd5e1",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            Current Month ({currentMonthName})
+          </button>
+        </div>
+        <div style={{ fontSize: 12, color: "#64748b" }}>
+          {periodFilter === "ALL"
+            ? "Showing cumulative figures across all sessions & cycles"
+            : `Showing single-month figures for ${currentMonthName}`}
         </div>
       </div>
 
       {/* Metrics Bar */}
       <div className="stats-grid">
         <StatCard
-          label="Total Fees & Billed"
+          label={
+            periodFilter === "THIS_MONTH"
+              ? (isSchool ? `Fees Billed (${currentMonthName})` : `Billed (${currentMonthName})`)
+              : (isSchool ? "Total Fees Billed (All-Time)" : "Total Invoiced (All-Time)")
+          }
           value={formatMoney(totalBilledMinor)}
-          change="All invoices & fees"
+          change={periodFilter === "THIS_MONTH" ? "Invoices issued this month" : "Cumulative lifetime total"}
           icon="finance"
           tone="blue"
         />
         <StatCard
-          label="Total Collected"
+          label={
+            periodFilter === "THIS_MONTH"
+              ? `Collections (${currentMonthName})`
+              : "Total Collections (Lifetime)"
+          }
           value={formatMoney(totalPaidMinor)}
-          change="Fee payments received"
+          change={periodFilter === "THIS_MONTH" ? "Fee payments received this month" : "All payments recorded"}
           icon="checkCircle"
           tone="teal"
         />
         <StatCard
-          label="Pending Fees & Dues"
+          label={
+            periodFilter === "THIS_MONTH"
+              ? `Cycle Dues (${currentMonthName})`
+              : "Total Outstanding Dues (All-Time)"
+          }
           value={formatMoney(totalBalanceDueMinor)}
-          change="Outstanding balances"
+          change={periodFilter === "THIS_MONTH" ? "Unpaid balance this month" : "Outstanding backlog across all cycles"}
           icon="alertCircle"
           tone={totalBalanceDueMinor > 0 ? "rose" : "teal"}
         />
         <StatCard
-          label="Total Kharcha"
+          label={
+            periodFilter === "THIS_MONTH"
+              ? (isSchool ? `School Expenses (${currentMonthName})` : `Expenses (${currentMonthName})`)
+              : (isSchool ? "Total School Expenses" : "Total Expenses")
+          }
           value={formatMoney(totalExpensesMinor)}
-          change="Recorded outflows"
+          change={periodFilter === "THIS_MONTH" ? "Recorded outflows this month" : "Cumulative recorded outflows"}
           icon="rupee"
           tone="amber"
         />
@@ -1080,7 +1183,9 @@ function FinanceContent() {
         <>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#eff6ff", borderRadius: 10, border: "1px solid #bfdbfe", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>🧾</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#dbeafe", display: "flex", alignItems: "center", justifyContent: "center", color: "#1e40af" }}>
+                <Icon name="finance" size={18} />
+              </div>
               <div>
                 <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Customer Invoices & Billing (Income / Inflow)</strong>
                 <div style={{ fontSize: 12, color: "#2563eb" }}>
@@ -1301,7 +1406,9 @@ function FinanceContent() {
         <div className="table-wrap">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 14px", background: "#f0fdf4", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>💰</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#dcfce7", display: "flex", alignItems: "center", justifyContent: "center", color: "#15803d" }}>
+                <Icon name="checkCircle" size={18} />
+              </div>
               <div>
                 <strong style={{ fontSize: 13, color: "#14532d" }}>Payment Collections & Receipts</strong>
                 <div style={{ fontSize: 12, color: "#16a34a" }}>
@@ -1456,7 +1563,9 @@ function FinanceContent() {
         <div className="table-wrap">
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 10, padding: "10px 14px", background: "#fffbeb", borderRadius: 10, border: "1px solid #fde68a", marginBottom: 14 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span style={{ fontSize: 20 }}>💸</span>
+              <div style={{ width: 32, height: 32, borderRadius: 8, background: "#fef3c7", display: "flex", alignItems: "center", justifyContent: "center", color: "#b45309" }}>
+                <Icon name="rupee" size={18} />
+              </div>
               <div>
                 <strong style={{ fontSize: 13, color: "#78350f" }}>Company Operating Expenses (Outflow / Kharcha)</strong>
                 <div style={{ fontSize: 12, color: "#b45309" }}>
@@ -1681,27 +1790,27 @@ function FinanceContent() {
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
-                onClick={() => printInvoiceHtml(detailInvoice, orgName)}
+                onClick={() => printInvoiceHtml(detailInvoice, orgName, isSchool)}
               >
                 <Icon name="externalLink" size={14} />
-                <span>Print Invoice</span>
+                <span>{isSchool ? "Print Fee Receipt" : "Print Invoice"}</span>
               </button>
               {detailInvoice.person?.email && (
                 <a
-                  href={`mailto:${detailInvoice.person.email}?subject=${encodeURIComponent(`Invoice ${detailInvoice.invoiceNumber} from ${orgName || "CRMKaro"}`)}&body=${encodeURIComponent(generateInvoiceShareText(detailInvoice, orgName))}`}
+                  href={`mailto:${detailInvoice.person.email}?subject=${encodeURIComponent(`${isSchool ? "Fee Receipt" : "Invoice"} ${detailInvoice.invoiceNumber} from ${orgName || "CRMKaro"}`)}&body=${encodeURIComponent(generateInvoiceShareText(detailInvoice, orgName, isSchool))}`}
                   className="btn btn-secondary btn-sm"
                   style={{ textDecoration: "none" }}
                 >
                   <Icon name="mail" size={14} />
-                  <span>Email to Client</span>
+                  <span>{isSchool ? "Email to Parent" : "Email to Client"}</span>
                 </a>
               )}
               <button
                 type="button"
                 className="btn btn-secondary btn-sm"
                 onClick={() => {
-                  navigator.clipboard.writeText(generateInvoiceShareText(detailInvoice, orgName));
-                  showToast("Invoice summary copied to clipboard!", "success");
+                  navigator.clipboard.writeText(generateInvoiceShareText(detailInvoice, orgName, isSchool));
+                  showToast(isSchool ? "Fee slip summary copied to clipboard!" : "Invoice summary copied to clipboard!", "success");
                 }}
               >
                 <Icon name="copy" size={14} />
@@ -1839,11 +1948,17 @@ function FinanceContent() {
           setCreateInvoiceOpen(false);
           setEditingInvoiceId(null);
         }}
-        title={editingInvoiceId ? "Edit Draft Invoice" : "Create New Invoice"}
+        title={editingInvoiceId
+          ? (isSchool ? "Edit Draft Fee Slip" : "Edit Draft Invoice")
+          : (isSchool ? "Generate Student Fee Slip" : "Create New Invoice")}
         subtitle={
           editingInvoiceId
-            ? `Modify items, prices, quantities, dates or customer for ${formInvoiceNumber}`
-            : "Generate & issue itemized tax-compliant invoice with automatic GST calculation"
+            ? (isSchool
+                ? `Modify fee heads, amounts, dates or student for ${formInvoiceNumber}`
+                : `Modify items, prices, quantities, dates or customer for ${formInvoiceNumber}`)
+            : (isSchool
+                ? "Generate & issue student fee slip with tuition, term dues and optional discounts"
+                : "Generate & issue itemized tax-compliant invoice with automatic GST calculation")
         }
         maxWidth={860}
       >
@@ -1897,7 +2012,7 @@ function FinanceContent() {
                         )}
                       </div>
                       <div style={{ fontSize: 11, color: "var(--muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginTop: 2 }}>
-                        {selectedPerson.primaryPhone ? `📞 ${selectedPerson.primaryPhone} · ` : ""}
+                        {selectedPerson.primaryPhone ? `${selectedPerson.primaryPhone} · ` : ""}
                         {selectedPerson.email || "No email provided"}
                       </div>
                     </div>
@@ -1919,7 +2034,7 @@ function FinanceContent() {
                 <div className="person-combobox-wrap">
                   <input
                     type="text"
-                    placeholder="🔍 Type customer name, student ID, phone number or email…"
+                    placeholder="Type customer name, student ID, phone number or email…"
                     value={personSearchQuery}
                     onChange={(e) => {
                       setPersonSearchQuery(e.target.value);
@@ -2068,15 +2183,15 @@ function FinanceContent() {
 
             {/* Quick Presets Bar */}
             <div className="invoice-presets-bar" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", padding: "8px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid var(--line)" }}>
-              <span style={{ fontSize: 11, fontWeight: 750, color: "#64748b" }}>⚡ 1-Click Common Presets:</span>
+              <span style={{ fontSize: 11, fontWeight: 750, color: "#64748b" }}>Common Presets:</span>
               {[
-                "🎓 Full Course Fees",
-                "📝 Admission / Reg. Fee",
-                "📚 Books & Materials Kit",
-                "📝 Examination Fee",
-                "💼 Consulting Retainer",
-                "💻 Software / AMC",
-                "📦 Product Sale",
+                "Full Course Fees",
+                "Admission / Reg. Fee",
+                "Books & Materials Kit",
+                "Examination Fee",
+                "Consulting Retainer",
+                "Software / AMC",
+                "Product Sale",
               ].map((name) => (
                 <button
                   key={name}
@@ -2104,7 +2219,7 @@ function FinanceContent() {
             <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 12px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
                 <span style={{ fontSize: 11, fontWeight: 750, color: "#166534" }}>
-                  📅 Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
+                  Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
                 </span>
                 <span style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
                   Click month to add fee item row
@@ -2343,10 +2458,14 @@ function FinanceContent() {
               style={{ minWidth: 160 }}
             >
               {invoiceBusy
-                ? (editingInvoiceId ? "Updating Invoice…" : "Creating Invoice…")
+                ? (editingInvoiceId
+                    ? (isSchool ? "Updating Fee Slip…" : "Updating Invoice…")
+                    : (isSchool ? "Generating Fee Slip…" : "Creating Invoice…"))
                 : (editingInvoiceId
-                    ? `Update Draft Bill (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`
-                    : `Save Invoice Draft (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`)}
+                    ? `Update Draft (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`
+                    : (isSchool
+                        ? `Save Fee Slip (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`
+                        : `Save Invoice Draft (₹${invoiceGrandTotal.toLocaleString("en-IN", { minimumFractionDigits: 0, maximumFractionDigits: 2 })})`))}
             </button>
           </div>
         </form>
@@ -2446,28 +2565,28 @@ function FinanceContent() {
               value={expCategory}
               onChange={(e) => setExpCategory(e.target.value)}
             >
-              <option value="Office Rent & Maintenance">🏢 Office Rent & Maintenance</option>
-              <option value="Staff Stipends & Daily Wages">👥 Staff Stipends & Daily Wages</option>
-              <option value="Electricity & Utility Bills">⚡ Electricity & Utility Bills</option>
-              <option value="Internet & Phone Bills">🌐 Internet & Telephone Bills</option>
-              <option value="Marketing & Advertising (Ads)">📢 Marketing & Google/Meta Ads</option>
-              <option value="Software Subscriptions & Tools">💻 Software Subscriptions & SaaS Tools</option>
-              <option value="Office Supplies & Stationery">📦 Office Supplies & Stationery</option>
-              <option value="Food, Tea & Refreshments">☕ Food, Tea & Refreshments</option>
-              <option value="Travel, Fuel & Logistics">🚗 Travel, Fuel & Conveyance</option>
-              <option value="Hardware & Equipment Purchase">🔧 Hardware & Equipment Purchase</option>
-              <option value="Legal & Professional Fees">💼 Legal & Professional Fees</option>
-              <option value="Other">🏷️ Other / Miscellaneous Kharcha</option>
+              <option value="Office Rent & Maintenance">Office Rent & Maintenance</option>
+              <option value="Staff Stipends & Daily Wages">Staff Stipends & Daily Wages</option>
+              <option value="Electricity & Utility Bills">Electricity & Utility Bills</option>
+              <option value="Internet & Phone Bills">Internet & Telephone Bills</option>
+              <option value="Marketing & Advertising (Ads)">Marketing & Google/Meta Ads</option>
+              <option value="Software Subscriptions & Tools">Software Subscriptions & SaaS Tools</option>
+              <option value="Office Supplies & Stationery">Office Supplies & Stationery</option>
+              <option value="Food, Tea & Refreshments">Food, Tea & Refreshments</option>
+              <option value="Travel, Fuel & Logistics">Travel, Fuel & Conveyance</option>
+              <option value="Hardware & Equipment Purchase">Hardware & Equipment Purchase</option>
+              <option value="Legal & Professional Fees">Legal & Professional Fees</option>
+              <option value="Other">Other / Miscellaneous Kharcha</option>
             </select>
             {/* Quick Category Chips */}
             <div style={{ display: "flex", gap: 5, marginTop: 6, flexWrap: "wrap" }}>
               {[
-                { label: "🏢 Rent", val: "Office Rent & Facility" },
-                { label: "⚡ Electricity", val: "Electricity & Utility Bills" },
-                { label: "📶 Wi-Fi", val: "Internet & Phone Bills" },
-                { label: "📢 Ads", val: "Marketing & Advertising (Ads)" },
-                { label: "☕ Tea/Food", val: "Food, Tea & Refreshments" },
-                { label: "💻 Tools/SaaS", val: "Software Subscriptions & Tools" },
+                { label: "Rent", val: "Office Rent & Facility" },
+                { label: "Electricity", val: "Electricity & Utility Bills" },
+                { label: "Wi-Fi", val: "Internet & Phone Bills" },
+                { label: "Ads", val: "Marketing & Advertising (Ads)" },
+                { label: "Tea/Food", val: "Food, Tea & Refreshments" },
+                { label: "Tools/SaaS", val: "Software Subscriptions & Tools" },
               ].map((cat) => (
                 <button
                   key={cat.val}
@@ -2645,7 +2764,7 @@ function FinanceContent() {
             border: "1px solid rgba(255, 255, 255, 0.15)",
           }}
         >
-          <span>{toast.type === "success" ? "✅" : "⚠️"}</span>
+          <div style={{ width: 8, height: 8, borderRadius: "50%", background: toast.type === "success" ? "#22c55e" : "#ef4444" }} />
           <span>{toast.message}</span>
           <button
             type="button"
@@ -2678,10 +2797,10 @@ function FinanceContent() {
               <div>
                 <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, margin: 0 }}>
                   <Icon name="whatsapp" size={20} />
-                  <span>Share Fee Bill / Receipt</span>
+                  <span>{isSchool ? "Share Fee Receipt / Slip" : "Share Fee Bill / Receipt"}</span>
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
-                  Share directly with {shareInvoice.person?.displayName || "Student / Customer"} on WhatsApp or copy receipt text
+                  Share directly with {shareInvoice.person?.displayName || (isSchool ? "Student / Parent" : "Student / Customer")} on WhatsApp or copy receipt text
                 </p>
               </div>
               <button
@@ -2710,14 +2829,14 @@ function FinanceContent() {
                   overflowY: "auto",
                 }}
               >
-                {generateInvoiceShareText(shareInvoice, orgName)}
+                {generateInvoiceShareText(shareInvoice, orgName, isSchool)}
               </div>
 
               {/* Action Buttons */}
               <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                 <a
                   href={`https://wa.me/${shareInvoice.person?.primaryPhone?.replace(/[^0-9]/g, "") || ""}?text=${encodeURIComponent(
-                    generateInvoiceShareText(shareInvoice, orgName),
+                    generateInvoiceShareText(shareInvoice, orgName, isSchool),
                   )}`}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -2734,8 +2853,8 @@ function FinanceContent() {
                     className="btn btn-secondary"
                     style={{ flex: 1 }}
                     onClick={() => {
-                      navigator.clipboard.writeText(generateInvoiceShareText(shareInvoice, orgName));
-                      showToast("Invoice bill text copied to clipboard!", "success");
+                      navigator.clipboard.writeText(generateInvoiceShareText(shareInvoice, orgName, isSchool));
+                      showToast(isSchool ? "Fee slip text copied to clipboard!" : "Invoice bill text copied to clipboard!", "success");
                     }}
                   >
                     <Icon name="copy" size={14} />
