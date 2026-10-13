@@ -476,6 +476,13 @@ export default function HomePage() {
 
   const loadDashboard = useCallback(
     async (preset = "all", start = "", end = "") => {
+      if (typeof window !== "undefined") {
+        const token = localStorage.getItem("crmkaro_token");
+        if (!token) {
+          setIsUnauthenticated(true);
+          return;
+        }
+      }
       const { startDate, endDate } = getDateBoundsForPreset(preset, start, end);
       let url = `${api}/dashboard`;
       const params = new URLSearchParams();
@@ -486,6 +493,9 @@ export default function HomePage() {
 
       const response = await authFetch(url);
       if (response.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("crmkaro_token");
+        }
         setIsUnauthenticated(true);
         return;
       }
@@ -530,10 +540,12 @@ export default function HomePage() {
         return;
       }
 
-      if (!response.ok)
+      if (!response.ok) {
+        const errJson = await response.json().catch(() => ({}));
         throw new Error(
-          "Could not load your workspace overview. Please try again.",
+          errJson.message || "Could not load your workspace overview. Please try again.",
         );
+      }
       const dashboardData = (await response.json()) as Dashboard;
       setData(dashboardData);
       if (preset === "all") saveCachedDashboardData(dashboardData);
@@ -673,13 +685,6 @@ export default function HomePage() {
             router.push("/login");
           }
         }}
-        onRegisterClick={() => {
-          if (typeof window !== "undefined" && (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com")) {
-            window.location.href = "https://web.crmkaro.com/login?mode=register";
-          } else {
-            router.push("/login?mode=register");
-          }
-        }}
         onDashboardClick={() => setIsUnauthenticated(false)}
       />
     );
@@ -691,6 +696,48 @@ export default function HomePage() {
           {/* ── Left intro panel ────────────────────────── */}
           <div className="onboarding-intro">
             <div className="onboarding-intro-top">
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+                <a
+                  href="/landing"
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: 6,
+                    fontSize: 12,
+                    color: "#0284c7",
+                    textDecoration: "none",
+                    fontWeight: 600,
+                    background: "#f0f9ff",
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    border: "1px solid #bae6fd",
+                  }}
+                >
+                  ← View Landing Page
+                </a>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      await authFetch(`${api}/auth/logout`, { method: "POST" });
+                    } catch {}
+                    if (typeof window !== "undefined") {
+                      localStorage.removeItem("crmkaro_token");
+                      window.location.href = "/";
+                    }
+                  }}
+                  style={{
+                    fontSize: 11.5,
+                    color: "#94a3b8",
+                    background: "none",
+                    border: "none",
+                    cursor: "pointer",
+                    textDecoration: "underline",
+                  }}
+                >
+                  Sign Out
+                </button>
+              </div>
               <div className="onboarding-brand-badge">
                 <span className="onboarding-mark" aria-hidden="true" />
                 <span className="onboarding-pill">

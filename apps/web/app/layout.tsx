@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
+import Script from "next/script";
 import { WorkspaceProvider } from "../lib/nav";
 import "./globals.css";
 
@@ -131,6 +132,20 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
         />
       </head>
       <body suppressHydrationWarning>
+        {/* Google tag (gtag.js) */}
+        <Script
+          src="https://www.googletagmanager.com/gtag/js?id=G-JFRTDZD55B"
+          strategy="afterInteractive"
+        />
+        <Script id="google-analytics" strategy="afterInteractive">
+          {`
+            window.dataLayer = window.dataLayer || [];
+            function gtag(){dataLayer.push(arguments);}
+            gtag('js', new Date());
+
+            gtag('config', 'G-JFRTDZD55B');
+          `}
+        </Script>
         <WorkspaceProvider>
           {children}
         </WorkspaceProvider>

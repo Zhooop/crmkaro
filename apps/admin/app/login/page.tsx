@@ -3,6 +3,7 @@
 import { Icon } from "@crmkaro/ui";
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
+import { getApiUrl } from "@/lib/api";
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -12,11 +13,7 @@ export default function AdminLoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
-  const api =
-    process.env.NEXT_PUBLIC_API_URL ||
-    (typeof window !== "undefined" && window.location.hostname.endsWith("crmkaro.com")
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const api = getApiUrl();
 
   async function handleAdminLogin(e: FormEvent) {
     e.preventDefault();

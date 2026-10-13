@@ -1,12 +1,28 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { LaunchOfferModal } from "./LaunchOfferModal";
+
+export interface LandingPlanItem {
+  id: string;
+  name: string;
+  code: string;
+  originalPriceMinor: number;
+  discountPriceMinor: number;
+  currency?: string;
+  billingPeriod?: string;
+  badge?: string | null;
+  features: string[];
+  isPopular?: boolean;
+}
 
 export interface LandingPageProps {
   onLoginClick?: () => void;
-  onRegisterClick?: () => void;
+  onRegisterClick?: (planCode?: string) => void;
   onDashboardClick?: () => void;
   isAuthenticated?: boolean;
+  plans?: LandingPlanItem[];
+  onSelectPlan?: (plan: LandingPlanItem) => void;
 }
 
 /* =========================================================================
@@ -217,7 +233,7 @@ const SOLUTIONS = [
       "Pending fees auto-calculation with zero manual math"
     ],
     image: "/landing/feature-batches-attendance.jpg",
-    ctaLabel: "Start Academy Workspace Free"
+    ctaLabel: "Start Academy Workspace"
   },
   {
     id: "studio",
@@ -231,7 +247,7 @@ const SOLUTIONS = [
       "Never chase renewals manually again"
     ],
     image: "/landing/feature-collect-fees.png",
-    ctaLabel: "Start Studio Workspace Free"
+    ctaLabel: "Start Studio Workspace"
   },
   {
     id: "crm",
@@ -245,7 +261,7 @@ const SOLUTIONS = [
       "GST & Non-GST tax invoicing with itemized billing"
     ],
     image: "/landing/feature-leads-crm.jpg",
-    ctaLabel: "Start Lead CRM Free"
+    ctaLabel: "Start Lead CRM"
   },
   {
     id: "payroll",
@@ -259,7 +275,7 @@ const SOLUTIONS = [
       "Audit-proof staff compensation records"
     ],
     image: "/landing/feature-staff-payroll.png",
-    ctaLabel: "Start Staff Payroll Free"
+    ctaLabel: "Start Staff Payroll"
   }
 ];
 
@@ -319,17 +335,99 @@ const FAQS = [
     a: "Aapka data 100% encrypted aur PostgreSQL isolated architecture par chalte hue safe rehta hai. Har business ka data completely separated hota hai aur automatic daily cloud backups hote hain."
   },
   {
-    q: "Kya trial period ke liye mujhe Credit Card dena hoga?",
-    a: "Bilkul nahi! 14-day free trial shuru karne ke liye koi Credit Card ya payment info nahi chahiye. Bas signup karein aur 30 seconds me start karein."
+    q: "Kya shuru karne ke liye mujhe Credit Card dena hoga?",
+    a: "Bilkul nahi! Shuru karne ke liye koi Credit Card ya upfront payment info nahi chahiye. Bas signup karein aur 30 seconds me start karein."
   }
 ];
+
+const DEFAULT_LAUNCH_PLAN: LandingPlanItem = {
+  id: "launch_offer_249",
+  name: "Launch Special All-in-One",
+  code: "launch_offer_249",
+  originalPriceMinor: 104900,
+  discountPriceMinor: 24900,
+  currency: "INR",
+  billingPeriod: "monthly",
+  badge: "Special Launch Offer · 76% OFF",
+  isPopular: true,
+  features: [
+    "Unlimited Students, Coaching Batches & Classes",
+    "Instant WhatsApp Receipts & Fee Reminder Automation",
+    "Daily Attendance Tracking & Parent Alerts",
+    "Staff Salary Management, Advances & Payroll",
+    "Lead CRM, Inquiries Pipeline & Call Reminders",
+    "GST / Non-GST Invoicing & 1-Click Online Payment Links",
+    "Mobile Web App for Trainers, Admins & Staff",
+    "Automated Monthly UPI & Recurring Card Renewal",
+    "Priority WhatsApp Support & Data Migration",
+  ],
+};
 
 export function LandingPage({
   onLoginClick,
   onRegisterClick,
   onDashboardClick,
   isAuthenticated = false,
+  plans: propPlans,
+  onSelectPlan,
 }: LandingPageProps) {
+  const [plans, setPlans] = useState<LandingPlanItem[]>(() => {
+    if (propPlans && propPlans.length > 0) return propPlans;
+    return [DEFAULT_LAUNCH_PLAN];
+  });
+  const [isCheckoutOpen, setIsCheckoutOpen] = useState<boolean>(false);
+  const [activeCheckoutPlan, setActiveCheckoutPlan] = useState<LandingPlanItem>(DEFAULT_LAUNCH_PLAN);
+
+  useEffect(() => {
+    if (propPlans && propPlans.length > 0) {
+      setPlans(propPlans);
+      return;
+    }
+    let isCancelled = false;
+    const fetchPlans = async () => {
+      try {
+        let apiUrl = "http://localhost:4000/api/v1";
+        if (typeof window !== "undefined") {
+          const host = window.location.hostname.toLowerCase();
+          if (host === "crmkaro.com" || host.endsWith(".crmkaro.com")) {
+            apiUrl = "https://api.crmkaro.com/api/v1";
+          } else if ((window as any).__CRMKARO_API_URL__) {
+            apiUrl = (window as any).__CRMKARO_API_URL__;
+          }
+        } else if ((globalThis as any)?.process?.env?.NEXT_PUBLIC_API_URL) {
+          apiUrl = (globalThis as any).process.env.NEXT_PUBLIC_API_URL;
+        }
+        const res = await fetch(`${apiUrl}/platform/public/plans`);
+        if (res.ok) {
+          const data = await res.json();
+          const list = Array.isArray(data) ? data : Array.isArray(data?.plans) ? data.plans : [];
+          if (list.length > 0 && !isCancelled) {
+            setPlans(
+              list.map((p: any) => ({
+                id: p.id,
+                name: p.name,
+                code: p.code,
+                originalPriceMinor: p.originalPriceMinor,
+                discountPriceMinor: p.discountPriceMinor,
+                currency: p.currency || "INR",
+                billingPeriod: p.billingPeriod || "monthly",
+                badge: p.badge,
+                features: Array.isArray(p.features) ? p.features : [],
+                isPopular: p.isPopular,
+              }))
+            );
+          }
+        }
+      } catch {
+        // Fallback to default Launch Offer
+      }
+    };
+    fetchPlans();
+    return () => {
+      isCancelled = true;
+    };
+  }, [propPlans]);
+
   const [selectedSolution, setSelectedSolution] = useState<string>("academy");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const circuitSectionRef = useRef<HTMLDivElement>(null);
@@ -389,9 +487,15 @@ export function LandingPage({
     else if (typeof window !== "undefined") window.open("/login", "_blank", "noopener,noreferrer");
   };
 
-  const handleRegister = () => {
-    if (onRegisterClick) onRegisterClick();
-    else if (typeof window !== "undefined") window.open("/login?mode=register", "_blank", "noopener,noreferrer");
+  const handleRegister = (planCode?: string) => {
+    const target = plans.find((p) => p.code === planCode) || plans[0] || DEFAULT_LAUNCH_PLAN;
+    setActiveCheckoutPlan(target);
+    setIsCheckoutOpen(true);
+  };
+
+  const handleSelectPlan = (plan: LandingPlanItem) => {
+    setActiveCheckoutPlan(plan);
+    setIsCheckoutOpen(true);
   };
 
   const handleDashboard = () => {
@@ -416,6 +520,8 @@ export function LandingPage({
       });
     }
   };
+
+  const singlePlan = plans[0];
 
   return (
     <div className="lp-wrap">
@@ -484,8 +590,8 @@ export function LandingPage({
                 <button onClick={handleLogin} className="lp-btn-capsule-login" type="button">
                   Log in
                 </button>
-                <button onClick={handleRegister} className="lp-btn-capsule-primary" type="button">
-                  Get It Free — It's Free
+                <button onClick={() => handleRegister()} className="lp-btn-capsule-primary" type="button">
+                  Get Started Now
                 </button>
               </>
             )}
@@ -493,13 +599,13 @@ export function LandingPage({
         </div>
       </header>
 
-      {/* 3 MONTHS FREE MARQUEE TICKER (OUTSIDE CARD, BELOW HEADER) */}
+      {/* SPECIAL LAUNCH OFFER MARQUEE TICKER (OUTSIDE CARD, BELOW HEADER) */}
       <div className="lp-marquee-outer">
         <div className="lp-marquee-banner">
           <div className="lp-marquee-track">
             <div className="lp-marquee-content">
               <span className="lp-marquee-badge">SPECIAL OFFER</span>
-              <span>USE CRMKARO COMPLETELY FREE FOR 3 MONTHS</span>
+              <span>USE CRMKARO SPECIAL LAUNCH OFFER</span>
               <span className="lp-marquee-dot">✦</span>
               <span>ZERO SETUP CHARGES</span>
               <span className="lp-marquee-dot">✦</span>
@@ -508,7 +614,7 @@ export function LandingPage({
               <span>100% ACCESS TO BATCHES, FEES, LEADS & SALARIES</span>
               <span className="lp-marquee-dot">✦</span>
               <span className="lp-marquee-badge">SPECIAL OFFER</span>
-              <span>USE CRMKARO COMPLETELY FREE FOR 3 MONTHS</span>
+              <span>USE CRMKARO SPECIAL LAUNCH OFFER</span>
               <span className="lp-marquee-dot">✦</span>
               <span>ZERO SETUP CHARGES</span>
               <span className="lp-marquee-dot">✦</span>
@@ -519,7 +625,7 @@ export function LandingPage({
             </div>
             <div className="lp-marquee-content" aria-hidden="true">
               <span className="lp-marquee-badge">SPECIAL OFFER</span>
-              <span>USE CRMKARO COMPLETELY FREE FOR 3 MONTHS</span>
+              <span>USE CRMKARO SPECIAL LAUNCH OFFER</span>
               <span className="lp-marquee-dot">✦</span>
               <span>ZERO SETUP CHARGES</span>
               <span className="lp-marquee-dot">✦</span>
@@ -528,7 +634,7 @@ export function LandingPage({
               <span>100% ACCESS TO BATCHES, FEES, LEADS & SALARIES</span>
               <span className="lp-marquee-dot">✦</span>
               <span className="lp-marquee-badge">SPECIAL OFFER</span>
-              <span>USE CRMKARO COMPLETELY FREE FOR 3 MONTHS</span>
+              <span>USE CRMKARO SPECIAL LAUNCH OFFER</span>
               <span className="lp-marquee-dot">✦</span>
               <span>ZERO SETUP CHARGES</span>
               <span className="lp-marquee-dot">✦</span>
@@ -608,8 +714,8 @@ export function LandingPage({
 
               {/* Single Solid Primary CTA */}
               <div className="lp-hero-ctas-row">
-                <button onClick={handleRegister} className="lp-btn-hero-solid" type="button">
-                  Claim 3 Months Free Access →
+                <button onClick={() => handleRegister()} className="lp-btn-hero-solid" type="button">
+                  Claim Special Launch Offer →
                 </button>
               </div>
             </div>
@@ -657,119 +763,222 @@ export function LandingPage({
         </div>
       </section>
 
-      {/* PRICING (MOVED DIRECTLY BELOW HERO SECTION) */}
+      {/* PRICING SECTION - DYNAMIC ADMIN-POWERED OR LAUNCH OFFER */}
       <section id="pricing" className="lp-solution-section" style={{ margin: "56px auto 36px" }}>
         <div className="lp-section-center-head">
-          <span className="lp-orbit-tag">Special Launch Offer</span>
-          <h2>Transparent, Affordable Plans For Indian Businesses</h2>
-          <p>No hidden setup costs. 3 Months completely free on all plans.</p>
+          <span className="lp-orbit-tag">Special Launch Offer · 76% OFF</span>
+          <h2>
+            {plans.length === 1 && singlePlan
+              ? `Everything You Need At Just ₹${Math.round(singlePlan.discountPriceMinor / 100)} / Month`
+              : "Transparent, Affordable Plans For Indian Businesses"}
+          </h2>
+          <p>
+            {plans.length === 1 && singlePlan
+              ? `Real price ₹${Math.round(singlePlan.originalPriceMinor / 100)}/mo. Special launch discount with recurring UPI & Cards. No hidden setup costs.`
+              : "Lock in lifetime early-adopter pricing. Cancel anytime without penalties."}
+          </p>
         </div>
 
-        <div className="lp-pricing-grid">
-          {/* Free Starter */}
-          <div className="lp-pricing-card">
-            <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 6px" }}>Starter Free</h3>
-            <p style={{ fontSize: 13.5, color: "#bfdbfe", margin: 0 }}>For solo tutors & small businesses getting started.</p>
-            <div className="lp-price-deal-wrap">
-              <span className="lp-price-struck">₹0</span>
-              <span className="lp-price-val-zero">₹0</span>
-              <span className="lp-price-free-pill">FREE FOR 3 MONTHS</span>
-            </div>
-            <div className="lp-price-sub">100% Free · No credit card required</div>
-            <div style={{ margin: "24px 0", flex: 1, display: "flex", flexDirection: "column", gap: 10, fontSize: 13.5, color: "#e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Up to 50 active students/clients</span>
+        {plans.length === 1 && singlePlan ? (
+          /* SINGLE LAUNCH OFFER CARD */
+          <div className="lp-pricing-single-wrap">
+            <div className="lp-pricing-card featured single-card">
+              <div className="lp-pricing-popular">
+                {singlePlan.badge || "🚀 Special Launch Offer · 76% OFF"}
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>1-Click Quick Collect</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>WhatsApp receipt sharing</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>1 batch & attendance roster</span>
-              </div>
-            </div>
-            <button onClick={handleRegister} className="lp-btn-hero-ghost" style={{ width: "100%", justifyContent: "center" }} type="button">
-              Start 3 Months Free →
-            </button>
-          </div>
 
-          {/* Growth Plan (Featured) */}
-          <div className="lp-pricing-card featured">
-            <div className="lp-pricing-popular">Most Popular</div>
-            <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 6px", color: "#38bdf8" }}>Growth Business</h3>
-            <p style={{ fontSize: 13.5, color: "#bfdbfe", margin: 0 }}>For coaching centres, fitness studios & expanding SMBs.</p>
-            <div className="lp-price-deal-wrap">
-              <span className="lp-price-struck">₹499</span>
-              <span className="lp-price-val-zero">₹0</span>
-              <span className="lp-price-free-pill">FREE FOR 3 MONTHS</span>
-            </div>
-            <div className="lp-price-sub">₹0 for first 3 months, then ₹499/month</div>
-            <div style={{ margin: "24px 0", flex: 1, display: "flex", flexDirection: "column", gap: 10, fontSize: 13.5, color: "#e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span><strong>Unlimited</strong> students & clients</span>
+              <div style={{ textAlign: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 26, fontWeight: 900, margin: "8px 0 6px", color: "#38bdf8" }}>
+                  {singlePlan.name}
+                </h3>
+                <p style={{ fontSize: 14.5, color: "#bfdbfe", margin: 0 }}>
+                  All-in-One Business Operating System for Coaching Centres, Academies, Tutors & SMBs.
+                </p>
               </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Unlimited WhatsApp receipts & invoices</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Unlimited batches & attendance alerts</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Staff salary management & payslips</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Visual Lead CRM & call reminders</span>
-              </div>
-            </div>
-            <button onClick={handleRegister} className="lp-btn-hero-solid" style={{ width: "100%", justifyContent: "center" }} type="button">
-              Claim 3 Months Free Growth →
-            </button>
-          </div>
 
-          {/* Pro Enterprise */}
-          <div className="lp-pricing-card">
-            <h3 style={{ fontSize: 20, fontWeight: 800, margin: "0 0 6px" }}>Pro Business</h3>
-            <p style={{ fontSize: 13.5, color: "#bfdbfe", margin: 0 }}>For multi-branch academies and professional agencies.</p>
-            <div className="lp-price-deal-wrap">
-              <span className="lp-price-struck">₹999</span>
-              <span className="lp-price-val-zero">₹0</span>
-              <span className="lp-price-free-pill">FREE FOR 3 MONTHS</span>
+              {/* Price Deal Display */}
+              <div
+                className="lp-price-deal-wrap"
+                style={{ justifyContent: "center", alignItems: "baseline", gap: 14, margin: "20px 0 6px" }}
+              >
+                <span className="lp-price-struck" style={{ fontSize: 26, textDecorationThickness: 3 }}>
+                  ₹{Math.round(singlePlan.originalPriceMinor / 100).toLocaleString("en-IN")}
+                </span>
+                <span className="lp-price-val-zero" style={{ fontSize: 56, color: "#ffffff" }}>
+                  ₹{Math.round(singlePlan.discountPriceMinor / 100).toLocaleString("en-IN")}
+                </span>
+                <span style={{ fontSize: 16, color: "#93c5fd", fontWeight: 700 }}>/ month</span>
+                <span
+                  className="lp-price-free-pill"
+                  style={{
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    color: "#ffffff",
+                    fontSize: 11.5,
+                    fontWeight: 900,
+                    padding: "6px 12px",
+                  }}
+                >
+                  SAVE ₹{Math.round((singlePlan.originalPriceMinor - singlePlan.discountPriceMinor) / 100).toLocaleString("en-IN")}/MO
+                </span>
+              </div>
+
+              <div style={{ textAlign: "center", fontSize: 13.5, color: "#cbd5e1", marginBottom: 24 }}>
+                ⚡ Auto-renews monthly via UPI & Cards · Cancel or pause anytime in 1 click
+              </div>
+
+              {/* Features List */}
+              <div
+                style={{
+                  margin: "8px 0 28px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: "14px 24px",
+                  fontSize: 14,
+                  color: "#f1f5f9",
+                  background: "rgba(15, 23, 42, 0.45)",
+                  padding: "24px 20px",
+                  borderRadius: 20,
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                {singlePlan.features.map((feature: string, idx: number) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
+                      <IconCheck size={16} />
+                    </div>
+                    <span style={{ lineHeight: 1.45 }}>{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Call to Action Button */}
+              <button
+                onClick={() => handleSelectPlan(singlePlan)}
+                className="lp-btn-hero-solid"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  fontSize: 17,
+                  fontWeight: 800,
+                  padding: "16px 28px",
+                  borderRadius: 14,
+                  boxShadow: "0 10px 30px -5px rgba(37, 99, 235, 0.65)",
+                  cursor: "pointer",
+                }}
+                type="button"
+              >
+                Claim Launch Offer at ₹{Math.round(singlePlan.discountPriceMinor / 100)}/mo →
+              </button>
+
+              {/* Supported Payment Badges */}
+              <div
+                style={{
+                  marginTop: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: "#94a3b8",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "#cbd5e1" }}>🔒 Recurring payment supported on:</span>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Google Pay</span>
+                  <span>•</span>
+                  <span style={{ color: "#c084fc", fontWeight: 700 }}>PhonePe</span>
+                  <span>•</span>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Paytm</span>
+                  <span>•</span>
+                  <span style={{ color: "#4ade80", fontWeight: 700 }}>BHIM UPI</span>
+                  <span>•</span>
+                  <span style={{ color: "#f8fafc", fontWeight: 700 }}>Credit / Debit Cards</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  ₹{Math.round(singlePlan.discountPriceMinor / 100)} next month renewal via RBI/NPCI compliant mandate.
+                </div>
+              </div>
             </div>
-            <div className="lp-price-sub">₹0 for first 3 months, then ₹999/month</div>
-            <div style={{ margin: "24px 0", flex: 1, display: "flex", flexDirection: "column", gap: 10, fontSize: 13.5, color: "#e2e8f0" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Multiple branches / workspaces</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Multi-staff role permissions</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Custom domain & branding</span>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                <IconCheck size={14} />
-                <span>Dedicated WhatsApp onboarding manager</span>
-              </div>
-            </div>
-            <button onClick={handleRegister} className="lp-btn-hero-ghost" style={{ width: "100%", justifyContent: "center" }} type="button">
-              Claim 3 Months Free Pro →
-            </button>
           </div>
-        </div>
+        ) : (
+          /* MULTIPLE PLANS GRID (WHEN ADMIN CREATES 2, 3, OR 4 PLANS) */
+          <div className="lp-pricing-grid">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className={`lp-pricing-card ${plan.isPopular ? "featured" : ""}`}
+              >
+                {plan.badge && <div className="lp-pricing-popular">{plan.badge}</div>}
+                <h3
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    margin: "0 0 6px",
+                    color: plan.isPopular ? "#38bdf8" : "#ffffff",
+                  }}
+                >
+                  {plan.name}
+                </h3>
+                <div className="lp-price-deal-wrap">
+                  {plan.originalPriceMinor > plan.discountPriceMinor && (
+                    <span className="lp-price-struck">
+                      ₹{Math.round(plan.originalPriceMinor / 100).toLocaleString("en-IN")}
+                    </span>
+                  )}
+                  <span className="lp-price-val-zero">
+                    ₹{Math.round(plan.discountPriceMinor / 100).toLocaleString("en-IN")}
+                  </span>
+                  <span style={{ fontSize: 13.5, color: "#93c5fd", fontWeight: 600 }}>
+                    /{plan.billingPeriod || "mo"}
+                  </span>
+                  {plan.originalPriceMinor > plan.discountPriceMinor && (
+                    <span className="lp-price-free-pill">
+                      SAVE ₹{Math.round((plan.originalPriceMinor - plan.discountPriceMinor) / 100)}
+                    </span>
+                  )}
+                </div>
+                <div className="lp-price-sub">Renews monthly · Cancel anytime</div>
+                <div
+                  style={{
+                    margin: "24px 0",
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    fontSize: 13.5,
+                    color: "#e2e8f0",
+                  }}
+                >
+                  {plan.features.map((feat: string, fIdx: number) => (
+                    <div key={fIdx} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
+                        <IconCheck size={14} />
+                      </div>
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleSelectPlan(plan)}
+                  className={plan.isPopular ? "lp-btn-hero-solid" : "lp-btn-hero-ghost"}
+                  style={{ width: "100%", justifyContent: "center" }}
+                  type="button"
+                >
+                  Select {plan.name} →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* TRUST LOGOS BAR (CLEAN VECTOR ICONS) */}
@@ -865,8 +1074,8 @@ export function LandingPage({
               </p>
 
               <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap" }}>
-                <button onClick={handleRegister} className="lp-btn-hero-solid" type="button">
-                  Get Started Free →
+                <button onClick={() => handleRegister()} className="lp-btn-hero-solid" type="button">
+                  Get Started Now →
                 </button>
                 <a href="#features" className="lp-btn-hero-ghost" onClick={(e) => handleSmoothScroll(e, "#features")}>
                   See Features ↗
@@ -895,7 +1104,7 @@ export function LandingPage({
               />
             </div>
             <div className="lp-circuit-progress-labels">
-              <span className={circuitProgress >= 0.12 ? "lit" : ""}>01. Choose Plan</span>
+              <span className={circuitProgress >= 0.12 ? "lit" : ""}>01. Launch Offer</span>
               <span className={circuitProgress >= 0.35 ? "lit" : ""}>02. 30s Signup</span>
               <span className={circuitProgress >= 0.58 ? "lit" : ""}>03. Select Category</span>
               <span className={circuitProgress >= 0.80 ? "lit" : ""}>04. Operations Live</span>
@@ -915,37 +1124,28 @@ export function LandingPage({
                     <IconZap size={20} />
                   </div>
                   <div>
-                    <span className="lp-circuit-tag">Risk-Free Starting</span>
-                    <h3>Select Your Plan</h3>
+                    <span className="lp-circuit-tag">All-in-One Access</span>
+                    <h3>Launch Offer Plan</h3>
                   </div>
                 </div>
                 <p className="lp-circuit-desc">
-                  Pick the tier that fits your size. Zero setup fee, instant access with 14-day free trial.
+                  Flat ₹249/mo with zero setup fee. Complete access to every module from day 1.
                 </p>
 
                 <div className="lp-micro-plans-box">
-                  <div className="lp-micro-plan-item">
-                    <span className="lp-plan-radio">●</span>
-                    <div className="lp-plan-info">
-                      <strong>Starter Free</strong>
-                      <span>₹0 forever · Solo tutors & trainers</span>
-                    </div>
-                    <span className="lp-plan-tag-free">Free</span>
-                  </div>
                   <div className="lp-micro-plan-item featured">
                     <span className="lp-plan-radio">●</span>
                     <div className="lp-plan-info">
-                      <strong>Growth Business</strong>
-                      <span>₹499/mo · Unlimited WhatsApp bills</span>
+                      <strong>Launch Offer — All-in-One Business OS</strong>
+                      <span>₹249/mo (76% OFF) · All premium modules included</span>
                     </div>
-                    <span className="lp-plan-tag-offer">3 Mo Free</span>
+                    <span className="lp-plan-tag-offer">Active Offer</span>
                   </div>
-                  <div className="lp-micro-plan-item">
-                    <span className="lp-plan-radio">○</span>
-                    <div className="lp-plan-info">
-                      <strong>Pro Business</strong>
-                      <span>₹999/mo · Multi-branch & custom domain</span>
-                    </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px 12px", marginTop: 4, fontSize: 11, color: "#dbeafe" }}>
+                    <span>✓ Unlimited Students & Batches</span>
+                    <span>✓ 1-Click WhatsApp Bills</span>
+                    <span>✓ Daily Attendance Register</span>
+                    <span>✓ Staff Salary & Leads CRM</span>
                   </div>
                 </div>
               </div>
@@ -1181,11 +1381,11 @@ export function LandingPage({
                 </div>
 
                 <div className="lp-circuit-cta-row">
-                  <button onClick={handleRegister} className="lp-btn-hero-solid" type="button">
-                    Claim 3 Months Free Access Now →
+                  <button onClick={() => handleRegister()} className="lp-btn-hero-solid" type="button">
+                    Claim Special Launch Offer Now →
                   </button>
                   <a href="#pricing" className="lp-btn-hero-ghost" onClick={(e) => handleSmoothScroll(e, "#pricing")}>
-                    Compare All Plans ↗
+                    View Launch Offer (₹249/mo) ↗
                   </a>
                 </div>
               </div>
@@ -1377,8 +1577,8 @@ export function LandingPage({
               </tr>
               <tr>
                 <td><strong>Pricing Structure</strong></td>
-                <td className="crmkaro-col">Flat ₹499/mo (Unlimited)</td>
-                <td>Free (costs hours of daily time)</td>
+                <td className="crmkaro-col">Flat ₹249/mo (Special Launch Offer)</td>
+                <td>Manual (costs hours of daily time)</td>
                 <td>$49 - $199/month in USD</td>
               </tr>
               <tr>
@@ -1430,7 +1630,7 @@ export function LandingPage({
             Join 500+ Indian tuition centres, gyms, and businesses collecting fees faster with CRMKaro. Setup takes less than 30 seconds.
           </p>
           <button
-            onClick={handleRegister}
+            onClick={() => handleRegister()}
             className="lp-btn-capsule-primary"
             style={{
               padding: "16px 36px",
@@ -1442,7 +1642,7 @@ export function LandingPage({
             }}
             type="button"
           >
-            Create Your Free Workspace Now →
+            Create Your Workspace Now →
           </button>
         </div>
       </section>
@@ -1546,6 +1746,14 @@ export function LandingPage({
           </div>
         </div>
       </footer>
+
+      <LaunchOfferModal
+        isOpen={isCheckoutOpen}
+        onClose={() => setIsCheckoutOpen(false)}
+        planId={activeCheckoutPlan?.code || "launch_offer_249"}
+        planName={activeCheckoutPlan?.name || "Launch Offer — All-in-One Business OS"}
+        amountMinor={activeCheckoutPlan?.discountPriceMinor || 24900}
+      />
     </div>
   );
 }

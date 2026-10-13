@@ -157,7 +157,7 @@ export function ReportsView({ onFeedback }: Props) {
   const mobilePct = 100 - webPct;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Header Bar */}
       <div
         style={{
@@ -165,18 +165,19 @@ export function ReportsView({ onFeedback }: Props) {
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 12,
-          background: "#0f172a",
-          padding: "16px 20px",
-          borderRadius: 10,
-          border: "1px solid #1e293b",
+          gap: 10,
+          background: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         }}
       >
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "#0f172a" }}>
             Platform Business Reports & 1-Click Export Center
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+          <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#64748b" }}>
             Real-time multi-tenant telemetry, gross processing volumes, and direct spreadsheet exports.
           </p>
         </div>
@@ -184,16 +185,16 @@ export function ReportsView({ onFeedback }: Props) {
         <button
           className="secondary-btn"
           onClick={() => window.print()}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "5px 12px", fontSize: 11.5 }}
         >
-          <Icon name="reports" size={14} />
+          <Icon name="reports" size={13} />
           <span>Print Business Report</span>
         </button>
       </div>
 
       {/* Metrics Row */}
       {data && (
-        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+        <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
           <StatCard label="Gross Processing Volume" value={`₹${data.totalGrossVolume.toLocaleString()}`} icon="finance" />
           <StatCard label="Net Settled Volume" value={`₹${data.netVolume.toLocaleString()}`} icon="rupee" />
           <StatCard label="Total Workspaces" value={data.totalOrganisations} icon="building" />
@@ -202,50 +203,50 @@ export function ReportsView({ onFeedback }: Props) {
       )}
 
       {/* Channel Distribution & Acquisition */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "#0f172a", padding: 20, borderRadius: 10, border: "1px solid #1e293b" }}>
-          <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: 15, marginBottom: 8 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ background: "#ffffff", padding: "14px 16px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+          <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 13, marginBottom: 4 }}>
             User Acquisition: Web vs Mobile App
           </div>
-          <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 16px" }}>
+          <p style={{ color: "#64748b", fontSize: 11.5, margin: "0 0 12px" }}>
             Breakdown of registered platform accounts based on where they first signed up.
           </p>
 
-          <div style={{ display: "flex", height: 16, borderRadius: 8, overflow: "hidden", background: "#1e293b", marginBottom: 16 }}>
-            <div style={{ width: `${webPct}%`, background: "#38bdf8", transition: "width 0.3s" }} />
-            <div style={{ width: `${mobilePct}%`, background: "#10b981", transition: "width 0.3s" }} />
+          <div style={{ display: "flex", height: 12, borderRadius: 6, overflow: "hidden", background: "#f1f5f9", marginBottom: 12, border: "1px solid #e2e8f0" }}>
+            <div style={{ width: `${webPct}%`, background: "#0284c7", transition: "width 0.3s" }} />
+            <div style={{ width: `${mobilePct}%`, background: "#16a34a", transition: "width 0.3s" }} />
           </div>
 
-          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 13 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: "#38bdf8" }} />
-              <span style={{ color: "#cbd5e1" }}>Web Portal: <strong>{data?.webUsers || 0} ({webPct}%)</strong></span>
+          <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: "#0284c7" }} />
+              <span style={{ color: "#475569" }}>Web Portal: <strong>{data?.webUsers || 0} ({webPct}%)</strong></span>
             </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 12, height: 12, borderRadius: 3, background: "#10b981" }} />
-              <span style={{ color: "#cbd5e1" }}>Mobile App: <strong>{data?.mobileUsers || 0} ({mobilePct}%)</strong></span>
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div style={{ width: 10, height: 10, borderRadius: 2, background: "#16a34a" }} />
+              <span style={{ color: "#475569" }}>Mobile App: <strong>{data?.mobileUsers || 0} ({mobilePct}%)</strong></span>
             </div>
           </div>
         </div>
 
-        <div style={{ background: "#0f172a", padding: 20, borderRadius: 10, border: "1px solid #1e293b" }}>
-          <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: 15, marginBottom: 8 }}>
+        <div style={{ background: "#ffffff", padding: "14px 16px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+          <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 13, marginBottom: 4 }}>
             Financial Settlement Health
           </div>
-          <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 16px" }}>
+          <p style={{ color: "#64748b", fontSize: 11.5, margin: "0 0 12px" }}>
             Reconciliation of collected revenues versus refunded amounts platform-wide.
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 12 }}>
-            <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12 }}>Completed Invoices</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#10b981", marginTop: 4 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 8 }}>
+            <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+              <div style={{ color: "#64748b", fontSize: 11 }}>Completed Invoices</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#16a34a", marginTop: 2 }}>
                 {data?.successfulTransactionsCount || 0}
               </div>
             </div>
-            <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-              <div style={{ color: "#94a3b8", fontSize: 12 }}>Refunded Invoices</div>
-              <div style={{ fontSize: 18, fontWeight: 700, color: "#a855f7", marginTop: 4 }}>
+            <div style={{ background: "#f8fafc", padding: "10px 12px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+              <div style={{ color: "#64748b", fontSize: 11 }}>Refunded Invoices</div>
+              <div style={{ fontSize: 16, fontWeight: 700, color: "#9333ea", marginTop: 2 }}>
                 {data?.refundedCount || 0}
               </div>
             </div>
@@ -254,59 +255,59 @@ export function ReportsView({ onFeedback }: Props) {
       </div>
 
       {/* 1-Click Export Center */}
-      <div style={{ background: "#0f172a", padding: 20, borderRadius: 10, border: "1px solid #1e293b" }}>
-        <div style={{ fontWeight: 700, color: "#f8fafc", fontSize: 15, marginBottom: 4 }}>
+      <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+        <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 13, marginBottom: 2 }}>
           1-Click Data Exports (CSV & Excel Compatible)
         </div>
-        <p style={{ color: "#94a3b8", fontSize: 13, margin: "0 0 16px" }}>
+        <p style={{ color: "#64748b", fontSize: 11.5, margin: "0 0 14px" }}>
           Instantly download clean, unredacted reports in standard RFC-4180 CSV format.
         </p>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8, border: "1px solid #334155" }}>
-            <div style={{ fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Users Directory CSV</div>
-            <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 12 }}>
+          <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 3, fontSize: 12.5 }}>Users Directory CSV</div>
+            <div style={{ color: "#64748b", fontSize: 11, marginBottom: 10 }}>
               Full list with emails, origin platforms (Web vs Mobile), and verification statuses.
             </div>
             <button
               className="primary-btn"
               onClick={handleExportUsers}
               disabled={exporting === "users"}
-              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6 }}
+              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 11.5 }}
             >
-              <Icon name="download" size={14} />
+              <Icon name="download" size={13} />
               <span>{exporting === "users" ? "Exporting…" : "Export Users CSV"}</span>
             </button>
           </div>
 
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8, border: "1px solid #334155" }}>
-            <div style={{ fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Tenants & Workspaces CSV</div>
-            <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 12 }}>
+          <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 3, fontSize: 12.5 }}>Tenants & Workspaces CSV</div>
+            <div style={{ color: "#64748b", fontSize: 11, marginBottom: 10 }}>
               All registered schools, gyms, real estate agencies, and active service codes.
             </div>
             <button
               className="primary-btn"
               onClick={handleExportTenants}
               disabled={exporting === "tenants"}
-              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6 }}
+              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 11.5 }}
             >
-              <Icon name="download" size={14} />
+              <Icon name="download" size={13} />
               <span>{exporting === "tenants" ? "Exporting…" : "Export Tenants CSV"}</span>
             </button>
           </div>
 
-          <div style={{ background: "#1e293b", padding: 16, borderRadius: 8, border: "1px solid #334155" }}>
-            <div style={{ fontWeight: 600, color: "#f8fafc", marginBottom: 4 }}>Platform Transactions CSV</div>
-            <div style={{ color: "#94a3b8", fontSize: 12, marginBottom: 12 }}>
+          <div style={{ background: "#f8fafc", padding: "12px 14px", borderRadius: 6, border: "1px solid #e2e8f0" }}>
+            <div style={{ fontWeight: 600, color: "#0f172a", marginBottom: 3, fontSize: 12.5 }}>Platform Transactions CSV</div>
+            <div style={{ color: "#64748b", fontSize: 11, marginBottom: 10 }}>
               Cross-tenant payments, refunds, and gateway transaction references.
             </div>
             <button
               className="primary-btn"
               onClick={handleExportTransactions}
               disabled={exporting === "transactions"}
-              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6 }}
+              style={{ width: "100%", display: "inline-flex", justifyContent: "center", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 11.5 }}
             >
-              <Icon name="download" size={14} />
+              <Icon name="download" size={13} />
               <span>{exporting === "transactions" ? "Exporting…" : "Export Transactions CSV"}</span>
             </button>
           </div>

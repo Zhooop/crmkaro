@@ -16,6 +16,7 @@ import { Icon } from "../../components/Icon";
 import { BottomSheet } from "../../components/BottomSheet";
 import { PrimaryButton } from "../../components/PrimaryButton";
 import { apiFetch } from "../../api/client";
+import { useAuth } from "../../context/AuthContext";
 import { colors, radius, spacing } from "../../theme/colors";
 
 type BatchMember = {
@@ -48,6 +49,17 @@ const WORKING_DAYS_PRESETS = [
 ];
 
 export function GroupsScreen() {
+  const { activeOrg } = useAuth();
+  const bType = String(activeOrg?.businessType || "").toUpperCase();
+  const orgN = String(activeOrg?.name || "").toLowerCase();
+  const isGym =
+    bType === "FITNESS_STUDIO" ||
+    bType === "GYM" ||
+    orgN.includes("gym") ||
+    orgN.includes("fitness") ||
+    orgN.includes("crossfit") ||
+    orgN.includes("workout");
+
   const [groups, setGroups] = useState<Group[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -305,8 +317,8 @@ export function GroupsScreen() {
   return (
     <View style={styles.container}>
       <AppHeader
-        title="Groups & Batches"
-        subtitle="Manage student batches, rosters, schedules & fees"
+        title={isGym ? "Batches & Workout Slots" : "Groups & Batches"}
+        subtitle={isGym ? "Manage workout slots, batch rosters, schedules & plans" : "Manage student batches, rosters, schedules & fees"}
         rightAction={
           <TouchableOpacity onPress={() => setIsCreateOpen(true)} style={styles.addBtn}>
             <Icon name="Plus" size={18} color="#ffffff" />
@@ -344,7 +356,7 @@ export function GroupsScreen() {
             <View style={styles.metaRow}>
               <View style={styles.metaItem}>
                 <Icon name="Users" size={14} color={colors.brand} />
-                <Text style={styles.metaText}>{item.totalActiveMembers || 0} Students Enrolled</Text>
+                <Text style={styles.metaText}>{item.totalActiveMembers || 0} {isGym ? "Members Enrolled" : "Students Enrolled"}</Text>
               </View>
               <View style={styles.metaItem}>
                 <Icon name="Calendar" size={14} color={colors.muted} />
@@ -359,8 +371,8 @@ export function GroupsScreen() {
       <BottomSheet
         visible={isCreateOpen}
         onClose={() => setIsCreateOpen(false)}
-        title="Create New Batch"
-        subtitle="Configure schedule, class timing and monthly fee"
+        title={isGym ? "Create New Slot / Batch" : "Create New Batch"}
+        subtitle={isGym ? "Configure workout timing, days and monthly slot fee" : "Configure schedule, class timing and monthly fee"}
         footer={
           <View style={styles.modalFooterRow}>
             <PrimaryButton
@@ -379,9 +391,9 @@ export function GroupsScreen() {
         }
       >
         <View style={styles.formWrap}>
-          <Text style={styles.fieldLabel}>Batch Name *</Text>
+          <Text style={styles.fieldLabel}>{isGym ? "Slot / Batch Name *" : "Batch Name *"}</Text>
           <TextInput
-            placeholder="e.g. 10th Math Champions, JEE Fast-track"
+            placeholder={isGym ? "e.g. Morning Crossfit Slot, Evening Strength Batch" : "e.g. 10th Math Champions, JEE Fast-track"}
             placeholderTextColor={colors.muted}
             value={formName}
             onChangeText={setFormName}
@@ -390,9 +402,9 @@ export function GroupsScreen() {
 
           <View style={styles.row}>
             <View style={{ flex: 1 }}>
-              <Text style={styles.fieldLabel}>Batch Code</Text>
+              <Text style={styles.fieldLabel}>{isGym ? "Slot Code" : "Batch Code"}</Text>
               <TextInput
-                placeholder="e.g. MTH-10-A"
+                placeholder={isGym ? "e.g. GYM-AM-01" : "e.g. MTH-10-A"}
                 placeholderTextColor={colors.muted}
                 value={formCode}
                 onChangeText={setFormCode}
@@ -444,7 +456,7 @@ export function GroupsScreen() {
               style={{ flex: 1 }}
             />
             <PrimaryButton
-              title="+ Enroll Student"
+              title={isGym ? "+ Enroll Member" : "+ Enroll Student"}
               onPress={handleOpenEnroll}
               icon={<Icon name="UserPlus" size={16} color="#ffffff" />}
               style={{ flex: 1 }}
@@ -501,7 +513,7 @@ export function GroupsScreen() {
       <BottomSheet
         visible={isEnrollOpen}
         onClose={() => setIsEnrollOpen(false)}
-        title="Enroll Student in Batch"
+        title={isGym ? "Enroll Member in Slot" : "Enroll Student in Batch"}
         subtitle={`Adding to ${selectedBatch?.name}`}
         footer={
           <View style={styles.modalFooterRow}>

@@ -642,7 +642,7 @@ function FinanceContent() {
     .filter((e) => {
       if (e.status !== "RECORDED") return false;
       if (periodFilter === "THIS_MONTH") {
-        const ed = e.expenseDate || e.createdAt;
+        const ed = e.date || e.createdAt;
         return ed && ed.startsWith(currentMonthStr);
       }
       return true;

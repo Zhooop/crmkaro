@@ -175,7 +175,7 @@ export type PersonFeeDetails = {
   admissionDateStr: string | null;
 };
 
-export function getPersonFeeDetails(person: Person): PersonFeeDetails {
+function getPersonFeeDetails(person: Person): PersonFeeDetails {
   const profile = person.studentProfile;
   const payments = person.payments || [];
   const invoices = person.invoices || [];
@@ -386,7 +386,7 @@ export function getPersonFeeDetails(person: Person): PersonFeeDetails {
   };
 }
 
-export function getPersonPaidMonths(person: Person, currentYear?: number): Set<string> {
+function getPersonPaidMonths(person: Person, currentYear?: number): Set<string> {
   const paidSet = new Set<string>();
   let addr: Record<string, any> = {};
   if (person.address) {

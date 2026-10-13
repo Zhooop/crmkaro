@@ -18,6 +18,7 @@ import { SearchModule } from "./search/search.module.js";
 import { PlatformModule } from "./platform/platform.module.js";
 import { StudentsModule } from "./students/students.module.js";
 import { GroupsModule } from "./groups/groups.module.js";
+import { SubscriptionsModule } from "./subscriptions/subscriptions.module.js";
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { GroupsModule } from "./groups/groups.module.js";
     DashboardModule,
     SearchModule,
     PlatformModule,
+    SubscriptionsModule,
   ],
   controllers: [HealthController],
   providers: [{ provide: APP_GUARD, useClass: ThrottlerGuard }],

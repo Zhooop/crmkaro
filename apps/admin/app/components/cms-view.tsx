@@ -166,7 +166,7 @@ export function CmsView({ onFeedback }: Props) {
   });
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Top Header Controls */}
       <div
         style={{
@@ -174,37 +174,38 @@ export function CmsView({ onFeedback }: Props) {
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 12,
-          background: "#0f172a",
-          padding: "16px 20px",
-          borderRadius: 10,
-          border: "1px solid #1e293b",
+          gap: 10,
+          background: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         }}
       >
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "#0f172a" }}>
             Content Management Studio (Banners & Promos)
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+          <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#64748b" }}>
             Publish announcements, festive offers, and maintenance banners directly to Web and Mobile applications.
           </p>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{ display: "flex", background: "#1e293b", borderRadius: 8, padding: 3 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ display: "flex", background: "#f1f5f9", borderRadius: 6, padding: 2, border: "1px solid #e2e8f0" }}>
             {(["ALL", "WEB", "MOBILE"] as const).map((p) => (
               <button
                 key={p}
                 onClick={() => setFilterPlatform(p)}
                 style={{
-                  padding: "6px 12px",
-                  borderRadius: 6,
-                  fontSize: 12,
+                  padding: "4px 10px",
+                  borderRadius: 5,
+                  fontSize: 11.5,
                   fontWeight: 600,
                   border: "none",
                   cursor: "pointer",
-                  background: filterPlatform === p ? "#38bdf8" : "transparent",
-                  color: filterPlatform === p ? "#0f172a" : "#94a3b8",
+                  background: filterPlatform === p ? "#0284c7" : "transparent",
+                  color: filterPlatform === p ? "#ffffff" : "#475569",
                 }}
               >
                 {p === "ALL" ? "All" : p === "WEB" ? "Web" : "Mobile"}
@@ -215,75 +216,75 @@ export function CmsView({ onFeedback }: Props) {
           <button
             className="primary-btn"
             onClick={openCreateModal}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
           >
-            <Icon name="plus" size={15} />
+            <Icon name="plus" size={14} />
             <span>Create New Banner</span>
           </button>
         </div>
       </div>
 
       {/* Live Preview Showcase */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-        <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, border: "1px solid #1e293b" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#38bdf8", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="building" size={14} /> Web Top Announcement Preview
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
+        <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#0284c7", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="building" size={13} /> Web Top Announcement Preview
           </div>
           <div
             style={{
-              background: "linear-gradient(90deg, #1e293b, #0f172a)",
-              border: "1px solid #38bdf8",
-              borderRadius: 8,
-              padding: "12px 16px",
+              background: "#f0f9ff",
+              border: "1px solid #bae6fd",
+              borderRadius: 6,
+              padding: "10px 14px",
               display: "flex",
               justifyContent: "space-between",
               alignItems: "center",
             }}
           >
             <div>
-              <span style={{ background: "#0284c7", color: "#fff", fontSize: 10, padding: "2px 6px", borderRadius: 4, fontWeight: 700, marginRight: 8 }}>
+              <span style={{ background: "#0284c7", color: "#fff", fontSize: 9.5, padding: "2px 5px", borderRadius: 4, fontWeight: 700, marginRight: 6 }}>
                 {banners[0]?.category || "ANNOUNCEMENT"}
               </span>
-              <span style={{ fontWeight: 600, color: "#fff", fontSize: 13 }}>
+              <span style={{ fontWeight: 600, color: "#0f172a", fontSize: 12 }}>
                 {banners[0]?.title || "Welcome to CRMKaro Platform 2026!"}
               </span>
-              <p style={{ margin: "2px 0 0", fontSize: 12, color: "#94a3b8" }}>
+              <p style={{ margin: "2px 0 0", fontSize: 11, color: "#475569" }}>
                 {banners[0]?.subtitle || "Manage your school, gym, or business seamlessly on Web and Mobile."}
               </p>
             </div>
             {banners[0]?.ctaLabel && (
-              <button style={{ background: "#38bdf8", color: "#0f172a", border: "none", padding: "6px 12px", borderRadius: 6, fontWeight: 700, fontSize: 12 }}>
+              <button style={{ background: "#0284c7", color: "#ffffff", border: "none", padding: "5px 10px", borderRadius: 5, fontWeight: 600, fontSize: 11, cursor: "pointer" }}>
                 {banners[0].ctaLabel}
               </button>
             )}
           </div>
         </div>
 
-        <div style={{ background: "#0f172a", padding: 16, borderRadius: 10, border: "1px solid #1e293b" }}>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#10b981", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
-            <Icon name="activity" size={14} /> Mobile App Hero Banner Preview
+        <div style={{ background: "#ffffff", padding: "12px 14px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "#16a34a", textTransform: "uppercase", marginBottom: 8, display: "flex", alignItems: "center", gap: 6 }}>
+            <Icon name="activity" size={13} /> Mobile App Hero Banner Preview
           </div>
           <div
             style={{
-              background: "linear-gradient(135deg, #065f46, #022c22)",
-              border: "1px solid #10b981",
-              borderRadius: 12,
-              padding: "14px 16px",
+              background: "#f0fdf4",
+              border: "1px solid #bbf7d0",
+              borderRadius: 8,
+              padding: "10px 14px",
               maxWidth: 320,
               margin: "0 auto",
             }}
           >
-            <div style={{ fontSize: 11, fontWeight: 700, color: "#6ee7b7", textTransform: "uppercase" }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#16a34a", textTransform: "uppercase" }}>
               Mobile Spotlight
             </div>
-            <div style={{ fontWeight: 700, color: "#fff", fontSize: 14, marginTop: 4 }}>
+            <div style={{ fontWeight: 700, color: "#0f172a", fontSize: 12.5, marginTop: 2 }}>
               {banners[0]?.title || "Download CRMKaro Mobile Companion"}
             </div>
-            <div style={{ fontSize: 11, color: "#a7f3d0", marginTop: 2 }}>
+            <div style={{ fontSize: 11, color: "#475569", marginTop: 2 }}>
               {banners[0]?.subtitle || "Instant attendance, fees reminders, and push notifications."}
             </div>
-            <div style={{ marginTop: 10 }}>
-              <span style={{ background: "#fff", color: "#065f46", fontSize: 11, fontWeight: 700, padding: "4px 10px", borderRadius: 6 }}>
+            <div style={{ marginTop: 8 }}>
+              <span style={{ background: "#16a34a", color: "#ffffff", fontSize: 10.5, fontWeight: 700, padding: "3px 8px", borderRadius: 5 }}>
                 {banners[0]?.ctaLabel || "Open Mobile App"}
               </span>
             </div>
@@ -292,81 +293,81 @@ export function CmsView({ onFeedback }: Props) {
       </div>
 
       {/* Banners List */}
-      <div style={{ background: "#0f172a", borderRadius: 10, border: "1px solid #1e293b", overflow: "hidden" }}>
+      <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading banners…</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading banners…</div>
         ) : filteredBanners.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>
             No banners active. Click "+ Create New Banner" to publish one.
           </div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1e293b", color: "#94a3b8", borderBottom: "1px solid #334155" }}>
-                <th style={{ padding: "12px 16px" }}>Banner Details</th>
-                <th style={{ padding: "12px 16px" }}>Category</th>
-                <th style={{ padding: "12px 16px" }}>Target Platform</th>
-                <th style={{ padding: "12px 16px" }}>Priority</th>
-                <th style={{ padding: "12px 16px" }}>Status</th>
-                <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
+              <tr style={{ background: "#f8fafc", color: "#475569", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <th style={{ padding: "10px 14px" }}>Banner Details</th>
+                <th style={{ padding: "10px 14px" }}>Category</th>
+                <th style={{ padding: "10px 14px" }}>Target Platform</th>
+                <th style={{ padding: "10px 14px" }}>Priority</th>
+                <th style={{ padding: "10px 14px" }}>Status</th>
+                <th style={{ padding: "10px 14px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {filteredBanners.map((b) => (
-                <tr key={b.id} style={{ borderBottom: "1px solid #1e293b" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: 600, color: "#f8fafc" }}>{b.title}</div>
-                    {b.subtitle && <div style={{ fontSize: 12, color: "#94a3b8" }}>{b.subtitle}</div>}
+                <tr key={b.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "9px 14px" }}>
+                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{b.title}</div>
+                    {b.subtitle && <div style={{ fontSize: 11, color: "#64748b" }}>{b.subtitle}</div>}
                     {b.ctaLabel && (
-                      <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 2 }}>
+                      <div style={{ fontSize: 10.5, color: "#0284c7", marginTop: 2 }}>
                         CTA: {b.ctaLabel} ({b.ctaUrl || "No Link"})
                       </div>
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <Badge tone="blue">{b.category}</Badge>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <Badge tone={b.targetPlatform === "MOBILE" ? "green" : b.targetPlatform === "WEB" ? "blue" : "neutral"}>
                       {b.targetPlatform}
                     </Badge>
                   </td>
-                  <td style={{ padding: "12px 16px", color: "#cbd5e1" }}>P-{b.priority}</td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px", color: "#475569" }}>P-{b.priority}</td>
+                  <td style={{ padding: "9px 14px" }}>
                     <button
                       onClick={() => handleToggleActive(b)}
                       style={{
-                        padding: "4px 10px",
-                        borderRadius: 6,
+                        padding: "3px 8px",
+                        borderRadius: 4,
                         border: "none",
                         cursor: "pointer",
                         fontWeight: 600,
-                        fontSize: 11,
-                        background: b.isActive ? "#065f46" : "#334155",
-                        color: b.isActive ? "#34d399" : "#94a3b8",
+                        fontSize: 10.5,
+                        background: b.isActive ? "#dcfce7" : "#f1f5f9",
+                        color: b.isActive ? "#16a34a" : "#64748b",
                       }}
                     >
                       {b.isActive ? "ACTIVE" : "PAUSED"}
                     </button>
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                    <div style={{ display: "inline-flex", gap: 6 }}>
+                  <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                    <div style={{ display: "inline-flex", gap: 5 }}>
                       <button
                         className="secondary-btn"
                         onClick={() => openEditModal(b)}
-                        style={{ padding: "4px 8px", fontSize: 12 }}
+                        style={{ padding: "3px 8px", fontSize: 11.5 }}
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => handleDelete(b.id)}
                         style={{
-                          padding: "4px 8px",
-                          fontSize: 12,
-                          background: "#7f1d1d",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
+                          padding: "3px 8px",
+                          fontSize: 11.5,
+                          background: "#fef2f2",
+                          color: "#dc2626",
+                          border: "1px solid #fecaca",
+                          borderRadius: 5,
                           cursor: "pointer",
                         }}
                       >
@@ -388,9 +389,9 @@ export function CmsView({ onFeedback }: Props) {
           isOpen={createModalOpen}
           onClose={() => setCreateModalOpen(false)}
         >
-          <form onSubmit={handleSaveBanner} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <form onSubmit={handleSaveBanner} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Banner Headline / Title *
               </label>
               <input
@@ -401,18 +402,18 @@ export function CmsView({ onFeedback }: Props) {
                 onChange={(e) => setTitle(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Subtitle / Descriptive Message
               </label>
               <input
@@ -422,19 +423,19 @@ export function CmsView({ onFeedback }: Props) {
                 onChange={(e) => setSubtitle(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                   Target Platform
                 </label>
                 <select
@@ -442,12 +443,12 @@ export function CmsView({ onFeedback }: Props) {
                   onChange={(e) => setTargetPlatform(e.target.value as any)}
                   style={{
                     width: "100%",
-                    background: "#1e293b",
-                    border: "1px solid #334155",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
                     borderRadius: 6,
-                    padding: "8px 12px",
-                    color: "#fff",
-                    fontSize: 13,
+                    padding: "6px 10px",
+                    color: "#0f172a",
+                    fontSize: 12,
                   }}
                 >
                   <option value="ALL">All (Web & Mobile)</option>
@@ -457,7 +458,7 @@ export function CmsView({ onFeedback }: Props) {
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                   Category
                 </label>
                 <select
@@ -465,12 +466,12 @@ export function CmsView({ onFeedback }: Props) {
                   onChange={(e) => setCategory(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "#1e293b",
-                    border: "1px solid #334155",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
                     borderRadius: 6,
-                    padding: "8px 12px",
-                    color: "#fff",
-                    fontSize: 13,
+                    padding: "6px 10px",
+                    color: "#0f172a",
+                    fontSize: 12,
                   }}
                 >
                   <option value="ANNOUNCEMENT">Announcement</option>
@@ -481,9 +482,9 @@ export function CmsView({ onFeedback }: Props) {
               </div>
             </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                   CTA Button Text
                 </label>
                 <input
@@ -493,18 +494,18 @@ export function CmsView({ onFeedback }: Props) {
                   onChange={(e) => setCtaLabel(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "#1e293b",
-                    border: "1px solid #334155",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
                     borderRadius: 6,
-                    padding: "8px 12px",
-                    color: "#fff",
-                    fontSize: 13,
+                    padding: "6px 10px",
+                    color: "#0f172a",
+                    fontSize: 12,
                   }}
                 />
               </div>
 
               <div>
-                <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+                <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                   CTA Destination URL / Deep Link
                 </label>
                 <input
@@ -514,18 +515,18 @@ export function CmsView({ onFeedback }: Props) {
                   onChange={(e) => setCtaUrl(e.target.value)}
                   style={{
                     width: "100%",
-                    background: "#1e293b",
-                    border: "1px solid #334155",
+                    background: "#f8fafc",
+                    border: "1px solid #e2e8f0",
                     borderRadius: 6,
-                    padding: "8px 12px",
-                    color: "#fff",
-                    fontSize: 13,
+                    padding: "6px 10px",
+                    color: "#0f172a",
+                    fontSize: 12,
                   }}
                 />
               </div>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
               <button type="button" className="secondary-btn" onClick={() => setCreateModalOpen(false)}>
                 Cancel
               </button>

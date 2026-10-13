@@ -208,11 +208,111 @@ export function saveCachedWorkspaceContext(ctx: Partial<WorkspaceContext>) {
   } catch {}
 }
 
-export function isSchoolWorkspace(businessType?: string): boolean {
-  if (!businessType) return false;
-  const bt = businessType.toLowerCase();
-  return bt.includes("school") || bt.includes("formal") || bt.includes("institute") || bt.includes("k-12");
+export function isGymWorkspace(businessType?: string, orgName?: string): boolean {
+  const bt = (businessType || "").toLowerCase();
+  const on = (orgName || "").toLowerCase();
+  return (
+    bt.includes("gym") ||
+    bt.includes("fitness") ||
+    bt.includes("sports") ||
+    bt.includes("dance") ||
+    bt.includes("yoga") ||
+    bt.includes("club") ||
+    bt.includes("crossfit") ||
+    bt.includes("martial") ||
+    bt.includes("boxing") ||
+    bt.includes("studio") ||
+    on.includes("gym") ||
+    on.includes("fitness") ||
+    on.includes("crossfit") ||
+    on.includes("sports") ||
+    on.includes("dance") ||
+    on.includes("yoga")
+  );
 }
+
+export function isSchoolWorkspace(businessType?: string, orgName?: string): boolean {
+  const bt = (businessType || "").toLowerCase();
+  const on = (orgName || "").toLowerCase();
+  return (
+    bt.includes("school") ||
+    bt.includes("formal") ||
+    bt.includes("institute") ||
+    bt.includes("k-12") ||
+    on.includes("school") ||
+    on.includes("vidyalaya") ||
+    on.includes("convent") ||
+    on.includes("public school")
+  );
+}
+
+export function isCoachingWorkspace(businessType?: string, orgName?: string): boolean {
+  const bt = (businessType || "").toLowerCase();
+  const on = (orgName || "").toLowerCase();
+  return (
+    bt.includes("coaching") ||
+    bt.includes("tuition") ||
+    bt.includes("academy") ||
+    bt.includes("classes") ||
+    on.includes("coaching") ||
+    on.includes("classes") ||
+    on.includes("tutorials")
+  );
+}
+
+export function isServicesWorkspace(businessType?: string, orgName?: string): boolean {
+  const bt = (businessType || "").toLowerCase();
+  const on = (orgName || "").toLowerCase();
+  return (
+    bt.includes("agency") ||
+    bt.includes("service") ||
+    bt.includes("consult") ||
+    bt.includes("clinic") ||
+    bt.includes("salon") ||
+    bt.includes("spa") ||
+    on.includes("agency") ||
+    on.includes("consulting") ||
+    on.includes("clinic") ||
+    on.includes("salon") ||
+    on.includes("spa")
+  );
+}
+
+export const GYM_SERVICE_NAV_MAP: Record<string, NavItem> = {
+  people: { label: "Members Directory", icon: "people", href: "/people" },
+  groups: { label: "Batches & Slots", icon: "activity", href: "/groups" },
+  "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
+  transactions: { label: "Transactions", icon: "transactions", href: "/transactions" },
+  students: { label: "Members & Check-in", icon: "student", href: "/students" },
+  crm: { label: "Leads & Trials", icon: "crm", href: "/crm" },
+  finance: { label: "Finance & Membership Fees", icon: "finance", href: "/finance" },
+  payroll: { label: "Trainers & Staff", icon: "payroll", href: "/payroll" },
+  inventory: { label: "Supplements & Gear", icon: "inventory", href: "/inventory" },
+};
+
+export const COACHING_SERVICE_NAV_MAP: Record<string, NavItem> = {
+  people: { label: "Students & Parents", icon: "people", href: "/people" },
+  groups: { label: "Batches & Courses", icon: "activity", href: "/groups" },
+  "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
+  transactions: { label: "Fee Receipts", icon: "transactions", href: "/transactions" },
+  students: { label: "Students & Attendance", icon: "student", href: "/students" },
+  crm: { label: "Admissions CRM", icon: "crm", href: "/crm" },
+  finance: { label: "Fees & Billing", icon: "finance", href: "/finance" },
+  payroll: { label: "Faculty & Staff", icon: "payroll", href: "/payroll" },
+  inventory: { label: "Books & Study Material", icon: "inventory", href: "/inventory" },
+};
+
+export const SERVICES_SERVICE_NAV_MAP: Record<string, NavItem> = {
+  people: { label: "Clients Directory", icon: "people", href: "/people" },
+  groups: { label: "Services & Packages", icon: "activity", href: "/groups" },
+  "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
+  transactions: { label: "Payments", icon: "transactions", href: "/transactions" },
+  students: { label: "Clients & Visits", icon: "student", href: "/students" },
+  crm: { label: "Sales & Inquiries", icon: "crm", href: "/crm" },
+  finance: { label: "Invoices & Revenue", icon: "finance", href: "/finance" },
+  payroll: { label: "Team & Payroll", icon: "payroll", href: "/payroll" },
+  inventory: { label: "Stock & Supplies", icon: "inventory", href: "/inventory" },
+};
 
 export const SCHOOL_SERVICE_NAV_MAP: Record<string, NavItem> = {
   groups: { label: "Classes & Sections", icon: "activity", href: "/groups" },
@@ -226,9 +326,22 @@ export const SCHOOL_SERVICE_NAV_MAP: Record<string, NavItem> = {
   inventory: { label: "Books & Inventory", icon: "inventory", href: "/inventory" },
 };
 
-export function buildNavItems(activeServices: string[], businessType?: string): NavItem[] {
-  const isSchool = isSchoolWorkspace(businessType);
-  const map = isSchool ? SCHOOL_SERVICE_NAV_MAP : SERVICE_NAV_MAP;
+export function buildNavItems(activeServices: string[], businessType?: string, orgName?: string): NavItem[] {
+  const isGym = isGymWorkspace(businessType, orgName);
+  const isSchool = !isGym && isSchoolWorkspace(businessType, orgName);
+  const isCoaching = !isGym && !isSchool && isCoachingWorkspace(businessType, orgName);
+  const isServices = !isGym && !isSchool && !isCoaching && isServicesWorkspace(businessType, orgName);
+
+  const map = isGym
+    ? GYM_SERVICE_NAV_MAP
+    : isSchool
+    ? SCHOOL_SERVICE_NAV_MAP
+    : isCoaching
+    ? COACHING_SERVICE_NAV_MAP
+    : isServices
+    ? SERVICES_SERVICE_NAV_MAP
+    : SERVICE_NAV_MAP;
+
   const codes = activeServices && activeServices.length > 0 ? activeServices : DEFAULT_SERVICE_CODES;
   const codesSet = new Set(codes);
 
@@ -262,6 +375,7 @@ export function buildNavItems(activeServices: string[], businessType?: string): 
   return [
     { label: "Dashboard", icon: "home", href: "/" },
     ...serviceNavItems,
+    { label: "Subscription", icon: "rupee", href: "/subscription" },
     { label: "Settings", icon: "settings", href: "/settings" },
   ];
 }
@@ -335,17 +449,26 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const refreshWorkspace = useCallback(async () => {
     if (typeof window === "undefined") return;
     try {
+      const token = localStorage.getItem("crmkaro_token");
+      if (!token) {
+        return;
+      }
+
       const api = typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL
         ? process.env.NEXT_PUBLIC_API_URL
         : "http://localhost:4000/api/v1";
 
-      const meRes = await fetch(`${api}/auth/me`, { credentials: "include" }).catch(() => null);
+      const meRes = await fetch(`${api}/auth/me`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null);
+      if (!meRes || !meRes.ok) {
+        return;
+      }
       let newUserName = "";
-      if (meRes && meRes.ok) {
-        const meData = await meRes.json();
-        if (meData.user?.name) {
-          newUserName = meData.user.name;
-        }
+      const meData = await meRes.json();
+      if (meData.user?.name) {
+        newUserName = meData.user.name;
       }
 
       const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" }).catch(() => null);
@@ -382,8 +505,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [refreshWorkspace]);
 
   const navItems = useMemo(
-    () => buildNavItems(context.activeServices, context.businessType),
-    [context.activeServices, context.businessType],
+    () => buildNavItems(context.activeServices, context.businessType, context.orgName),
+    [context.activeServices, context.businessType, context.orgName],
   );
 
   const value = useMemo<WorkspaceContextValue>(
@@ -423,7 +546,7 @@ export function useWorkspace(): WorkspaceContextValue {
       businessType: cached.businessType || "Business",
       activeServices: cached.activeServices,
       organisations: inMemoryOrganisations,
-      navItems: buildNavItems(cached.activeServices, cached.businessType),
+      navItems: buildNavItems(cached.activeServices, cached.businessType, cached.orgName),
       isHydrated: true,
       updateWorkspace: saveCachedWorkspaceContext,
       setOrganisations: () => {},

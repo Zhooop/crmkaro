@@ -132,7 +132,7 @@ export function TeamView({ onFeedback }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Top Header Controls */}
       <div
         style={{
@@ -140,18 +140,19 @@ export function TeamView({ onFeedback }: Props) {
           justifyContent: "space-between",
           alignItems: "center",
           flexWrap: "wrap",
-          gap: 12,
-          background: "#0f172a",
-          padding: "16px 20px",
-          borderRadius: 10,
-          border: "1px solid #1e293b",
+          gap: 10,
+          background: "#ffffff",
+          padding: "12px 16px",
+          borderRadius: 8,
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         }}
       >
         <div>
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "#0f172a" }}>
             Admin Team & RBAC Permissions
           </h2>
-          <p style={{ margin: "4px 0 0", fontSize: 13, color: "#94a3b8" }}>
+          <p style={{ margin: "3px 0 0", fontSize: 11.5, color: "#64748b" }}>
             Manage Super-Admin team credentials, assign granular module permissions, and audit admin activities.
           </p>
         </div>
@@ -159,51 +160,51 @@ export function TeamView({ onFeedback }: Props) {
         <button
           className="primary-btn"
           onClick={() => setAddModalOpen(true)}
-          style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", fontSize: 12 }}
         >
-          <Icon name="plus" size={15} />
+          <Icon name="plus" size={14} />
           <span>Add Admin Member</span>
         </button>
       </div>
 
       {/* Role Explanations */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10 }}>
         {ROLES_INFO.map((r) => (
-          <div key={r.role} style={{ background: "#0f172a", padding: 14, borderRadius: 8, border: "1px solid #1e293b" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
-              <span style={{ fontWeight: 700, color: "#f8fafc", fontSize: 13 }}>{r.name}</span>
+          <div key={r.role} style={{ background: "#ffffff", padding: "10px 12px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.02)" }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+              <span style={{ fontWeight: 700, color: "#0f172a", fontSize: 12 }}>{r.name}</span>
               <Badge tone={r.badge as any}>{r.role}</Badge>
             </div>
-            <p style={{ color: "#94a3b8", fontSize: 12, margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
+            <p style={{ color: "#64748b", fontSize: 11, margin: 0, lineHeight: 1.4 }}>{r.desc}</p>
           </div>
         ))}
       </div>
 
       {/* Team Members Table */}
-      <div style={{ background: "#0f172a", borderRadius: 10, border: "1px solid #1e293b", overflow: "hidden" }}>
+      <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading team members…</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading team members…</div>
         ) : members.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>No team members found.</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>No team members found.</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1e293b", color: "#94a3b8", borderBottom: "1px solid #334155" }}>
-                <th style={{ padding: "12px 16px" }}>Team Member</th>
-                <th style={{ padding: "12px 16px" }}>Assigned Role</th>
-                <th style={{ padding: "12px 16px" }}>Status</th>
-                <th style={{ padding: "12px 16px" }}>Added Date</th>
-                <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
+              <tr style={{ background: "#f8fafc", color: "#475569", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <th style={{ padding: "10px 14px" }}>Team Member</th>
+                <th style={{ padding: "10px 14px" }}>Assigned Role</th>
+                <th style={{ padding: "10px 14px" }}>Status</th>
+                <th style={{ padding: "10px 14px" }}>Added Date</th>
+                <th style={{ padding: "10px 14px", textAlign: "right" }}>Actions</th>
               </tr>
             </thead>
             <tbody>
               {members.map((m) => (
-                <tr key={m.id} style={{ borderBottom: "1px solid #1e293b" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: 600, color: "#f8fafc" }}>{m.name}</div>
-                    <div style={{ fontSize: 12, color: "#94a3b8" }}>{m.email}</div>
+                <tr key={m.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "9px 14px" }}>
+                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{m.name}</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>{m.email}</div>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <Badge
                       tone={
                         m.role === "SUPER_ADMIN"
@@ -218,37 +219,37 @@ export function TeamView({ onFeedback }: Props) {
                       {m.role}
                     </Badge>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <button
                       onClick={() => handleToggleActive(m)}
                       style={{
-                        padding: "4px 8px",
-                        borderRadius: 6,
+                        padding: "3px 8px",
+                        borderRadius: 4,
                         border: "none",
                         cursor: "pointer",
                         fontWeight: 600,
-                        fontSize: 11,
-                        background: m.isActive ? "#065f46" : "#334155",
-                        color: m.isActive ? "#34d399" : "#94a3b8",
+                        fontSize: 10.5,
+                        background: m.isActive ? "#dcfce7" : "#f1f5f9",
+                        color: m.isActive ? "#16a34a" : "#64748b",
                       }}
                     >
                       {m.isActive ? "ACTIVE" : "DISABLED"}
                     </button>
                   </td>
-                  <td style={{ padding: "12px 16px", color: "#cbd5e1" }}>
+                  <td style={{ padding: "9px 14px", color: "#475569" }}>
                     {new Date(m.createdAt).toLocaleDateString()}
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right" }}>
+                  <td style={{ padding: "9px 14px", textAlign: "right" }}>
                     {m.email !== "admin@crmkaro.com" && (
                       <button
                         onClick={() => handleDelete(m.id)}
                         style={{
-                          padding: "4px 8px",
-                          fontSize: 12,
-                          background: "#7f1d1d",
-                          color: "#fff",
-                          border: "none",
-                          borderRadius: 6,
+                          padding: "3px 8px",
+                          fontSize: 11.5,
+                          background: "#fef2f2",
+                          color: "#dc2626",
+                          border: "1px solid #fecaca",
+                          borderRadius: 5,
                           cursor: "pointer",
                         }}
                       >
@@ -266,9 +267,9 @@ export function TeamView({ onFeedback }: Props) {
       {/* Add Member Modal */}
       {addModalOpen && (
         <Modal title="Add Platform Admin Team Member" isOpen={addModalOpen} onClose={() => setAddModalOpen(false)}>
-          <form onSubmit={handleAddMember} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+          <form onSubmit={handleAddMember} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Full Name *
               </label>
               <input
@@ -279,18 +280,18 @@ export function TeamView({ onFeedback }: Props) {
                 onChange={(e) => setName(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Corporate Email Address *
               </label>
               <input
@@ -301,18 +302,18 @@ export function TeamView({ onFeedback }: Props) {
                 onChange={(e) => setEmail(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Role & Assigned Permissions *
               </label>
               <select
@@ -320,12 +321,12 @@ export function TeamView({ onFeedback }: Props) {
                 onChange={(e) => setRole(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               >
                 <option value="SUPPORT_ADMIN">Support & Operations Executive (User Management, Verify/Block)</option>
@@ -335,7 +336,7 @@ export function TeamView({ onFeedback }: Props) {
               </select>
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 12 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
               <button type="button" className="secondary-btn" onClick={() => setAddModalOpen(false)}>
                 Cancel
               </button>

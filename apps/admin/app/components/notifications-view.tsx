@@ -80,23 +80,23 @@ export function NotificationsView({ onFeedback }: Props) {
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Broadcast Composer */}
-      <div style={{ background: "#0f172a", padding: 20, borderRadius: 10, border: "1px solid #1e293b" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          <Icon name="bell" size={18} />
-          <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0, color: "#f8fafc" }}>
+      <div style={{ background: "#ffffff", padding: "16px 18px", borderRadius: 8, border: "1px solid #e2e8f0", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 3 }}>
+          <Icon name="bell" size={16} />
+          <h2 style={{ fontSize: 15, fontWeight: 700, margin: 0, color: "#0f172a" }}>
             Direct Broadcast Console (Web & Mobile In-App Alerts)
           </h2>
         </div>
-        <p style={{ margin: "0 0 16px", fontSize: 13, color: "#94a3b8" }}>
+        <p style={{ margin: "0 0 14px", fontSize: 11.5, color: "#64748b" }}>
           Send important system announcements, festival offers, or security updates directly to all active users on Web and Mobile App.
         </p>
 
-        <form onSubmit={handleBroadcast} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 12 }}>
+        <form onSubmit={handleBroadcast} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "2fr 1fr 1fr", gap: 10 }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Notification Headline / Title *
               </label>
               <input
@@ -107,18 +107,18 @@ export function NotificationsView({ onFeedback }: Props) {
                 onChange={(e) => setTitle(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Notification Type
               </label>
               <select
@@ -126,12 +126,12 @@ export function NotificationsView({ onFeedback }: Props) {
                 onChange={(e) => setType(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               >
                 <option value="ANNOUNCEMENT">Announcement</option>
@@ -142,7 +142,7 @@ export function NotificationsView({ onFeedback }: Props) {
             </div>
 
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Target Audience
               </label>
               <select
@@ -150,12 +150,12 @@ export function NotificationsView({ onFeedback }: Props) {
                 onChange={(e) => setTargetAudience(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               >
                 <option value="ALL">All Users (Web + App)</option>
@@ -166,7 +166,7 @@ export function NotificationsView({ onFeedback }: Props) {
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+            <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
               Notification Body / Message *
             </label>
             <textarea
@@ -177,20 +177,20 @@ export function NotificationsView({ onFeedback }: Props) {
               onChange={(e) => setMessage(e.target.value)}
               style={{
                 width: "100%",
-                background: "#1e293b",
-                border: "1px solid #334155",
+                background: "#f8fafc",
+                border: "1px solid #e2e8f0",
                 borderRadius: 6,
-                padding: "8px 12px",
-                color: "#fff",
-                fontSize: 13,
+                padding: "6px 10px",
+                color: "#0f172a",
+                fontSize: 12,
                 resize: "vertical",
               }}
             />
           </div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 12, alignItems: "flex-end" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 10, alignItems: "flex-end" }}>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 4 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 4 }}>
                 Action Destination Link (Optional)
               </label>
               <input
@@ -200,12 +200,12 @@ export function NotificationsView({ onFeedback }: Props) {
                 onChange={(e) => setActionUrl(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#f8fafc",
+                  border: "1px solid #e2e8f0",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "6px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
@@ -214,9 +214,9 @@ export function NotificationsView({ onFeedback }: Props) {
               type="submit"
               className="primary-btn"
               disabled={submitting || !title.trim() || !message.trim()}
-              style={{ padding: "9px 24px", display: "inline-flex", alignItems: "center", gap: 8 }}
+              style={{ padding: "7px 18px", display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12 }}
             >
-              <Icon name="bell" size={15} />
+              <Icon name="bell" size={14} />
               <span>{submitting ? "Broadcasting…" : "Send Broadcast Now"}</span>
             </button>
           </div>
@@ -224,48 +224,48 @@ export function NotificationsView({ onFeedback }: Props) {
       </div>
 
       {/* Broadcast History */}
-      <div style={{ background: "#0f172a", borderRadius: 10, border: "1px solid #1e293b", overflow: "hidden" }}>
-        <div style={{ padding: "14px 18px", borderBottom: "1px solid #1e293b", fontWeight: 700, color: "#f8fafc", fontSize: 14 }}>
+      <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
+        <div style={{ padding: "10px 14px", borderBottom: "1px solid #e2e8f0", fontWeight: 700, color: "#0f172a", fontSize: 13, background: "#f8fafc" }}>
           Broadcast History & Sent Logs
         </div>
 
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading broadcast history…</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading broadcast history…</div>
         ) : notifications.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>No broadcasts sent yet.</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>No broadcasts sent yet.</div>
         ) : (
-          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
             <thead>
-              <tr style={{ background: "#1e293b", color: "#94a3b8", borderBottom: "1px solid #334155" }}>
-                <th style={{ padding: "12px 16px" }}>Title & Message</th>
-                <th style={{ padding: "12px 16px" }}>Type</th>
-                <th style={{ padding: "12px 16px" }}>Target Audience</th>
-                <th style={{ padding: "12px 16px" }}>Sent By</th>
-                <th style={{ padding: "12px 16px", textAlign: "right" }}>Sent Date</th>
+              <tr style={{ background: "#f8fafc", color: "#475569", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                <th style={{ padding: "10px 14px" }}>Title & Message</th>
+                <th style={{ padding: "10px 14px" }}>Type</th>
+                <th style={{ padding: "10px 14px" }}>Target Audience</th>
+                <th style={{ padding: "10px 14px" }}>Sent By</th>
+                <th style={{ padding: "10px 14px", textAlign: "right" }}>Sent Date</th>
               </tr>
             </thead>
             <tbody>
               {notifications.map((n) => (
-                <tr key={n.id} style={{ borderBottom: "1px solid #1e293b" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: 600, color: "#f8fafc" }}>{n.title}</div>
-                    <div style={{ fontSize: 12, color: "#94a3b8", marginTop: 2 }}>{n.message}</div>
+                <tr key={n.id} style={{ borderBottom: "1px solid #f1f5f9" }}>
+                  <td style={{ padding: "9px 14px" }}>
+                    <div style={{ fontWeight: 600, color: "#0f172a" }}>{n.title}</div>
+                    <div style={{ fontSize: 11.5, color: "#64748b", marginTop: 2 }}>{n.message}</div>
                     {n.actionUrl && (
-                      <div style={{ fontSize: 11, color: "#38bdf8", marginTop: 2 }}>Link: {n.actionUrl}</div>
+                      <div style={{ fontSize: 11, color: "#0284c7", marginTop: 2 }}>Link: {n.actionUrl}</div>
                     )}
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <Badge tone={n.type === "SYSTEM_ALERT" ? "red" : n.type === "OFFER" ? "green" : "blue"}>
                       {n.type}
                     </Badge>
                   </td>
-                  <td style={{ padding: "12px 16px" }}>
+                  <td style={{ padding: "9px 14px" }}>
                     <Badge tone="neutral">{n.targetAudience}</Badge>
                   </td>
-                  <td style={{ padding: "12px 16px", color: "#cbd5e1" }}>
+                  <td style={{ padding: "9px 14px", color: "#475569" }}>
                     {n.sentByAdminEmail || "Platform Admin"}
                   </td>
-                  <td style={{ padding: "12px 16px", textAlign: "right", color: "#94a3b8" }}>
+                  <td style={{ padding: "9px 14px", textAlign: "right", color: "#64748b" }}>
                     {new Date(n.createdAt).toLocaleString()}
                   </td>
                 </tr>

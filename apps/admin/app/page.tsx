@@ -20,9 +20,11 @@ import { TransactionsView } from "./components/transactions-view";
 import { NotificationsView } from "./components/notifications-view";
 import { ReportsView } from "./components/reports-view";
 import { TeamView } from "./components/team-view";
+import { PlansView } from "./components/plans-view";
 
 const nav: NavItem[] = [
   { label: "Platform Overview", icon: "home", href: "#overview" },
+  { label: "Subscription Plans", icon: "rupee", href: "#plans" },
   { label: "User Directory", icon: "people", href: "#users" },
   { label: "CMS & Banners", icon: "services", href: "#cms" },
   { label: "Payments & Refunds", icon: "finance", href: "#transactions" },
@@ -153,6 +155,7 @@ export default function AdminHomePage() {
   // Navigation tab state
   type PlatformTab =
     | "overview"
+    | "plans"
     | "users"
     | "cms"
     | "transactions"
@@ -191,6 +194,12 @@ export default function AdminHomePage() {
   const [savingOrg, setSavingOrg] = useState(false);
   const [copiedId, setCopiedId] = useState(false);
 
+  // Delete Org state
+  const [orgToDelete, setOrgToDelete] = useState<OrganisationDetail | null>(null);
+  const [deleteOwnerUser, setDeleteOwnerUser] = useState(true);
+  const [confirmOrgNameInput, setConfirmOrgNameInput] = useState("");
+  const [deletingOrg, setDeletingOrg] = useState(false);
+
   // Service toggle state inside detail modal
   const [editableServices, setEditableServices] = useState<string[]>([]);
 
@@ -208,6 +217,7 @@ export default function AdminHomePage() {
       const hash = window.location.hash.replace("#", "");
       const validTabs = [
         "overview",
+        "plans",
         "users",
         "cms",
         "transactions",
@@ -347,6 +357,36 @@ export default function AdminHomePage() {
     }
   }
 
+  // Delete Workspace Permanently
+  async function handleExecuteDeleteOrg() {
+    if (!orgToDelete) return;
+    setDeletingOrg(true);
+    try {
+      const res = await authFetch(
+        `${api}/platform/organisations/${orgToDelete.id}?deleteOwnerUser=${deleteOwnerUser ? "true" : "false"}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+        }
+      );
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.message || "Failed to delete organisation");
+      }
+      triggerFeedback(
+        `Workspace "${orgToDelete.name}" ${deleteOwnerUser ? "and owner account " : ""}deleted permanently!`,
+        "success"
+      );
+      setOrgToDelete(null);
+      setSelectedOrg(null);
+      loadData();
+    } catch (err) {
+      triggerFeedback((err as Error).message, "error");
+    } finally {
+      setDeletingOrg(false);
+    }
+  }
+
   // Create New Tenant
   async function handleCreateOrg(e: React.FormEvent) {
     e.preventDefault();
@@ -429,7 +469,6 @@ export default function AdminHomePage() {
       product="CRMKaro Admin"
       organisation="Platform Operations"
       nav={nav}
-      dark
       currentPath={`#${activeTab}`}
       userName="Super Admin"
       userRole="Platform Administrator"
@@ -449,20 +488,20 @@ export default function AdminHomePage() {
             bottom: 24,
             right: 24,
             zIndex: 9999,
-            padding: "12px 20px",
-            borderRadius: 10,
-            background: feedback.type === "success" ? "#064e3b" : "#7f1d1d",
+            padding: "10px 18px",
+            borderRadius: 8,
+            background: feedback.type === "success" ? "#065f46" : "#991b1b",
             color: "#ffffff",
             border: `1px solid ${feedback.type === "success" ? "#059669" : "#dc2626"}`,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+            boxShadow: "0 6px 20px rgba(0,0,0,0.15)",
             display: "flex",
             alignItems: "center",
-            gap: 10,
-            fontSize: 13,
+            gap: 8,
+            fontSize: 12.5,
             fontWeight: 600,
           }}
         >
-          <Icon name={feedback.type === "success" ? "checkCircle" : "alertCircle"} size={16} />
+          <Icon name={feedback.type === "success" ? "checkCircle" : "alertCircle"} size={15} />
           <span>{feedback.message}</span>
         </div>
       )}
@@ -471,28 +510,28 @@ export default function AdminHomePage() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            <Icon name="shield" size={14} /> Restricted Platform Console
+            <Icon name="shield" size={13} /> Restricted Platform Console
           </p>
           <h1>Platform Operations Console</h1>
           <p className="subheading">
             Live multi-tenant telemetry, tenant provisioning, service entitlements, and append-only audit.
           </p>
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
           <button
             className="secondary-btn"
             onClick={loadData}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 6, fontSize: 12 }}
           >
-            <Icon name="activity" size={14} />
+            <Icon name="activity" size={13} />
             <span>Refresh Telemetry</span>
           </button>
           <button
             className="primary-btn"
             onClick={() => setCreateModalOpen(true)}
-            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 16px", borderRadius: 8 }}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "6px 14px", borderRadius: 6, fontSize: 12 }}
           >
-            <Icon name="plus" size={15} />
+            <Icon name="plus" size={14} />
             <span>+ Onboard Tenant</span>
           </button>
           <button
@@ -502,25 +541,27 @@ export default function AdminHomePage() {
               display: "inline-flex",
               alignItems: "center",
               gap: 6,
-              padding: "8px 14px",
-              borderRadius: 8,
-              color: "#f87171",
-              border: "1px solid #7f1d1d",
-              background: "rgba(127, 29, 29, 0.2)",
+              padding: "6px 12px",
+              borderRadius: 6,
+              color: "#dc2626",
+              border: "1px solid #fecaca",
+              background: "#fef2f2",
               cursor: "pointer",
+              fontSize: 12,
             }}
             title="Sign out of platform admin console"
           >
-            <Icon name="logout" size={14} />
+            <Icon name="logout" size={13} />
             <span>Sign Out</span>
           </button>
         </div>
       </div>
 
       {/* Navigation Tabs */}
-      <div className="admin-nav-tabs" style={{ display: "flex", gap: 8, borderBottom: "1px solid #1e293b", paddingBottom: 12, marginBottom: 24, overflowX: "auto" }}>
+      <div className="admin-nav-tabs" style={{ display: "flex", gap: 6, borderBottom: "1px solid #e2e8f0", paddingBottom: 10, marginBottom: 20, overflowX: "auto" }}>
         {[
           { key: "overview", label: "Platform Overview", icon: "home" },
+          { key: "plans", label: "Subscription Plans", icon: "rupee" },
           { key: "users", label: "User Directory", icon: "people" },
           { key: "cms", label: "CMS & Banners", icon: "services" },
           { key: "transactions", label: "Payments & Refunds", icon: "finance" },
@@ -543,19 +584,20 @@ export default function AdminHomePage() {
               style={{
                 display: "inline-flex",
                 alignItems: "center",
-                gap: 8,
-                padding: "8px 16px",
-                borderRadius: 8,
-                border: "none",
-                background: isActive ? "rgba(56, 189, 248, 0.15)" : "transparent",
-                color: isActive ? "#38bdf8" : "#94a3b8",
+                gap: 6,
+                padding: "6px 12px",
+                borderRadius: 6,
+                border: isActive ? "1px solid #bae6fd" : "1px solid #e2e8f0",
+                background: isActive ? "#e0f2fe" : "#ffffff",
+                color: isActive ? "#0284c7" : "#475569",
                 fontWeight: isActive ? 700 : 500,
-                fontSize: 13,
+                fontSize: 12,
                 cursor: "pointer",
                 transition: "all 0.15s ease",
+                whiteSpace: "nowrap",
               }}
             >
-              <Icon name={tab.icon as any} size={15} />
+              <Icon name={tab.icon as any} size={14} />
               <span>{tab.label}</span>
             </button>
           );
@@ -662,20 +704,20 @@ export default function AdminHomePage() {
                   action="Inspect Services"
                   onAction={() => setActiveTab("services")}
                 >
-                  <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                     {data?.adoption.map((s) => (
-                      <div key={s.code} style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                          <strong style={{ color: "#ffffff" }}>{s.name}</strong>
-                          <span style={{ color: "#38bdf8", fontWeight: 600 }}>
+                      <div key={s.code} style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+                          <strong style={{ color: "#0f172a" }}>{s.name}</strong>
+                          <span style={{ color: "#0284c7", fontWeight: 700 }}>
                             {s.count} tenants ({s.percentage}%)
                           </span>
                         </div>
                         <div
                           style={{
-                            height: 8,
-                            background: "#1e293b",
-                            borderRadius: 4,
+                            height: 6,
+                            background: "#f1f5f9",
+                            borderRadius: 3,
                             overflow: "hidden",
                           }}
                         >
@@ -683,8 +725,8 @@ export default function AdminHomePage() {
                             style={{
                               height: "100%",
                               width: `${Math.max(s.percentage, 8)}%`,
-                              background: "linear-gradient(90deg, #0284c7, #38bdf8)",
-                              borderRadius: 4,
+                              background: "#0284c7",
+                              borderRadius: 3,
                             }}
                           />
                         </div>
@@ -751,6 +793,11 @@ export default function AdminHomePage() {
             </>
           )}
 
+          {/* TAB: SUBSCRIPTION PLANS */}
+          {activeTab === "plans" && (
+            <PlansView onFeedback={triggerFeedback} />
+          )}
+
           {/* TAB: USERS DIRECTORY */}
           {activeTab === "users" && (
             <UsersView onFeedback={triggerFeedback} />
@@ -792,14 +839,14 @@ export default function AdminHomePage() {
                   justifyContent: "space-between",
                   gap: 14,
                   flexWrap: "wrap",
-                  padding: "16px 20px",
-                  background: "#0f172a",
-                  borderRadius: 12,
-                  border: "1px solid #1e293b",
+                  padding: "12px 16px",
+                  background: "#ffffff",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1, minWidth: 260 }}>
-                  <Icon name="search" size={16} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1, minWidth: 240 }}>
+                  <Icon name="search" size={15} />
                   <input
                     type="text"
                     placeholder="Search tenants by name, slug, or type…"
@@ -809,8 +856,8 @@ export default function AdminHomePage() {
                       flex: 1,
                       background: "transparent",
                       border: "none",
-                      color: "#ffffff",
-                      fontSize: 14,
+                      color: "#0f172a",
+                      fontSize: 12.5,
                       outline: "none",
                     }}
                   />
@@ -819,22 +866,22 @@ export default function AdminHomePage() {
                       onClick={() => setOrgSearch("")}
                       style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer" }}
                     >
-                      <Icon name="close" size={14} />
+                      <Icon name="close" size={13} />
                     </button>
                   )}
                 </div>
 
-                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
                     style={{
-                      background: "#1e293b",
-                      border: "1px solid #334155",
-                      color: "#ffffff",
-                      padding: "8px 12px",
-                      borderRadius: 8,
-                      fontSize: 13,
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      color: "#0f172a",
+                      padding: "6px 10px",
+                      borderRadius: 6,
+                      fontSize: 12,
                     }}
                   >
                     <option value="ALL">All Statuses</option>
@@ -845,9 +892,9 @@ export default function AdminHomePage() {
                   <button
                     className="primary-btn"
                     onClick={() => setCreateModalOpen(true)}
-                    style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px", borderRadius: 8 }}
+                    style={{ display: "inline-flex", alignItems: "center", gap: 5, padding: "6px 12px", borderRadius: 6, fontSize: 12 }}
                   >
-                    <Icon name="plus" size={14} />
+                    <Icon name="plus" size={13} />
                     <span>Onboard Tenant</span>
                   </button>
                 </div>
@@ -855,12 +902,12 @@ export default function AdminHomePage() {
 
               {/* Tenants Table */}
               <div className="section-card" style={{ padding: 0 }}>
-                <header style={{ padding: "16px 20px", borderBottom: "1px solid #1e293b" }}>
+                <header style={{ padding: "12px 18px", borderBottom: "1px solid #e2e8f0" }}>
                   <div>
-                    <h2 style={{ color: "#ffffff", margin: 0, fontSize: 15 }}>
+                    <h2 style={{ color: "#0f172a", margin: 0, fontSize: 14 }}>
                       Registered Workspaces ({filteredOrgs.length})
                     </h2>
-                    <p style={{ color: "#94a3b8", margin: "2px 0 0", fontSize: 12 }}>
+                    <p style={{ color: "#64748b", margin: "2px 0 0", fontSize: 11.5 }}>
                       Click any row to manage tenant settings, toggle status, or configure service entitlements.
                     </p>
                   </div>
@@ -883,7 +930,7 @@ export default function AdminHomePage() {
                     <tbody>
                       {filteredOrgs.length === 0 ? (
                         <tr>
-                          <td colSpan={8} style={{ textAlign: "center", padding: "32px 16px", color: "#94a3b8" }}>
+                          <td colSpan={8} style={{ textAlign: "center", padding: "28px 16px", color: "#64748b", fontSize: 12 }}>
                             No tenants match your search filter.
                           </td>
                         </tr>
@@ -895,31 +942,31 @@ export default function AdminHomePage() {
                             onClick={() => handleSelectOrg(org)}
                           >
                             <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                                 <div
                                   style={{
-                                    width: 34,
-                                    height: 34,
-                                    borderRadius: 8,
+                                    width: 30,
+                                    height: 30,
+                                    borderRadius: 6,
                                     background: "linear-gradient(135deg, #0284c7, #38bdf8)",
                                     color: "#ffffff",
                                     display: "grid",
                                     placeItems: "center",
                                     fontWeight: 700,
-                                    fontSize: 13,
+                                    fontSize: 12,
                                   }}
                                 >
                                   {org.name.slice(0, 2).toUpperCase()}
                                 </div>
                                 <div>
-                                  <strong style={{ color: "#ffffff", display: "block" }}>{org.name}</strong>
-                                  <small style={{ color: "#64748b" }}>{org.slug}</small>
+                                  <strong style={{ color: "#0f172a", display: "block", fontSize: 12.5 }}>{org.name}</strong>
+                                  <small style={{ color: "#64748b", fontSize: 11 }}>{org.slug}</small>
                                 </div>
                               </div>
                             </td>
                             <td>
-                              <span style={{ color: "#cbd5e1", display: "block" }}>{org.businessType}</span>
-                              <small style={{ color: "#64748b" }}>{org.currency} ({org.timezone})</small>
+                              <span style={{ color: "#334155", display: "block", fontSize: 12 }}>{org.businessType}</span>
+                              <small style={{ color: "#64748b", fontSize: 11 }}>{org.currency} ({org.timezone})</small>
                             </td>
                             <td>
                               <Badge tone={org.status === "ACTIVE" ? "green" : "neutral"}>
@@ -927,11 +974,11 @@ export default function AdminHomePage() {
                               </Badge>
                             </td>
                             <td>
-                              <span style={{ color: "#ffffff", fontWeight: 600 }}>{org.memberCount}</span>
-                              <small style={{ color: "#64748b", display: "block" }}>users</small>
+                              <span style={{ color: "#0f172a", fontWeight: 600, fontSize: 12 }}>{org.memberCount}</span>
+                              <small style={{ color: "#64748b", display: "block", fontSize: 11 }}>users</small>
                             </td>
                             <td>
-                              <span style={{ color: "#cbd5e1" }}>{org.peopleCount} contacts</span>
+                              <span style={{ color: "#334155", fontSize: 12 }}>{org.peopleCount} contacts</span>
                             </td>
                             <td>
                               <div style={{ display: "flex", gap: 4, flexWrap: "wrap", maxWidth: 220 }}>
@@ -943,9 +990,9 @@ export default function AdminHomePage() {
                                       fontWeight: 600,
                                       padding: "2px 6px",
                                       borderRadius: 4,
-                                      background: "rgba(56, 189, 248, 0.1)",
-                                      color: "#38bdf8",
-                                      border: "1px solid rgba(56, 189, 248, 0.2)",
+                                      background: "#f0f9ff",
+                                      color: "#0284c7",
+                                      border: "1px solid #bae6fd",
                                     }}
                                   >
                                     {s.code.toUpperCase()}
@@ -959,16 +1006,44 @@ export default function AdminHomePage() {
                               </span>
                             </td>
                             <td style={{ textAlign: "right" }}>
-                              <button
-                                className="secondary-btn"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleSelectOrg(org);
-                                }}
-                                style={{ padding: "4px 10px", fontSize: 12 }}
-                              >
-                                Manage
-                              </button>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                                <button
+                                  className="secondary-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleSelectOrg(org);
+                                  }}
+                                  style={{ padding: "4px 10px", fontSize: 12 }}
+                                >
+                                  Manage
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setOrgToDelete(org);
+                                    setDeleteOwnerUser(true);
+                                    setConfirmOrgNameInput("");
+                                  }}
+                                  style={{
+                                    padding: "4px 8px",
+                                    fontSize: 11.5,
+                                    borderRadius: 6,
+                                    border: "1px solid #fecaca",
+                                    background: "#fef2f2",
+                                    color: "#dc2626",
+                                    cursor: "pointer",
+                                    fontWeight: 600,
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 3,
+                                  }}
+                                  title="Delete workspace permanently"
+                                >
+                                  <Icon name="trash" size={12} />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))
@@ -982,15 +1057,15 @@ export default function AdminHomePage() {
 
           {/* TAB 3: SERVICES & ADOPTION */}
           {activeTab === "services" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
-              <div className="section-card" style={{ padding: 24 }}>
-                <h2 style={{ color: "#ffffff", margin: "0 0 6px" }}>Platform Service Modules & Entitlements</h2>
-                <p style={{ color: "#94a3b8", margin: 0, fontSize: 13 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+              <div className="section-card" style={{ padding: 18 }}>
+                <h2 style={{ color: "#0f172a", margin: "0 0 4px", fontSize: 14.5 }}>Platform Service Modules & Entitlements</h2>
+                <p style={{ color: "#64748b", margin: 0, fontSize: 12 }}>
                   CRMKaro modular architecture lets you provision and enable specific capabilities per organisation tenant.
                 </p>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))", gap: 20 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 14 }}>
                 {ALL_AVAILABLE_SERVICES.map((s) => {
                   const adoption = data?.adoption.find((a) => a.code === s.code);
                   const count = adoption?.count || 0;
@@ -1001,48 +1076,48 @@ export default function AdminHomePage() {
                       key={s.code}
                       className="section-card"
                       style={{
-                        padding: 24,
+                        padding: 18,
                         display: "flex",
                         flexDirection: "column",
-                        gap: 16,
-                        border: "1px solid #1e293b",
-                        background: "#0f172a",
+                        gap: 12,
+                        border: "1px solid #e2e8f0",
+                        background: "#ffffff",
                       }}
                     >
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                           <div
                             style={{
-                              width: 42,
-                              height: 42,
-                              borderRadius: 10,
-                              background: "rgba(56, 189, 248, 0.15)",
-                              color: "#38bdf8",
+                              width: 36,
+                              height: 36,
+                              borderRadius: 8,
+                              background: "#e0f2fe",
+                              color: "#0284c7",
                               display: "grid",
                               placeItems: "center",
                             }}
                           >
-                            <Icon name={s.code === "people" ? "people" : s.code === "crm" ? "activity" : s.code === "finance" ? "rupee" : s.code === "payroll" ? "calendar" : "tag"} size={20} />
+                            <Icon name={s.code === "people" ? "people" : s.code === "crm" ? "activity" : s.code === "finance" ? "rupee" : s.code === "payroll" ? "calendar" : "tag"} size={17} />
                           </div>
                           <div>
-                            <strong style={{ color: "#ffffff", fontSize: 16, display: "block" }}>{s.name}</strong>
-                            <code style={{ color: "#38bdf8", fontSize: 11 }}>module: {s.code}</code>
+                            <strong style={{ color: "#0f172a", fontSize: 13.5, display: "block" }}>{s.name}</strong>
+                            <code style={{ color: "#0284c7", fontSize: 11 }}>module: {s.code}</code>
                           </div>
                         </div>
                         <Badge tone="green">Active</Badge>
                       </div>
 
-                      <p style={{ color: "#94a3b8", fontSize: 13, margin: 0, lineHeight: 1.5 }}>
+                      <p style={{ color: "#64748b", fontSize: 12, margin: 0, lineHeight: 1.45 }}>
                         {s.desc}
                       </p>
 
-                      <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: "auto", paddingTop: 14, borderTop: "1px solid #1e293b" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
-                          <span style={{ color: "#94a3b8" }}>Adoption Rate:</span>
-                          <strong style={{ color: "#ffffff" }}>{count} tenants ({percentage}%)</strong>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 5, marginTop: "auto", paddingTop: 10, borderTop: "1px solid #f1f5f9" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11.5 }}>
+                          <span style={{ color: "#64748b" }}>Adoption Rate:</span>
+                          <strong style={{ color: "#0f172a" }}>{count} tenants ({percentage}%)</strong>
                         </div>
-                        <div style={{ height: 6, background: "#1e293b", borderRadius: 3, overflow: "hidden" }}>
-                          <div style={{ height: "100%", width: `${Math.max(percentage, 5)}%`, background: "#38bdf8" }} />
+                        <div style={{ height: 5, background: "#f1f5f9", borderRadius: 3, overflow: "hidden" }}>
+                          <div style={{ height: "100%", width: `${Math.max(percentage, 5)}%`, background: "#0284c7" }} />
                         </div>
                       </div>
                     </div>
@@ -1054,21 +1129,21 @@ export default function AdminHomePage() {
 
           {/* TAB 4: PLATFORM AUDIT */}
           {activeTab === "audit" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <div
                 style={{
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
-                  gap: 14,
-                  padding: "16px 20px",
-                  background: "#0f172a",
-                  borderRadius: 12,
-                  border: "1px solid #1e293b",
+                  gap: 12,
+                  padding: "12px 16px",
+                  background: "#ffffff",
+                  borderRadius: 8,
+                  border: "1px solid #e2e8f0",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 12, flex: 1 }}>
-                  <Icon name="search" size={16} />
+                <div style={{ display: "flex", alignItems: "center", gap: 10, flex: 1 }}>
+                  <Icon name="search" size={15} />
                   <input
                     type="text"
                     placeholder="Search audit logs by action, actor, or organisation…"
@@ -1078,8 +1153,8 @@ export default function AdminHomePage() {
                       flex: 1,
                       background: "transparent",
                       border: "none",
-                      color: "#ffffff",
-                      fontSize: 14,
+                      color: "#0f172a",
+                      fontSize: 12.5,
                       outline: "none",
                     }}
                   />
@@ -1088,19 +1163,19 @@ export default function AdminHomePage() {
                       onClick={() => setAuditSearch("")}
                       style={{ background: "transparent", border: "none", color: "#94a3b8", cursor: "pointer" }}
                     >
-                      <Icon name="close" size={14} />
+                      <Icon name="close" size={13} />
                     </button>
                   )}
                 </div>
               </div>
 
               <div className="section-card" style={{ padding: 0 }}>
-                <header style={{ padding: "16px 20px", borderBottom: "1px solid #1e293b" }}>
+                <header style={{ padding: "12px 18px", borderBottom: "1px solid #e2e8f0" }}>
                   <div>
-                    <h2 style={{ color: "#ffffff", margin: 0, fontSize: 15 }}>
+                    <h2 style={{ color: "#0f172a", margin: 0, fontSize: 14 }}>
                       Global Platform Audit Trail ({filteredAudit.length} events)
                     </h2>
-                    <p style={{ color: "#94a3b8", margin: "2px 0 0", fontSize: 12 }}>
+                    <p style={{ color: "#64748b", margin: "2px 0 0", fontSize: 11.5 }}>
                       Append-only cryptographically verifiable operations ledger.
                     </p>
                   </div>
@@ -1120,7 +1195,7 @@ export default function AdminHomePage() {
                     <tbody>
                       {filteredAudit.length === 0 ? (
                         <tr>
-                          <td colSpan={5} style={{ textAlign: "center", padding: "32px 16px", color: "#94a3b8" }}>
+                          <td colSpan={5} style={{ textAlign: "center", padding: "28px 16px", color: "#64748b", fontSize: 12 }}>
                             No audit events match your search query.
                           </td>
                         </tr>
@@ -1130,11 +1205,11 @@ export default function AdminHomePage() {
                             <td>
                               <code
                                 style={{
-                                  background: "rgba(56, 189, 248, 0.1)",
-                                  color: "#38bdf8",
-                                  padding: "3px 8px",
-                                  borderRadius: 6,
-                                  fontSize: 12,
+                                  background: "#f0f9ff",
+                                  color: "#0284c7",
+                                  padding: "2px 7px",
+                                  borderRadius: 4,
+                                  fontSize: 11.5,
                                   fontWeight: 600,
                                 }}
                               >
@@ -1142,16 +1217,16 @@ export default function AdminHomePage() {
                               </code>
                             </td>
                             <td>
-                              <span style={{ color: "#cbd5e1" }}>{log.entityType}</span>
+                              <span style={{ color: "#334155" }}>{log.entityType}</span>
                             </td>
                             <td>
-                              <strong style={{ color: "#ffffff" }}>{log.actor}</strong>
+                              <strong style={{ color: "#0f172a", fontSize: 12 }}>{log.actor}</strong>
                             </td>
                             <td>
-                              <span style={{ color: "#94a3b8" }}>{log.organisation}</span>
+                              <span style={{ color: "#64748b" }}>{log.organisation}</span>
                             </td>
                             <td>
-                              <span style={{ color: "#64748b", fontSize: 12 }}>
+                              <span style={{ color: "#64748b", fontSize: 11.5 }}>
                                 {new Date(log.createdAt).toLocaleString()}
                               </span>
                             </td>
@@ -1167,12 +1242,12 @@ export default function AdminHomePage() {
 
           {/* TAB 5: SYSTEM HEALTH */}
           {activeTab === "health" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
               <div className="stats-grid">
                 <StatCard
                   label="PostgreSQL Status"
                   value={
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <span className="live-pulse-dot" />
                       <span>Connected</span>
                     </span>
@@ -1184,7 +1259,7 @@ export default function AdminHomePage() {
                 <StatCard
                   label="API Server Uptime"
                   value={
-                    <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+                    <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                       <span className="live-pulse-dot" />
                       <span>{health ? `${Math.floor(health.uptimeSeconds / 3600)}h ${Math.floor((health.uptimeSeconds % 3600) / 60)}m` : "Active"}</span>
                     </span>
@@ -1209,11 +1284,11 @@ export default function AdminHomePage() {
                 />
               </div>
 
-              <div className="section-card" style={{ padding: 24 }}>
-                <h2 style={{ color: "#ffffff", margin: "0 0 16px", fontSize: 16 }}>
+              <div className="section-card" style={{ padding: 18 }}>
+                <h2 style={{ color: "#0f172a", margin: "0 0 12px", fontSize: 14.5 }}>
                   Database Telemetry & Model Row Counts
                 </h2>
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 16 }}>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>
                   {[
                     { label: "Organisations (Tenants)", count: health?.database.counts.organisations ?? organisations.length },
                     { label: "Users & Accounts", count: health?.database.counts.users ?? data?.stats.totalUsers ?? 0 },
@@ -1225,16 +1300,16 @@ export default function AdminHomePage() {
                     <div
                       key={item.label}
                       style={{
-                        padding: 16,
-                        background: "#1e293b",
-                        borderRadius: 10,
-                        border: "1px solid #334155",
+                        padding: 12,
+                        background: "#f8fafc",
+                        borderRadius: 8,
+                        border: "1px solid #e2e8f0",
                       }}
                     >
-                      <span style={{ color: "#94a3b8", fontSize: 12, display: "block", marginBottom: 4 }}>
+                      <span style={{ color: "#64748b", fontSize: 11, display: "block", marginBottom: 3 }}>
                         {item.label}
                       </span>
-                      <strong style={{ color: "#ffffff", fontSize: 24, fontWeight: 800 }}>
+                      <strong style={{ color: "#0f172a", fontSize: 20, fontWeight: 800 }}>
                         {item.count}
                       </strong>
                     </div>
@@ -1260,17 +1335,17 @@ export default function AdminHomePage() {
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    padding: "12px 16px",
-                    background: "#1e293b",
-                    borderRadius: 10,
-                    border: "1px solid #334155",
+                    padding: "10px 14px",
+                    background: "#f8fafc",
+                    borderRadius: 8,
+                    border: "1px solid #e2e8f0",
                   }}
                 >
                   <div>
-                    <small style={{ color: "#94a3b8", display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>
+                    <small style={{ color: "#64748b", display: "block", fontSize: 10, textTransform: "uppercase", fontWeight: 700 }}>
                       Tenant Isolation UUID (PostgreSQL Key)
                     </small>
-                    <code style={{ color: "#38bdf8", fontSize: 13, wordBreak: "break-all" }}>
+                    <code style={{ color: "#0284c7", fontSize: 12, wordBreak: "break-all", fontWeight: 600 }}>
                       {selectedOrg.id}
                     </code>
                   </div>
@@ -1285,10 +1360,10 @@ export default function AdminHomePage() {
                 </div>
 
                 {/* Status & Quick Actions */}
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px", background: "#090e17", borderRadius: 10, border: "1px solid #1e293b" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", background: "#f8fafc", borderRadius: 8, border: "1px solid #e2e8f0" }}>
                   <div>
-                    <span style={{ color: "#94a3b8", fontSize: 12, display: "block" }}>Operational Status</span>
-                    <strong style={{ color: selectedOrg.status === "ACTIVE" ? "#4ade80" : "#f87171", fontSize: 15 }}>
+                    <span style={{ color: "#64748b", fontSize: 11, display: "block" }}>Operational Status</span>
+                    <strong style={{ color: selectedOrg.status === "ACTIVE" ? "#16a34a" : "#dc2626", fontSize: 13, fontWeight: 700 }}>
                       ● {selectedOrg.status}
                     </strong>
                   </div>
@@ -1296,7 +1371,7 @@ export default function AdminHomePage() {
                     className={selectedOrg.status === "ACTIVE" ? "danger-button" : "primary-btn"}
                     disabled={savingOrg}
                     onClick={() => handleToggleOrgStatus(selectedOrg)}
-                    style={{ padding: "8px 16px", borderRadius: 8, fontSize: 13 }}
+                    style={{ padding: "6px 14px", borderRadius: 6, fontSize: 12 }}
                   >
                     {savingOrg ? "Updating…" : selectedOrg.status === "ACTIVE" ? "Suspend Workspace" : "Activate Workspace"}
                   </button>
@@ -1306,36 +1381,36 @@ export default function AdminHomePage() {
                 <div className="key-value-list">
                   <div className="key-value-row">
                     <span className="key-value-label">
-                      <Icon name="tag" size={14} /> Business Type
+                      <Icon name="tag" size={13} /> Business Type
                     </span>
-                    <strong className="key-value-value" style={{ color: "#ffffff" }}>{selectedOrg.businessType}</strong>
+                    <strong className="key-value-value" style={{ color: "#0f172a", fontSize: 12 }}>{selectedOrg.businessType}</strong>
                   </div>
                   <div className="key-value-row">
                     <span className="key-value-label">
-                      <Icon name="rupee" size={14} /> Currency & Timezone
+                      <Icon name="rupee" size={13} /> Currency & Timezone
                     </span>
-                    <strong className="key-value-value" style={{ color: "#ffffff" }}>{selectedOrg.currency} · {selectedOrg.timezone}</strong>
+                    <strong className="key-value-value" style={{ color: "#0f172a", fontSize: 12 }}>{selectedOrg.currency} · {selectedOrg.timezone}</strong>
                   </div>
                   <div className="key-value-row">
                     <span className="key-value-label">
-                      <Icon name="calendar" size={14} /> Onboarded Date
+                      <Icon name="calendar" size={13} /> Onboarded Date
                     </span>
-                    <strong className="key-value-value" style={{ color: "#ffffff" }}>{new Date(selectedOrg.createdAt).toLocaleDateString()}</strong>
+                    <strong className="key-value-value" style={{ color: "#0f172a", fontSize: 12 }}>{new Date(selectedOrg.createdAt).toLocaleDateString()}</strong>
                   </div>
                   <div className="key-value-row">
                     <span className="key-value-label">
-                      <Icon name="people" size={14} /> Team Members
+                      <Icon name="people" size={13} /> Team Members
                     </span>
-                    <strong className="key-value-value" style={{ color: "#ffffff" }}>{selectedOrg.memberCount} members ({selectedOrg.peopleCount} contacts)</strong>
+                    <strong className="key-value-value" style={{ color: "#0f172a", fontSize: 12 }}>{selectedOrg.memberCount} members ({selectedOrg.peopleCount} contacts)</strong>
                   </div>
                 </div>
 
                 {/* Service Entitlements Configuration */}
-                <div style={{ display: "flex", flexDirection: "column", gap: 12, paddingTop: 16, borderTop: "1px solid #1e293b" }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10, paddingTop: 14, borderTop: "1px solid #e2e8f0" }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                     <div>
-                      <strong style={{ color: "#ffffff", fontSize: 14 }}>Modular Service Entitlements</strong>
-                      <p style={{ color: "#94a3b8", fontSize: 11, margin: "2px 0 0" }}>
+                      <strong style={{ color: "#0f172a", fontSize: 13 }}>Modular Service Entitlements</strong>
+                      <p style={{ color: "#64748b", fontSize: 11, margin: "2px 0 0" }}>
                         Enable or disable individual business applications for this tenant.
                       </p>
                     </div>
@@ -1343,13 +1418,13 @@ export default function AdminHomePage() {
                       className="primary-btn"
                       disabled={savingOrg}
                       onClick={() => handleSaveServices(selectedOrg)}
-                      style={{ padding: "6px 14px", fontSize: 12, borderRadius: 6 }}
+                      style={{ padding: "5px 12px", fontSize: 11, borderRadius: 6 }}
                     >
                       {savingOrg ? "Saving…" : "Save Entitlements"}
                     </button>
                   </div>
 
-                  <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
                     {ALL_AVAILABLE_SERVICES.map((s) => {
                       const isChecked = editableServices.includes(s.code);
                       return (
@@ -1358,11 +1433,11 @@ export default function AdminHomePage() {
                           style={{
                             display: "flex",
                             alignItems: "center",
-                            gap: 12,
-                            padding: "10px 14px",
-                            background: isChecked ? "rgba(56, 189, 248, 0.08)" : "#1e293b",
-                            border: `1px solid ${isChecked ? "rgba(56, 189, 248, 0.3)" : "#334155"}`,
-                            borderRadius: 8,
+                            gap: 10,
+                            padding: "8px 12px",
+                            background: isChecked ? "#f0f9ff" : "#ffffff",
+                            border: `1px solid ${isChecked ? "#bae6fd" : "#e2e8f0"}`,
+                            borderRadius: 6,
                             cursor: "pointer",
                           }}
                         >
@@ -1376,16 +1451,179 @@ export default function AdminHomePage() {
                                 setEditableServices((prev) => prev.filter((c) => c !== s.code));
                               }
                             }}
-                            style={{ accentColor: "#38bdf8", width: 16, height: 16 }}
+                            style={{ accentColor: "#0284c7", width: 15, height: 15 }}
                           />
                           <div style={{ flex: 1 }}>
-                            <strong style={{ color: "#ffffff", fontSize: 13, display: "block" }}>{s.name}</strong>
-                            <small style={{ color: "#94a3b8", fontSize: 11 }}>{s.desc}</small>
+                            <strong style={{ color: "#0f172a", fontSize: 12, display: "block" }}>{s.name}</strong>
+                            <small style={{ color: "#64748b", fontSize: 10.5 }}>{s.desc}</small>
                           </div>
                         </label>
                       );
                     })}
                   </div>
+                </div>
+
+                {/* Danger Zone: Permanent Deletion */}
+                <div
+                  style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    marginTop: 6,
+                    padding: "14px",
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    borderRadius: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
+                    <div style={{ flex: 1, minWidth: 240 }}>
+                      <strong style={{ color: "#dc2626", fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}>
+                        <Icon name="alertCircle" size={14} /> Danger Zone: Permanent Deletion
+                      </strong>
+                      <p style={{ color: "#991b1b", fontSize: 11, margin: "3px 0 0", lineHeight: 1.4 }}>
+                        Purge workspace records & free up owner account email for testing fresh re-registration.
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setOrgToDelete(selectedOrg);
+                        setDeleteOwnerUser(true);
+                        setConfirmOrgNameInput("");
+                      }}
+                      style={{
+                        padding: "7px 12px",
+                        borderRadius: 6,
+                        background: "#dc2626",
+                        color: "#ffffff",
+                        border: "none",
+                        fontWeight: 600,
+                        fontSize: 11.5,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Delete Workspace Permanently
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Modal>
+
+          {/* MODAL: CONFIRM PERMANENT DELETION */}
+          <Modal
+            isOpen={Boolean(orgToDelete)}
+            onClose={() => {
+              if (!deletingOrg) setOrgToDelete(null);
+            }}
+            title="Confirm Permanent Deletion"
+            subtitle={`Deleting "${orgToDelete?.name}"`}
+            maxWidth={520}
+          >
+            {orgToDelete && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div
+                  style={{
+                    background: "#fef2f2",
+                    border: "1px solid #fecaca",
+                    padding: "12px",
+                    borderRadius: 8,
+                    color: "#991b1b",
+                    fontSize: 12,
+                    lineHeight: 1.5,
+                  }}
+                >
+                  <strong style={{ display: "block", color: "#dc2626", marginBottom: 3 }}>
+                    ⚠️ Irreversible Testing Action
+                  </strong>
+                  All PostgreSQL records for <strong>{orgToDelete.name}</strong> ({orgToDelete.slug}) including CRM leads, contacts, invoices, payroll entries, and entitlements will be permanently wiped.
+                </div>
+
+                <label
+                  style={{
+                    display: "flex",
+                    alignItems: "flex-start",
+                    gap: 10,
+                    background: "#f8fafc",
+                    padding: "10px 12px",
+                    borderRadius: 6,
+                    border: "1px solid #e2e8f0",
+                    cursor: "pointer",
+                  }}
+                >
+                  <input
+                    type="checkbox"
+                    checked={deleteOwnerUser}
+                    onChange={(e) => setDeleteOwnerUser(e.target.checked)}
+                    style={{ accentColor: "#dc2626", width: 16, height: 16, marginTop: 2 }}
+                  />
+                  <div>
+                    <strong style={{ color: "#0f172a", fontSize: 12, display: "block" }}>
+                      Wipe owner user account (Free up email for re-registration)
+                    </strong>
+                    <small style={{ color: "#64748b", fontSize: 11, lineHeight: 1.4, display: "block", marginTop: 3 }}>
+                      Purges the owner account and OTP challenges so you can immediately re-register with the same email during onboarding testing.
+                    </small>
+                  </div>
+                </label>
+
+                <div>
+                  <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 5 }}>
+                    Type organisation name <strong style={{ color: "#0284c7" }}>{orgToDelete.name}</strong> to confirm:
+                  </label>
+                  <input
+                    type="text"
+                    placeholder={`Type "${orgToDelete.name}"`}
+                    value={confirmOrgNameInput}
+                    onChange={(e) => setConfirmOrgNameInput(e.target.value)}
+                    style={{
+                      width: "100%",
+                      background: "#ffffff",
+                      border: "1px solid #cbd5e1",
+                      borderRadius: 6,
+                      padding: "7px 10px",
+                      color: "#0f172a",
+                      fontSize: 12,
+                    }}
+                  />
+                </div>
+
+                <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 6 }}>
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    disabled={deletingOrg}
+                    onClick={() => setOrgToDelete(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleExecuteDeleteOrg}
+                    disabled={
+                      deletingOrg ||
+                      confirmOrgNameInput.trim().toLowerCase() !== orgToDelete.name.trim().toLowerCase()
+                    }
+                    style={{
+                      padding: "7px 14px",
+                      borderRadius: 6,
+                      background:
+                        confirmOrgNameInput.trim().toLowerCase() === orgToDelete.name.trim().toLowerCase()
+                          ? "#dc2626"
+                          : "#94a3b8",
+                      color: "#ffffff",
+                      border: "none",
+                      fontWeight: 600,
+                      fontSize: 12,
+                      cursor:
+                        confirmOrgNameInput.trim().toLowerCase() === orgToDelete.name.trim().toLowerCase()
+                          ? "pointer"
+                          : "not-allowed",
+                    }}
+                  >
+                    {deletingOrg ? "Deleting Workspace…" : "Delete Workspace Permanently"}
+                  </button>
                 </div>
               </div>
             )}
@@ -1399,7 +1637,7 @@ export default function AdminHomePage() {
             subtitle="Provision a fresh multi-tenant PostgreSQL workspace"
             maxWidth={540}
           >
-            <form onSubmit={handleCreateOrg} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <form onSubmit={handleCreateOrg} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               <div className="field">
                 <label>Business / Organisation Name *</label>
                 <input
@@ -1486,12 +1724,12 @@ export default function AdminHomePage() {
                           display: "flex",
                           alignItems: "center",
                           gap: 8,
-                          padding: "8px 10px",
-                          background: isChecked ? "rgba(56, 189, 248, 0.1)" : "#1e293b",
-                          border: `1px solid ${isChecked ? "#38bdf8" : "#334155"}`,
+                          padding: "7px 10px",
+                          background: isChecked ? "#f0f9ff" : "#ffffff",
+                          border: `1px solid ${isChecked ? "#bae6fd" : "#e2e8f0"}`,
                           borderRadius: 6,
-                          fontSize: 12,
-                          color: "#ffffff",
+                          fontSize: 11.5,
+                          color: "#0f172a",
                           cursor: "pointer",
                         }}
                       >
@@ -1505,9 +1743,9 @@ export default function AdminHomePage() {
                               setNewOrgServices((prev) => prev.filter((c) => c !== s.code));
                             }
                           }}
-                          style={{ accentColor: "#38bdf8" }}
+                          style={{ accentColor: "#0284c7" }}
                         />
-                        <span>{s.code.toUpperCase()}</span>
+                        <span style={{ fontWeight: 600 }}>{s.code.toUpperCase()}</span>
                       </label>
                     );
                   })}

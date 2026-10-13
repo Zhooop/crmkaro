@@ -1386,16 +1386,22 @@ function StudentsContent() {
             }}
           >
             <div>
-              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>Student Directory</h3>
+              <h3 style={{ fontSize: 16, fontWeight: 750, margin: 0 }}>
+                {isGym ? "Members Directory" : isSchool ? "Students Directory" : "Directory"}
+              </h3>
               <p style={{ fontSize: 12.5, color: "var(--muted)", margin: "3px 0 0" }}>
-                Enrolled students, class batches, parent/guardian phone, and active status.
+                {isGym
+                  ? "Active gym & fitness members, workout slots, emergency contact, and membership status."
+                  : isSchool
+                  ? "Enrolled students, class batches, parent/guardian phone, and active status."
+                  : "Enrolled contacts, batches, phone numbers, and active status."}
               </p>
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
               <div style={{ position: "relative" }}>
                 <input
                   type="text"
-                  placeholder="Search name, roll, phone..."
+                  placeholder={isGym ? "Search name, member ID, phone..." : "Search name, roll, phone..."}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   style={{
@@ -1425,7 +1431,9 @@ function StudentsContent() {
                   cursor: "pointer",
                 }}
               >
-                <option value="ALL">All Standards</option>
+                <option value="ALL">
+                  {isGym ? "All Plans / Packages" : isSchool ? "All Classes" : "All Standards"}
+                </option>
                 {distinctStandards.map((std) => (
                   <option key={std} value={std}>
                     {std}
@@ -1445,8 +1453,10 @@ function StudentsContent() {
                   cursor: "pointer",
                 }}
               >
-                <option value="ACTIVE">Active Students</option>
-                <option value="INACTIVE">Inactive / Alumni</option>
+                <option value="ACTIVE">{isGym ? "Active Members" : isSchool ? "Active Students" : "Active"}</option>
+                <option value="INACTIVE">
+                  {isGym ? "Expired / Inactive" : isSchool ? "Inactive / Alumni" : "Inactive"}
+                </option>
                 <option value="ALL">All Status</option>
               </select>
             </div>
@@ -2513,7 +2523,9 @@ function StudentsContent() {
                   fontWeight: 600,
                 }}
               >
-                <option value="ALL">All Standards</option>
+                <option value="ALL">
+                  {isGym ? "All Slots / Plans" : isSchool ? "All Classes" : "All Standards"}
+                </option>
                 {distinctStandards.map((std) => (
                   <option key={std} value={std}>
                     {std}

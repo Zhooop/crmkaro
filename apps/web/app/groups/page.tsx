@@ -16,6 +16,7 @@ import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
   isSchoolWorkspace,
+  isGymWorkspace,
 } from "@/lib/nav";
 
 type GroupItem = {
@@ -118,7 +119,8 @@ function GroupsContent() {
   const [activeGroupTab, setActiveGroupTab] = useState<string>("dashboard");
 
   const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
-  const isSchool = isSchoolWorkspace(businessType);
+  const isSchool = isSchoolWorkspace(businessType, orgName);
+  const isGym = isGymWorkspace(businessType, orgName);
 
   // Groups List States
   const [groups, setGroups] = useState<GroupItem[]>([]);
@@ -580,9 +582,20 @@ function GroupsContent() {
           <div className="page-heading">
             <div>
               <p className="eyebrow">
-                <Icon name="activity" size={14} /> {isSchool ? "Classes & Rosters" : "Batches & Rosters"}
+                <Icon name="activity" size={14} />{" "}
+                {isSchool
+                  ? "Classes & Rosters"
+                  : isGym
+                  ? "Workout Slots & Rosters"
+                  : "Batches & Rosters"}
               </p>
-              <h1>{isSchool ? "Classes & Sections" : "Active Groups"}</h1>
+              <h1>
+                {isSchool
+                  ? "Classes & Sections"
+                  : isGym
+                  ? "Batches & Workout Slots"
+                  : "Active Groups"}
+              </h1>
             </div>
 
             <div className="toolbar-actions">
@@ -592,9 +605,15 @@ function GroupsContent() {
                 onChange={(e) => setStatusFilter(e.target.value as any)}
                 style={{ width: 140 }}
               >
-                <option value="ACTIVE">{isSchool ? "Active classes" : "Active groups"}</option>
-                <option value="INACTIVE">{isSchool ? "Archived classes" : "Inactive groups"}</option>
-                <option value="ALL">{isSchool ? "All classes" : "All groups"}</option>
+                <option value="ACTIVE">
+                  {isSchool ? "Active classes" : isGym ? "Active slots" : "Active groups"}
+                </option>
+                <option value="INACTIVE">
+                  {isSchool ? "Archived classes" : isGym ? "Archived slots" : "Inactive groups"}
+                </option>
+                <option value="ALL">
+                  {isSchool ? "All classes" : isGym ? "All slots" : "All groups"}
+                </option>
               </select>
 
               <button
@@ -606,7 +625,13 @@ function GroupsContent() {
                 style={{ background: "#2563eb", borderColor: "#2563eb", fontWeight: 700 }}
               >
                 <Icon name="plus" size={15} />
-                <span>{isSchool ? "Add Class & Section" : "New Group"}</span>
+                <span>
+                  {isSchool
+                    ? "Add Class & Section"
+                    : isGym
+                    ? "New Slot / Batch"
+                    : "New Group"}
+                </span>
               </button>
             </div>
           </div>

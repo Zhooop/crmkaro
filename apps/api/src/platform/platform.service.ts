@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { type DatabaseClient, withPlatformAdmin } from "@crmkaro/database";
 import { DATABASE } from "../database/database.module.js";
 
@@ -291,6 +291,171 @@ export class PlatformService {
       }
 
       return { organisation: org };
+    });
+  }
+
+  async deleteOrganisation(organisationId: string, deleteOwnerUser = false, actorUserId?: string) {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      const org = await tx.organisation.findUnique({
+        where: { id: organisationId },
+        include: {
+          memberships: {
+            include: { user: true, role: true },
+          },
+        },
+      });
+
+      if (!org) {
+        throw new NotFoundException("Organisation not found.");
+      }
+
+      // Collect owner user IDs if deleteOwnerUser is requested
+      const ownerUserIds = (org.memberships || [])
+        .filter((m: any) => m.role?.code === "owner" || m.role?.name?.toLowerCase().includes("owner"))
+        .map((m: any) => m.userId);
+
+      // 1. Unset active organisation from any active sessions
+      await tx.authSession.updateMany({
+        where: { activeOrganisationId: organisationId },
+        data: { activeOrganisationId: null },
+      });
+
+      // 2. Cascade delete all child records tied to this organisation
+      // Attendance & Batches
+      await tx.attendanceRecord.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.groupMember.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.batchGroup.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.studentProfile.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Inventory
+      await tx.stockMovement.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.product.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.productCategory.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Payroll
+      await tx.payrollItem.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.payrollRun.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.salaryStructure.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.employee.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Finance & Invoicing
+      await tx.expense.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.paymentRefund.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.payment.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.invoiceItem.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.invoice.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.organisationSequence.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Leads & CRM
+      await tx.followUp.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.leadNote.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.leadActivity.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.lead.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.pipelineStage.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.pipeline.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.organisationLeadSetting.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // People & Contacts
+      await tx.personActivity.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.personTag.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.personTypeAssignment.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.tag.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.person.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Settings & Subscriptions
+      await tx.organisationPayoutSetting.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.organisationSubscription.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.organisationService.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.outboxEvent.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // RBAC Roles & Memberships
+      await tx.rolePermission.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.organisationMembership.deleteMany({ where: { organisationId } }).catch(() => {});
+      await tx.role.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // Audit logs for this organisation
+      await tx.auditLog.deleteMany({ where: { organisationId } }).catch(() => {});
+
+      // 3. Delete Organisation
+      await tx.organisation.delete({
+        where: { id: organisationId },
+      });
+
+      // 4. Optionally delete owner user if requested (so email can be re-registered immediately)
+      const deletedUsers: string[] = [];
+      if (deleteOwnerUser && ownerUserIds.length > 0) {
+        for (const uid of ownerUserIds) {
+          const otherMemberships = await tx.organisationMembership.count({
+            where: { userId: uid },
+          });
+          if (otherMemberships === 0) {
+            const userRec = await tx.user.findUnique({ where: { id: uid }, select: { email: true } });
+            if (userRec?.email) {
+              await tx.emailOtpChallenge.deleteMany({
+                where: { email: { equals: userRec.email, mode: "insensitive" } },
+              }).catch(() => {});
+            }
+            await tx.authSession.deleteMany({ where: { userId: uid } }).catch(() => {});
+            await tx.oAuthAccount.deleteMany({ where: { userId: uid } }).catch(() => {});
+            await tx.user.delete({ where: { id: uid } }).catch(() => {});
+            deletedUsers.push(uid);
+          }
+        }
+      }
+
+      return {
+        success: true,
+        organisationId,
+        deletedOrgName: org.name,
+        deletedOwnerUsersCount: deletedUsers.length,
+      };
+    });
+  }
+
+  async deleteUser(userId: string, actorUserId?: string) {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      const user = await tx.user.findUnique({
+        where: { id: userId },
+        include: {
+          memberships: {
+            include: { organisation: true },
+          },
+        },
+      });
+
+      if (!user) {
+        throw new NotFoundException("User not found.");
+      }
+
+      // Check if user is the sole member of any organisations, cascade delete them
+      for (const m of user.memberships || []) {
+        const orgId = m.organisationId;
+        const totalMembers = await tx.organisationMembership.count({
+          where: { organisationId: orgId },
+        });
+        if (totalMembers <= 1) {
+          await this.deleteOrganisation(orgId, false, actorUserId);
+        }
+      }
+
+      // Remove remaining memberships
+      await tx.organisationMembership.deleteMany({ where: { userId } }).catch(() => {});
+      // Remove sessions & OAuth
+      await tx.authSession.deleteMany({ where: { userId } }).catch(() => {});
+      await tx.oAuthAccount.deleteMany({ where: { userId } }).catch(() => {});
+      // Remove any OTP challenges
+      await tx.emailOtpChallenge.deleteMany({
+        where: { email: { equals: user.email, mode: "insensitive" } },
+      }).catch(() => {});
+
+      // Delete user
+      await tx.user.delete({ where: { id: userId } });
+
+      return {
+        success: true,
+        userId,
+        deletedUserEmail: user.email,
+      };
     });
   }
 
@@ -800,6 +965,186 @@ export class PlatformService {
   async deleteTeamMember(id: string) {
     return withPlatformAdmin(this.database, async (tx) => {
       await tx.platformAdminUser.delete({ where: { id } });
+      return { success: true };
+    });
+  }
+
+  // 7. SUBSCRIPTION PLANS MANAGEMENT
+  async listPlans() {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      let plans = await tx.subscriptionPlan.findMany({
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      });
+
+      if (plans.length === 0) {
+        const defaultPlan = await tx.subscriptionPlan.create({
+          data: {
+            name: "Launch Offer — All-in-One Business OS",
+            code: "launch_offer_249",
+            description: "Complete business operating system at special introductory pricing",
+            originalPriceMinor: 104900, // ₹1,049
+            discountPriceMinor: 24900, // ₹249
+            currency: "INR",
+            billingPeriod: "monthly",
+            billingInterval: 1,
+            badge: "Special Launch Offer · 76% OFF",
+            features: [
+              "Unlimited Students, Members & Clients",
+              "1-Click WhatsApp PDF Receipts & Invoices",
+              "Daily Batch Attendance & Parent WhatsApp Alerts",
+              "Staff Salary Structures & 1-Click Payslips",
+              "GST Invoicing & Daily Kharcha Expense Tracker",
+              "Sales CRM Visual Pipeline & Follow-up Reminders",
+              "Single-Tap Mobile Web & Computer Access",
+              "Hassle-free Monthly Renewal",
+            ],
+            isPopular: true,
+            isActive: true,
+            sortOrder: 1,
+          },
+        });
+        plans = [defaultPlan];
+      }
+
+      return { plans };
+    });
+  }
+
+  async listPublicPlans() {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      let plans = await tx.subscriptionPlan.findMany({
+        where: { isActive: true },
+        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+      });
+
+      if (plans.length === 0) {
+        const defaultPlan = await tx.subscriptionPlan.create({
+          data: {
+            name: "Launch Offer — All-in-One Business OS",
+            code: "launch_offer_249",
+            description: "Complete business operating system at special introductory pricing",
+            originalPriceMinor: 104900, // ₹1,049
+            discountPriceMinor: 24900, // ₹249
+            currency: "INR",
+            billingPeriod: "monthly",
+            billingInterval: 1,
+            badge: "Special Launch Offer · 76% OFF",
+            features: [
+              "Unlimited Students, Members & Clients",
+              "1-Click WhatsApp PDF Receipts & Invoices",
+              "Daily Batch Attendance & Parent WhatsApp Alerts",
+              "Staff Salary Structures & 1-Click Payslips",
+              "GST Invoicing & Daily Kharcha Expense Tracker",
+              "Sales CRM Visual Pipeline & Follow-up Reminders",
+              "Single-Tap Mobile Web & Computer Access",
+              "Hassle-free Monthly Renewal",
+            ],
+            isPopular: true,
+            isActive: true,
+            sortOrder: 1,
+          },
+        });
+        plans = [defaultPlan];
+      }
+
+      return { plans };
+    });
+  }
+
+  async createPlan(input: {
+    name: string;
+    code?: string;
+    description?: string;
+    originalPriceMinor: number;
+    discountPriceMinor: number;
+    currency?: string;
+    billingPeriod?: string;
+    billingInterval?: number;
+    badge?: string;
+    features?: string[];
+    isPopular?: boolean;
+    isActive?: boolean;
+    sortOrder?: number;
+  }) {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      const code =
+        input.code?.trim() ||
+        input.name
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "_")
+          .replace(/_+/g, "_")
+          .slice(0, 50) + `_${Date.now().toString().slice(-4)}`;
+
+      const plan = await tx.subscriptionPlan.create({
+        data: {
+          name: input.name.trim(),
+          code,
+          description: input.description?.trim() || null,
+          originalPriceMinor: Math.round(Number(input.originalPriceMinor)),
+          discountPriceMinor: Math.round(Number(input.discountPriceMinor)),
+          currency: input.currency || "INR",
+          billingPeriod: input.billingPeriod || "monthly",
+          billingInterval: input.billingInterval || 1,
+          badge: input.badge?.trim() || null,
+          features: Array.isArray(input.features) ? input.features : [],
+          isPopular: Boolean(input.isPopular),
+          isActive: input.isActive !== undefined ? Boolean(input.isActive) : true,
+          sortOrder: Number(input.sortOrder) || 0,
+        },
+      });
+
+      return { plan };
+    });
+  }
+
+  async updatePlan(
+    id: string,
+    input: Partial<{
+      name: string;
+      code: string;
+      description: string;
+      originalPriceMinor: number;
+      discountPriceMinor: number;
+      currency: string;
+      billingPeriod: string;
+      billingInterval: number;
+      badge: string;
+      features: string[];
+      isPopular: boolean;
+      isActive: boolean;
+      sortOrder: number;
+    }>,
+  ) {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      const dataToUpdate: any = {};
+      if (input.name !== undefined) dataToUpdate.name = input.name.trim();
+      if (input.code !== undefined) dataToUpdate.code = input.code.trim();
+      if (input.description !== undefined) dataToUpdate.description = input.description?.trim() || null;
+      if (input.originalPriceMinor !== undefined)
+        dataToUpdate.originalPriceMinor = Math.round(Number(input.originalPriceMinor));
+      if (input.discountPriceMinor !== undefined)
+        dataToUpdate.discountPriceMinor = Math.round(Number(input.discountPriceMinor));
+      if (input.currency !== undefined) dataToUpdate.currency = input.currency;
+      if (input.billingPeriod !== undefined) dataToUpdate.billingPeriod = input.billingPeriod;
+      if (input.billingInterval !== undefined) dataToUpdate.billingInterval = Number(input.billingInterval);
+      if (input.badge !== undefined) dataToUpdate.badge = input.badge?.trim() || null;
+      if (input.features !== undefined) dataToUpdate.features = Array.isArray(input.features) ? input.features : [];
+      if (input.isPopular !== undefined) dataToUpdate.isPopular = Boolean(input.isPopular);
+      if (input.isActive !== undefined) dataToUpdate.isActive = Boolean(input.isActive);
+      if (input.sortOrder !== undefined) dataToUpdate.sortOrder = Number(input.sortOrder);
+
+      const plan = await tx.subscriptionPlan.update({
+        where: { id },
+        data: dataToUpdate,
+      });
+
+      return { plan };
+    });
+  }
+
+  async deletePlan(id: string) {
+    return withPlatformAdmin(this.database, async (tx: any) => {
+      await tx.subscriptionPlan.delete({ where: { id } });
       return { success: true };
     });
   }

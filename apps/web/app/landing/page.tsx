@@ -20,9 +20,11 @@ export default function PublicLandingPage() {
   useEffect(() => {
     async function checkAuth() {
       try {
+        const token = typeof window !== "undefined" ? localStorage.getItem("crmkaro_token") : null;
+        if (!token) return;
         const api = getApiUrl();
-        const res = await authFetch(`${api}/dashboard`);
-        if (res.ok || res.status === 403) {
+        const res = await authFetch(`${api}/auth/me`);
+        if (res.ok) {
           setIsAuthenticated(true);
         }
       } catch {
@@ -36,7 +38,6 @@ export default function PublicLandingPage() {
     <LandingPage
       isAuthenticated={isAuthenticated}
       onLoginClick={() => openInNewTab("/login")}
-      onRegisterClick={() => openInNewTab("/login?mode=register")}
       onDashboardClick={() => openInNewTab("/")}
     />
   );

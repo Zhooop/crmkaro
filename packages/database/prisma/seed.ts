@@ -49,14 +49,14 @@ async function seed() {
     });
   }
 
-  // 1. Ensure Super Admin / Owner User exists
-  const ownerEmail = "zhoopinfotech@gmail.com";
+  // 1. Ensure Demo Workspace Owner exists for sample data
+  const ownerEmail = "demo-owner@crmkaro.com";
   const user = await database.user.upsert({
     where: { email: ownerEmail },
-    update: { name: "Pushpaindu Nath", status: "ACTIVE" },
+    update: { name: "Demo Workspace Owner", status: "ACTIVE" },
     create: {
       email: ownerEmail,
-      name: "Pushpaindu Nath",
+      name: "Demo Workspace Owner",
       status: "ACTIVE",
     },
   });

@@ -71,6 +71,24 @@ const updateTeamMemberSchema = z.object({
   isActive: z.boolean().optional(),
 });
 
+const createPlanSchema = z.object({
+  name: z.string().min(1),
+  code: z.string().optional(),
+  description: z.string().optional(),
+  originalPriceMinor: z.coerce.number().min(0),
+  discountPriceMinor: z.coerce.number().min(0),
+  currency: z.string().optional(),
+  billingPeriod: z.string().optional(),
+  billingInterval: z.coerce.number().int().optional(),
+  badge: z.string().optional(),
+  features: z.array(z.string()).optional(),
+  isPopular: z.boolean().optional(),
+  isActive: z.boolean().optional(),
+  sortOrder: z.coerce.number().int().optional(),
+});
+
+const updatePlanSchema = createPlanSchema.partial();
+
 // ==========================================
 // PUBLIC PLATFORM CONTROLLER (Web & Mobile)
 // ==========================================
@@ -86,6 +104,11 @@ export class PlatformPublicController {
   @Get("notifications")
   notifications(@Query("audience") audience?: string) {
     return this.platform.listPublicNotifications(audience);
+  }
+
+  @Get("plans")
+  plans() {
+    return this.platform.listPublicPlans();
   }
 }
 
@@ -136,6 +159,15 @@ export class PlatformController {
     return this.platform.createOrganisation(input, req.auth?.userId);
   }
 
+  @Delete("organisations/:id")
+  deleteOrganisation(
+    @Param("id") id: string,
+    @Query("deleteOwnerUser") deleteOwnerUser: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.platform.deleteOrganisation(id, deleteOwnerUser === "true", req.auth?.userId);
+  }
+
   @Get("audit")
   audit(@Query("limit") limit?: string) {
     const parsedLimit = z.coerce.number().int().min(1).max(100).catch(50).parse(limit);
@@ -177,6 +209,14 @@ export class PlatformController {
   ) {
     const input = toggleVerifySchema.parse(body);
     return this.platform.toggleUserVerify(id, input.isVerified, req.auth?.userId);
+  }
+
+  @Delete("users/:id")
+  deleteUser(
+    @Param("id") id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.platform.deleteUser(id, req.auth?.userId);
   }
 
   // --- 2. CMS & BANNERS ---
@@ -264,5 +304,28 @@ export class PlatformController {
   @Delete("team/:id")
   deleteTeamMember(@Param("id") id: string) {
     return this.platform.deleteTeamMember(id);
+  }
+
+  // --- 7. SUBSCRIPTION PLANS ---
+  @Get("plans")
+  listPlans() {
+    return this.platform.listPlans();
+  }
+
+  @Post("plans")
+  createPlan(@Body() body: unknown) {
+    const input = createPlanSchema.parse(body);
+    return this.platform.createPlan(input);
+  }
+
+  @Patch("plans/:id")
+  updatePlan(@Param("id") id: string, @Body() body: unknown) {
+    const input = updatePlanSchema.parse(body);
+    return this.platform.updatePlan(id, input);
+  }
+
+  @Delete("plans/:id")
+  deletePlan(@Param("id") id: string) {
+    return this.platform.deletePlan(id);
   }
 }

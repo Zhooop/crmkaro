@@ -274,6 +274,7 @@ model Organisation {
   groupMembers      GroupMember[]
   leadSetting       OrganisationLeadSetting?
   payoutSetting     OrganisationPayoutSetting?
+  subscriptions     OrganisationSubscription[]
 
   @@map("organisations")
 }
@@ -1116,4 +1117,50 @@ model PlatformAdminUser {
   @@map("platform_admin_users")
 }
 
+model SubscriptionPlan {
+  id                 String                     @id @default(uuid()) @db.Uuid
+  name               String                     @db.VarChar(120)
+  code               String                     @unique @db.VarChar(60)
+  description        String?                    @db.VarChar(300)
+  originalPriceMinor Int                        @map("original_price_minor")
+  discountPriceMinor Int                        @map("discount_price_minor")
+  currency           String                     @default("INR") @db.Char(3)
+  billingPeriod      String                     @default("monthly") @map("billing_period") @db.VarChar(30)
+  billingInterval    Int                        @default(1) @map("billing_interval")
+  badge              String?                    @db.VarChar(80)
+  features           Json                       @default("[]")
+  isPopular          Boolean                    @default(false) @map("is_popular")
+  isActive           Boolean                    @default(true) @map("is_active")
+  sortOrder          Int                        @default(0) @map("sort_order")
+  razorpayPlanId     String?                    @map("razorpay_plan_id") @db.VarChar(100)
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
 
+  subscriptions      OrganisationSubscription[]
+
+  @@map("subscription_plans")
+}
+
+model OrganisationSubscription {
+  id                     String           @id @default(uuid()) @db.Uuid
+  organisationId         String           @map("organisation_id") @db.Uuid
+  planId                 String           @map("plan_id") @db.Uuid
+  status                 String           @default("ACTIVE") @db.VarChar(40)
+  autoPayEnabled         Boolean          @default(false) @map("auto_pay_enabled")
+  paymentMethod          String?          @map("payment_method") @db.VarChar(40)
+  razorpaySubscriptionId String?          @map("razorpay_subscription_id") @db.VarChar(100)
+  razorpayPaymentId      String?          @map("razorpay_payment_id") @db.VarChar(100)
+  currentPeriodStart     DateTime         @default(now()) @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd       DateTime         @map("current_period_end") @db.Timestamptz(6)
+  amountPaidMinor        Int              @map("amount_paid_minor")
+  currency               String           @default("INR") @db.Char(3)
+  metadata               Json?
+  createdAt              DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  organisation           Organisation     @relation(fields: [organisationId], references: [id], onDelete: Cascade)
+  plan                   SubscriptionPlan @relation(fields: [planId], references: [id], onDelete: Restrict)
+
+  @@index([organisationId, status])
+  @@map("organisation_subscriptions")
+}

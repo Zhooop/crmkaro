@@ -35,20 +35,34 @@ export function MoreMenuScreen() {
     ]);
   };
 
+  const bType = String(activeOrg?.businessType || "").toUpperCase();
+  const orgN = String(activeOrg?.name || "").toLowerCase();
+  const isGym =
+    bType === "FITNESS_STUDIO" ||
+    bType === "GYM" ||
+    orgN.includes("gym") ||
+    orgN.includes("fitness") ||
+    orgN.includes("crossfit") ||
+    orgN.includes("workout");
+
   const modules: ModuleItem[] = [
     {
       id: "students",
-      title: "Students & Academy",
-      subtitle: "Roll numbers, standards & daily attendance",
-      iconName: "GraduationCap",
+      title: isGym ? "Members & Check-in" : "Students & Academy",
+      subtitle: isGym
+        ? "Gym memberships, validity & check-ins"
+        : "Roll numbers, standards & daily attendance",
+      iconName: isGym ? "Users" : "GraduationCap",
       iconColor: colors.brand,
       route: "Students",
       bg: colors.brandLight,
     },
     {
       id: "groups",
-      title: "Groups & Batches",
-      subtitle: "Batch rosters, schedules & fees",
+      title: isGym ? "Batches & Workout Slots" : "Groups & Batches",
+      subtitle: isGym
+        ? "Workout slots, batch schedules & plans"
+        : "Batch rosters, schedules & fees",
       iconName: "Users",
       iconColor: colors.emerald,
       route: "Groups",
@@ -56,8 +70,10 @@ export function MoreMenuScreen() {
     },
     {
       id: "crm",
-      title: "Leads & CRM Pipeline",
-      subtitle: "Deals kanban, follow-up calls & inquiries",
+      title: isGym ? "Leads & Trials" : "Leads & CRM Pipeline",
+      subtitle: isGym
+        ? "Inquiries, trial passes & prospect follow-ups"
+        : "Deals kanban, follow-up calls & inquiries",
       iconName: "TrendingUp",
       iconColor: "#ea580c",
       route: "CRM",
@@ -74,8 +90,10 @@ export function MoreMenuScreen() {
     },
     {
       id: "inventory",
-      title: "Inventory & Catalog",
-      subtitle: "Stock levels, books, uniforms & reorder alerts",
+      title: isGym ? "Supplements & Inventory" : "Inventory & Catalog",
+      subtitle: isGym
+        ? "Supplements, accessories, shaker bottles & stock"
+        : "Stock levels, books, uniforms & reorder alerts",
       iconName: "Package",
       iconColor: "#8b5cf6",
       route: "Inventory",
@@ -83,12 +101,23 @@ export function MoreMenuScreen() {
     },
     {
       id: "payroll",
-      title: "Payroll & Staff",
-      subtitle: "Employee roster, salary CTC & payroll runs",
+      title: isGym ? "Trainers & Staff" : "Payroll & Staff",
+      subtitle: isGym
+        ? "Trainer roster, monthly payouts & staff management"
+        : "Employee roster, salary CTC & payroll runs",
       iconName: "DollarSign",
       iconColor: "#0284c7",
       route: "Payroll",
       bg: "#e0f2fe",
+    },
+    {
+      id: "subscription",
+      title: "Subscription & Billing",
+      subtitle: "Launch Offer (₹249/mo) · All-in-One Business OS",
+      iconName: "CreditCard",
+      iconColor: colors.emerald,
+      route: "Subscription",
+      bg: colors.emeraldLight,
     },
     {
       id: "settings",

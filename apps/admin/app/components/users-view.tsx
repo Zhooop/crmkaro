@@ -41,6 +41,10 @@ export function UsersView({ onFeedback }: Props) {
   // Inspect Modal State
   const [inspectUser, setInspectUser] = useState<PlatformUser | null>(null);
 
+  // Delete User Modal State
+  const [deleteUser, setDeleteUser] = useState<PlatformUser | null>(null);
+  const [submittingDelete, setSubmittingDelete] = useState(false);
+
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
@@ -118,15 +122,37 @@ export function UsersView({ onFeedback }: Props) {
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!deleteUser) return;
+    setSubmittingDelete(true);
+    try {
+      const res = await authFetch(`${api}/platform/users/${deleteUser.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || "Failed to delete user");
+      }
+      onFeedback(`User ${deleteUser.email} has been permanently deleted.`, "success");
+      setDeleteUser(null);
+      if (inspectUser?.id === deleteUser.id) setInspectUser(null);
+      fetchUsers();
+    } catch (err) {
+      onFeedback((err as Error).message, "error");
+    } finally {
+      setSubmittingDelete(false);
+    }
+  };
+
   const totalUsers = users.length;
   const webUsersCount = users.filter((u) => u.signupPlatform === "WEB").length;
   const mobileUsersCount = users.filter((u) => u.signupPlatform === "MOBILE").length;
   const blockedUsersCount = users.filter((u) => u.status === "DISABLED").length;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {/* Metrics Row */}
-      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))" }}>
+      <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))" }}>
         <StatCard label="Total Users" value={totalUsers} icon="people" />
         <StatCard label="Web Signups" value={webUsersCount} icon="building" />
         <StatCard label="Mobile App Signups" value={mobileUsersCount} icon="activity" />
@@ -140,15 +166,16 @@ export function UsersView({ onFeedback }: Props) {
           flexWrap: "wrap",
           alignItems: "center",
           justifyContent: "space-between",
-          gap: 12,
-          background: "#0f172a",
-          padding: "16px",
-          borderRadius: "10px",
-          border: "1px solid #1e293b",
+          gap: 10,
+          background: "#ffffff",
+          padding: "12px 14px",
+          borderRadius: "8px",
+          border: "1px solid #e2e8f0",
+          boxShadow: "0 1px 2px rgba(0,0,0,0.03)",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 260 }}>
-          <Icon name="search" size={16} />
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flex: 1, minWidth: 240 }}>
+          <Icon name="search" size={14} />
           <input
             type="text"
             placeholder="Search users by name, email, or workspace…"
@@ -156,31 +183,31 @@ export function UsersView({ onFeedback }: Props) {
             onChange={(e) => setSearch(e.target.value)}
             style={{
               width: "100%",
-              background: "#1e293b",
-              border: "1px solid #334155",
+              background: "#f8fafc",
+              border: "1px solid #e2e8f0",
               borderRadius: 6,
-              padding: "8px 12px",
-              color: "#fff",
-              fontSize: 13,
+              padding: "6px 10px",
+              color: "#0f172a",
+              fontSize: 12,
             }}
           />
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>Platform:</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Platform:</span>
           {(["ALL", "WEB", "MOBILE"] as const).map((p) => (
             <button
               key={p}
               onClick={() => setPlatformFilter(p)}
               style={{
-                padding: "6px 12px",
+                padding: "4px 10px",
                 borderRadius: 6,
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 600,
-                border: "none",
+                border: "1px solid " + (platformFilter === p ? "#0284c7" : "#e2e8f0"),
                 cursor: "pointer",
-                background: platformFilter === p ? "#38bdf8" : "#1e293b",
-                color: platformFilter === p ? "#0f172a" : "#94a3b8",
+                background: platformFilter === p ? "#0284c7" : "#ffffff",
+                color: platformFilter === p ? "#ffffff" : "#475569",
               }}
             >
               {p === "ALL" ? "All Platforms" : p === "WEB" ? "Web Only" : "Mobile App"}
@@ -188,21 +215,21 @@ export function UsersView({ onFeedback }: Props) {
           ))}
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          <span style={{ fontSize: 12, color: "#94a3b8" }}>Status:</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+          <span style={{ fontSize: 11, color: "#64748b", fontWeight: 600 }}>Status:</span>
           {(["ALL", "ACTIVE", "DISABLED"] as const).map((s) => (
             <button
               key={s}
               onClick={() => setStatusFilter(s)}
               style={{
-                padding: "6px 12px",
+                padding: "4px 10px",
                 borderRadius: 6,
-                fontSize: 12,
+                fontSize: 11.5,
                 fontWeight: 600,
-                border: "none",
+                border: "1px solid " + (statusFilter === s ? "#0284c7" : "#e2e8f0"),
                 cursor: "pointer",
-                background: statusFilter === s ? "#38bdf8" : "#1e293b",
-                color: statusFilter === s ? "#0f172a" : "#94a3b8",
+                background: statusFilter === s ? "#0284c7" : "#ffffff",
+                color: statusFilter === s ? "#ffffff" : "#475569",
               }}
             >
               {s === "ALL" ? "All" : s === "ACTIVE" ? "Active" : "Blocked"}
@@ -212,23 +239,23 @@ export function UsersView({ onFeedback }: Props) {
       </div>
 
       {/* Users Table */}
-      <div style={{ background: "#0f172a", borderRadius: 10, border: "1px solid #1e293b", overflow: "hidden" }}>
+      <div style={{ background: "#ffffff", borderRadius: 8, border: "1px solid #e2e8f0", overflow: "hidden", boxShadow: "0 1px 2px rgba(0,0,0,0.03)" }}>
         {loading ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>Loading platform users…</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>Loading platform users…</div>
         ) : users.length === 0 ? (
-          <div style={{ padding: 40, textAlign: "center", color: "#94a3b8" }}>No users match the search criteria.</div>
+          <div style={{ padding: 32, textAlign: "center", color: "#64748b", fontSize: 12 }}>No users match the search criteria.</div>
         ) : (
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13, textAlign: "left" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12, textAlign: "left" }}>
               <thead>
-                <tr style={{ background: "#1e293b", color: "#94a3b8", borderBottom: "1px solid #334155" }}>
-                  <th style={{ padding: "12px 16px" }}>User</th>
-                  <th style={{ padding: "12px 16px" }}>First Origin</th>
-                  <th style={{ padding: "12px 16px" }}>Last Active</th>
-                  <th style={{ padding: "12px 16px" }}>Verified</th>
-                  <th style={{ padding: "12px 16px" }}>Workspaces</th>
-                  <th style={{ padding: "12px 16px" }}>Status</th>
-                  <th style={{ padding: "12px 16px", textAlign: "right" }}>Actions</th>
+                <tr style={{ background: "#f8fafc", color: "#475569", borderBottom: "1px solid #e2e8f0", fontSize: 11, fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
+                  <th style={{ padding: "10px 14px" }}>User</th>
+                  <th style={{ padding: "10px 14px" }}>First Origin</th>
+                  <th style={{ padding: "10px 14px" }}>Last Active</th>
+                  <th style={{ padding: "10px 14px" }}>Verified</th>
+                  <th style={{ padding: "10px 14px" }}>Workspaces</th>
+                  <th style={{ padding: "10px 14px" }}>Status</th>
+                  <th style={{ padding: "10px 14px", textAlign: "right" }}>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -238,54 +265,56 @@ export function UsersView({ onFeedback }: Props) {
                     <tr
                       key={u.id}
                       style={{
-                        borderBottom: "1px solid #1e293b",
-                        background: isBlocked ? "rgba(220, 38, 38, 0.05)" : "transparent",
+                        borderBottom: "1px solid #f1f5f9",
+                        background: isBlocked ? "#fef2f2" : "#ffffff",
                       }}
                     >
-                      <td style={{ padding: "12px 16px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                      <td style={{ padding: "9px 14px" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                           <div
                             style={{
-                              width: 32,
-                              height: 32,
+                              width: 28,
+                              height: 28,
                               borderRadius: "50%",
-                              background: "#334155",
+                              background: "#e0f2fe",
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
                               fontWeight: 700,
-                              color: "#38bdf8",
+                              color: "#0284c7",
+                              fontSize: 11,
+                              flexShrink: 0,
                             }}
                           >
                             {u.name ? u.name.charAt(0).toUpperCase() : u.email.charAt(0).toUpperCase()}
                           </div>
                           <div>
-                            <div style={{ fontWeight: 600, color: "#f8fafc" }}>{u.name || "Anonymous"}</div>
-                            <div style={{ fontSize: 12, color: "#94a3b8" }}>{u.email}</div>
+                            <div style={{ fontWeight: 600, color: "#0f172a", fontSize: 12 }}>{u.name || "Anonymous"}</div>
+                            <div style={{ fontSize: 11, color: "#64748b" }}>{u.email}</div>
                           </div>
                         </div>
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
+                      <td style={{ padding: "9px 14px" }}>
                         <span
                           style={{
-                            padding: "4px 8px",
+                            padding: "2px 7px",
                             borderRadius: 4,
-                            fontSize: 11,
+                            fontSize: 10.5,
                             fontWeight: 700,
-                            background: u.signupPlatform === "MOBILE" ? "rgba(16, 185, 129, 0.15)" : "rgba(56, 189, 248, 0.15)",
-                            color: u.signupPlatform === "MOBILE" ? "#10b981" : "#38bdf8",
-                            border: `1px solid ${u.signupPlatform === "MOBILE" ? "#059669" : "#0284c7"}`,
+                            background: u.signupPlatform === "MOBILE" ? "#dcfce7" : "#e0f2fe",
+                            color: u.signupPlatform === "MOBILE" ? "#16a34a" : "#0284c7",
+                            border: `1px solid ${u.signupPlatform === "MOBILE" ? "#bbf7d0" : "#bae6fd"}`,
                           }}
                         >
                           {u.signupPlatform === "MOBILE" ? "Mobile App" : "Web Portal"}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
-                        <span style={{ fontSize: 12, color: "#cbd5e1" }}>
+                      <td style={{ padding: "9px 14px" }}>
+                        <span style={{ fontSize: 11.5, color: "#475569" }}>
                           {u.lastPlatform} · {u.lastLoginAt ? new Date(u.lastLoginAt).toLocaleDateString() : "Never"}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
+                      <td style={{ padding: "9px 14px" }}>
                         <button
                           onClick={() => handleToggleVerify(u)}
                           style={{
@@ -303,18 +332,19 @@ export function UsersView({ onFeedback }: Props) {
                           )}
                         </button>
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
+                      <td style={{ padding: "9px 14px" }}>
                         {u.organisations.length > 0 ? (
                           <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
                             {u.organisations.map((org) => (
                               <span
                                 key={org.id}
                                 style={{
-                                  background: "#1e293b",
+                                  background: "#f1f5f9",
                                   padding: "2px 6px",
                                   borderRadius: 4,
-                                  fontSize: 11,
-                                  color: "#cbd5e1",
+                                  fontSize: 10.5,
+                                  color: "#334155",
+                                  border: "1px solid #e2e8f0",
                                 }}
                               >
                                 {org.name} ({org.role})
@@ -322,22 +352,22 @@ export function UsersView({ onFeedback }: Props) {
                             ))}
                           </div>
                         ) : (
-                          <span style={{ color: "#64748b", fontSize: 12 }}>No Workspaces</span>
+                          <span style={{ color: "#94a3b8", fontSize: 11.5 }}>No Workspaces</span>
                         )}
                       </td>
-                      <td style={{ padding: "12px 16px" }}>
+                      <td style={{ padding: "9px 14px" }}>
                         {isBlocked ? (
                           <Badge tone="red">Suspended</Badge>
                         ) : (
                           <Badge tone="green">Active</Badge>
                         )}
                       </td>
-                      <td style={{ padding: "12px 16px", textAlign: "right" }}>
-                        <div style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+                      <td style={{ padding: "9px 14px", textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: 5, alignItems: "center" }}>
                           <button
                             className="secondary-btn"
                             onClick={() => setInspectUser(u)}
-                            style={{ padding: "4px 8px", fontSize: 12, borderRadius: 6 }}
+                            style={{ padding: "3px 8px", fontSize: 11.5, borderRadius: 5 }}
                           >
                             Inspect
                           </button>
@@ -345,11 +375,11 @@ export function UsersView({ onFeedback }: Props) {
                             <button
                               onClick={() => handleUnblock(u)}
                               style={{
-                                padding: "4px 8px",
-                                fontSize: 12,
-                                borderRadius: 6,
-                                background: "#065f46",
-                                color: "#fff",
+                                padding: "3px 8px",
+                                fontSize: 11.5,
+                                borderRadius: 5,
+                                background: "#16a34a",
+                                color: "#ffffff",
                                 border: "none",
                                 cursor: "pointer",
                                 fontWeight: 600,
@@ -361,19 +391,35 @@ export function UsersView({ onFeedback }: Props) {
                             <button
                               onClick={() => setBlockUser(u)}
                               style={{
-                                padding: "4px 8px",
-                                fontSize: 12,
-                                borderRadius: 6,
-                                background: "#7f1d1d",
-                                color: "#fff",
+                                padding: "3px 8px",
+                                fontSize: 11.5,
+                                borderRadius: 5,
+                                background: "#dc2626",
+                                color: "#ffffff",
                                 border: "none",
                                 cursor: "pointer",
                                 fontWeight: 600,
                               }}
                             >
-                              Block User
+                              Block
                             </button>
                           )}
+                          <button
+                            onClick={() => setDeleteUser(u)}
+                            title="Delete user account permanently"
+                            style={{
+                              padding: "3px 8px",
+                              fontSize: 11.5,
+                              borderRadius: 5,
+                              background: "#fef2f2",
+                              color: "#dc2626",
+                              border: "1px solid #fecaca",
+                              cursor: "pointer",
+                              fontWeight: 600,
+                            }}
+                          >
+                            Delete
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -392,12 +438,12 @@ export function UsersView({ onFeedback }: Props) {
           isOpen={Boolean(blockUser)}
           onClose={() => setBlockUser(null)}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <p style={{ color: "#ef4444", fontSize: 13, margin: 0 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <p style={{ color: "#dc2626", fontSize: 12, margin: 0, lineHeight: 1.4 }}>
               Warning: Blocking this user will immediately revoke all active web and mobile app sessions. They will not be able to log in.
             </p>
             <div>
-              <label style={{ display: "block", fontSize: 12, fontWeight: 600, color: "#cbd5e1", marginBottom: 6 }}>
+              <label style={{ display: "block", fontSize: 11.5, fontWeight: 600, color: "#475569", marginBottom: 5 }}>
                 Reason for suspension:
               </label>
               <input
@@ -407,16 +453,16 @@ export function UsersView({ onFeedback }: Props) {
                 onChange={(e) => setBlockReason(e.target.value)}
                 style={{
                   width: "100%",
-                  background: "#1e293b",
-                  border: "1px solid #334155",
+                  background: "#ffffff",
+                  border: "1px solid #cbd5e1",
                   borderRadius: 6,
-                  padding: "8px 12px",
-                  color: "#fff",
-                  fontSize: 13,
+                  padding: "7px 10px",
+                  color: "#0f172a",
+                  fontSize: 12,
                 }}
               />
             </div>
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 10, marginTop: 8 }}>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
               <button className="secondary-btn" onClick={() => setBlockUser(null)}>
                 Cancel
               </button>
@@ -440,42 +486,42 @@ export function UsersView({ onFeedback }: Props) {
           isOpen={Boolean(inspectUser)}
           onClose={() => setInspectUser(null)}
         >
-          <div style={{ display: "flex", flexDirection: "column", gap: 14, fontSize: 13 }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>User ID</div>
-                <div style={{ fontFamily: "monospace", color: "#38bdf8", wordBreak: "break-all" }}>{inspectUser.id}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, fontSize: 12 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>User ID</div>
+                <div style={{ fontFamily: "monospace", color: "#0284c7", wordBreak: "break-all", fontWeight: 600, fontSize: 11 }}>{inspectUser.id}</div>
               </div>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>Registered Email</div>
-                <div style={{ fontWeight: 600, color: "#f8fafc" }}>{inspectUser.email}</div>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>Registered Email</div>
+                <div style={{ fontWeight: 600, color: "#0f172a" }}>{inspectUser.email}</div>
               </div>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>First Acquisition Platform</div>
-                <div style={{ fontWeight: 600, color: inspectUser.signupPlatform === "MOBILE" ? "#10b981" : "#38bdf8" }}>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>First Acquisition Platform</div>
+                <div style={{ fontWeight: 600, color: inspectUser.signupPlatform === "MOBILE" ? "#16a34a" : "#0284c7" }}>
                   {inspectUser.signupPlatform === "MOBILE" ? "Mobile App" : "Web Portal"}
                 </div>
               </div>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>Last Active Platform</div>
-                <div style={{ fontWeight: 600, color: "#f8fafc" }}>{inspectUser.lastPlatform}</div>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>Last Active Platform</div>
+                <div style={{ fontWeight: 600, color: "#0f172a" }}>{inspectUser.lastPlatform}</div>
               </div>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>Member Since</div>
-                <div style={{ color: "#cbd5e1" }}>{new Date(inspectUser.createdAt).toLocaleString()}</div>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>Member Since</div>
+                <div style={{ color: "#334155" }}>{new Date(inspectUser.createdAt).toLocaleString()}</div>
               </div>
-              <div style={{ background: "#1e293b", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#94a3b8", fontSize: 11 }}>Active Sessions</div>
-                <div style={{ color: "#cbd5e1" }}>{inspectUser.activeSessionsCount} concurrent sessions</div>
+              <div style={{ background: "#f8fafc", padding: 10, borderRadius: 6, border: "1px solid #e2e8f0" }}>
+                <div style={{ color: "#64748b", fontSize: 10.5 }}>Active Sessions</div>
+                <div style={{ color: "#334155" }}>{inspectUser.activeSessionsCount} concurrent sessions</div>
               </div>
             </div>
 
             {inspectUser.blockReason && (
-              <div style={{ background: "rgba(220, 38, 38, 0.1)", border: "1px solid #dc2626", padding: 12, borderRadius: 8 }}>
-                <div style={{ color: "#ef4444", fontWeight: 700, fontSize: 12 }}>Suspension Details</div>
-                <div style={{ color: "#fca5a5" }}>{inspectUser.blockReason}</div>
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", padding: 10, borderRadius: 6 }}>
+                <div style={{ color: "#dc2626", fontWeight: 700, fontSize: 11.5 }}>Suspension Details</div>
+                <div style={{ color: "#991b1b" }}>{inspectUser.blockReason}</div>
                 {inspectUser.blockedAt && (
-                  <div style={{ color: "#94a3b8", fontSize: 11, marginTop: 4 }}>
+                  <div style={{ color: "#64748b", fontSize: 10.5, marginTop: 4 }}>
                     Suspended on: {new Date(inspectUser.blockedAt).toLocaleString()}
                   </div>
                 )}
@@ -483,18 +529,81 @@ export function UsersView({ onFeedback }: Props) {
             )}
 
             <div>
-              <div style={{ fontWeight: 600, color: "#cbd5e1", marginBottom: 6 }}>Linked Workspaces ({inspectUser.organisations.length})</div>
+              <div style={{ fontWeight: 600, color: "#475569", marginBottom: 6, fontSize: 11.5 }}>Linked Workspaces ({inspectUser.organisations.length})</div>
               {inspectUser.organisations.map((org) => (
-                <div key={org.id} style={{ display: "flex", justifyContent: "space-between", background: "#1e293b", padding: 8, borderRadius: 6, marginBottom: 4 }}>
-                  <span style={{ fontWeight: 600, color: "#f8fafc" }}>{org.name}</span>
+                <div key={org.id} style={{ display: "flex", justifyContent: "space-between", background: "#f8fafc", padding: "6px 10px", borderRadius: 6, marginBottom: 4, border: "1px solid #e2e8f0" }}>
+                  <span style={{ fontWeight: 600, color: "#0f172a" }}>{org.name}</span>
                   <Badge tone="blue">{org.role}</Badge>
                 </div>
               ))}
             </div>
 
-            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 8 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 6, paddingTop: 10, borderTop: "1px solid #e2e8f0" }}>
+              <button
+                type="button"
+                onClick={() => setDeleteUser(inspectUser)}
+                style={{
+                  padding: "5px 12px",
+                  borderRadius: 6,
+                  background: "#dc2626",
+                  color: "#fff",
+                  border: "none",
+                  cursor: "pointer",
+                  fontWeight: 600,
+                  fontSize: 11.5,
+                }}
+              >
+                Permanently Delete User Account
+              </button>
               <button className="secondary-btn" onClick={() => setInspectUser(null)}>
                 Close
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteUser && (
+        <Modal
+          title={`Delete User: ${deleteUser.email}`}
+          isOpen={Boolean(deleteUser)}
+          onClose={() => {
+            if (!submittingDelete) setDeleteUser(null);
+          }}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div
+              style={{
+                background: "#fef2f2",
+                border: "1px solid #fecaca",
+                padding: "10px 12px",
+                borderRadius: 6,
+                color: "#991b1b",
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              <strong style={{ display: "block", color: "#dc2626", marginBottom: 3 }}>
+                ⚠️ Irreversible Account Deletion
+              </strong>
+              This will permanently delete <strong>{deleteUser.email}</strong>, revoke active sessions, clear OTP challenges, and free up their email so you can test sign-up & onboarding again from scratch.
+            </div>
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+              <button
+                className="secondary-btn"
+                disabled={submittingDelete}
+                onClick={() => setDeleteUser(null)}
+              >
+                Cancel
+              </button>
+              <button
+                className="primary-btn"
+                onClick={handleConfirmDelete}
+                disabled={submittingDelete}
+                style={{ background: "#dc2626" }}
+              >
+                {submittingDelete ? "Deleting…" : "Confirm Permanent Deletion"}
               </button>
             </div>
           </div>

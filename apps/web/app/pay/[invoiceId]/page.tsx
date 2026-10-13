@@ -163,7 +163,10 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
         currency: orderData.currency || "INR",
         name: invoice.organisation.name,
         description: `Payment for Invoice #${invoice.invoiceNumber}`,
-        image: "/brand/crmkaro-mark.png",
+        image:
+          typeof window !== "undefined" && window.location.protocol === "https:"
+            ? "https://crmkaro.com/brand/crmkaro-mark.png"
+            : undefined,
         order_id: orderData.orderId,
         prefill: {
           name: invoice.customer.displayName || "",

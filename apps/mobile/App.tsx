@@ -25,6 +25,7 @@ import { SettingsScreen } from "./src/screens/settings/SettingsScreen";
 import { TransactionsScreen } from "./src/screens/transactions/TransactionsScreen";
 import { InventoryScreen } from "./src/screens/inventory/InventoryScreen";
 import { PayrollScreen } from "./src/screens/payroll/PayrollScreen";
+import { SubscriptionScreen } from "./src/screens/settings/SubscriptionScreen";
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
@@ -196,6 +197,11 @@ function RootNavigator() {
               name="Payroll"
               component={PayrollScreen}
               options={{ ...screenHeaderOpts, title: "Payroll & Staff" }}
+            />
+            <StackScreen
+              name="Subscription"
+              component={SubscriptionScreen}
+              options={{ ...screenHeaderOpts, title: "Subscription & Billing" }}
             />
           </>
         )}

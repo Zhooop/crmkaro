@@ -162,6 +162,16 @@ export function DashboardScreen() {
     return `₹${(minor / 100).toLocaleString("en-IN")}`;
   };
 
+  const orgType = String(dashboard?.organisation?.businessType || "").toUpperCase();
+  const orgName = String(dashboard?.organisation?.name || "").toLowerCase();
+  const isGym =
+    orgType === "FITNESS_STUDIO" ||
+    orgType === "GYM" ||
+    orgName.includes("gym") ||
+    orgName.includes("fitness") ||
+    orgName.includes("crossfit") ||
+    orgName.includes("workout");
+
   const totalReceivedCard = dashboard?.cards?.find(
     (c) =>
       c.key === "total_received" ||
@@ -325,20 +335,20 @@ export function DashboardScreen() {
           </View>
         )}
 
-        {/* Academy / Student Fees Overview Widget */}
+        {/* Academy / Student Fees or Gym Membership Overview Widget */}
         {dashboard?.academySummary && (
           <View style={styles.academyWidgetCard}>
             <View style={styles.academyWidgetHeader}>
               <View style={styles.academyWidgetTitleRow}>
-                <View style={[styles.activityIconCircle, { backgroundColor: "#dbeafe" }]}>
-                  <Icon name="GraduationCap" size={16} color="#1d4ed8" />
+                <View style={[styles.activityIconCircle, { backgroundColor: isGym ? "#ecfdf5" : "#dbeafe" }]}>
+                  <Icon name={isGym ? "Users" : "GraduationCap"} size={16} color={isGym ? "#059669" : "#1d4ed8"} />
                 </View>
                 <View>
                   <Text style={styles.academyWidgetTitle}>
-                    {dashboard.academySummary.monthName || "Current Month"} Student Fees
+                    {dashboard.academySummary.monthName || "Current Month"} {isGym ? "Membership Fees" : "Student Fees"}
                   </Text>
                   <Text style={styles.academyWidgetSub}>
-                    {dashboard.academySummary.activeStudents} active enrolled students
+                    {dashboard.academySummary.activeStudents} {isGym ? "active enrolled members" : "active enrolled students"}
                   </Text>
                 </View>
               </View>
@@ -346,7 +356,7 @@ export function DashboardScreen() {
                 onPress={() => navigation.navigate("Students")}
                 style={styles.academyWidgetLink}
               >
-                <Text style={styles.academyWidgetLinkText}>View Students →</Text>
+                <Text style={styles.academyWidgetLinkText}>{isGym ? "View Members →" : "View Students →"}</Text>
               </TouchableOpacity>
             </View>
 
@@ -405,7 +415,7 @@ export function DashboardScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.academyDueName}>{item.displayName}</Text>
                       <Text style={styles.academyDueMeta}>
-                        {item.standard ? `${item.standard}` : "Student"} • Due: {item.dueDate || "Immediate"}
+                        {item.standard ? `${item.standard}` : (isGym ? "Member" : "Student")} • Due: {item.dueDate || "Immediate"}
                       </Text>
                     </View>
                     <View style={{ alignItems: "flex-end" }}>
