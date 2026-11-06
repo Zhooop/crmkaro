@@ -411,11 +411,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // Background Route Pre-warming
-  // Next.js development server compiles routes JIT (on-demand on first request).
-  // By prefetching primary routes in background right after mount/login, Next.js compiles
-  // and caches them in memory so first clicks are instant (40ms instead of 1.5s+).
+  // Only prefetch primary workspace routes if user is authenticated inside the workspace.
+  // Never prefetch on the public unauthenticated landing page to avoid cross-domain redirects / CORS errors.
   useEffect(() => {
     if (!isHydrated) return;
+    if (typeof window === "undefined") return;
+    const token = localStorage.getItem("crmkaro_token");
+    if (!token) return;
+
     const routesToWarm = [
       "/transactions",
       "/settings",
@@ -436,7 +439,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           } catch {}
         }, index * 120);
       });
-    }, 400);
+    }, 600);
 
     return () => clearTimeout(timer);
   }, [isHydrated, router]);
@@ -463,6 +466,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         headers: { Authorization: `Bearer ${token}` },
       }).catch(() => null);
       if (!meRes || !meRes.ok) {
+        if (meRes?.status === 401) {
+          localStorage.removeItem("crmkaro_token");
+        }
         return;
       }
       let newUserName = "";
@@ -471,7 +477,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         newUserName = meData.user.name;
       }
 
-      const orgsRes = await fetch(`${api}/organisations`, { credentials: "include" }).catch(() => null);
+      const orgsRes = await fetch(`${api}/organisations`, {
+        credentials: "include",
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => null);
       if (orgsRes && orgsRes.ok) {
         const orgList = await orgsRes.json();
         const activeEntry = orgList.find((o: any) => o.organisation);
