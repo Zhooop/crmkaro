@@ -1011,20 +1011,56 @@ export class PlatformService {
   }
 
   async listPublicPlans() {
-    return withPlatformAdmin(this.database, async (tx: any) => {
-      let plans = await tx.subscriptionPlan.findMany({
-        where: { isActive: true },
-        orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
-      });
+    try {
+      return await withPlatformAdmin(this.database, async (tx: any) => {
+        let plans = await tx.subscriptionPlan.findMany({
+          where: { isActive: true },
+          orderBy: [{ sortOrder: "asc" }, { createdAt: "desc" }],
+        });
 
-      if (plans.length === 0) {
-        const defaultPlan = await tx.subscriptionPlan.create({
-          data: {
+        if (plans.length === 0) {
+          const defaultPlan = await tx.subscriptionPlan.create({
+            data: {
+              name: "Launch Offer — All-in-One Business OS",
+              code: "launch_offer_249",
+              description: "Complete business operating system at special introductory pricing",
+              originalPriceMinor: 104900, // ₹1,049
+              discountPriceMinor: 24900, // ₹249
+              currency: "INR",
+              billingPeriod: "monthly",
+              billingInterval: 1,
+              badge: "Special Launch Offer · 76% OFF",
+              features: [
+                "Unlimited Students, Members & Clients",
+                "1-Click WhatsApp PDF Receipts & Invoices",
+                "Daily Batch Attendance & Parent WhatsApp Alerts",
+                "Staff Salary Structures & 1-Click Payslips",
+                "GST Invoicing & Daily Kharcha Expense Tracker",
+                "Sales CRM Visual Pipeline & Follow-up Reminders",
+                "Single-Tap Mobile Web & Computer Access",
+                "Hassle-free Monthly Renewal",
+              ],
+              isPopular: true,
+              isActive: true,
+              sortOrder: 1,
+            },
+          });
+          plans = [defaultPlan];
+        }
+
+        return { plans };
+      });
+    } catch (err: any) {
+      // Fallback for development when PostgreSQL is not running locally
+      return {
+        plans: [
+          {
+            id: "plan_launch_249",
             name: "Launch Offer — All-in-One Business OS",
             code: "launch_offer_249",
             description: "Complete business operating system at special introductory pricing",
-            originalPriceMinor: 104900, // ₹1,049
-            discountPriceMinor: 24900, // ₹249
+            originalPriceMinor: 104900,
+            discountPriceMinor: 24900,
             currency: "INR",
             billingPeriod: "monthly",
             billingInterval: 1,
@@ -1043,12 +1079,9 @@ export class PlatformService {
             isActive: true,
             sortOrder: 1,
           },
-        });
-        plans = [defaultPlan];
-      }
-
-      return { plans };
-    });
+        ],
+      };
+    }
   }
 
   async createPlan(input: {

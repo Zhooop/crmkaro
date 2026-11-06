@@ -243,6 +243,69 @@ div[id] {
   cursor: pointer;
 }
 
+.lp-mobile-menu-toggle {
+  display: none;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 6px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+}
+
+.lp-mobile-drawer {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+  animation: lpDrawerFadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 1000;
+}
+
+@keyframes lpDrawerFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.lp-mobile-drawer-link {
+  font-size: 14px;
+  font-weight: 700;
+  color: #e2e8f0;
+  text-decoration: none;
+  padding: 8px 10px;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+}
+
+.lp-mobile-drawer-link:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.lp-mobile-drawer-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 4px 0;
+}
+
 .lp-btn-capsule-primary:hover {
   background: #eff6ff;
   transform: translateY(-1px);
@@ -2322,6 +2385,15 @@ div[id] {
   }
 
   .lp-nav-menu {
+    display: none;
+  }
+
+  .lp-mobile-menu-toggle {
+    display: inline-flex;
+  }
+
+  .lp-nav-actions .lp-btn-capsule-login,
+  .lp-nav-actions .lp-btn-capsule-primary {
     display: none;
   }
 

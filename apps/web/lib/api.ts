@@ -1,13 +1,6 @@
 export function getApiUrl(): string {
   if (process.env.NEXT_PUBLIC_API_URL) return process.env.NEXT_PUBLIC_API_URL;
-  if (
-    typeof window !== "undefined" &&
-    (window.location.hostname === "crmkaro.com" ||
-      window.location.hostname.endsWith(".crmkaro.com"))
-  ) {
-    return "https://api.crmkaro.com/api/v1";
-  }
-  return "http://localhost:4000/api/v1";
+  return "https://api.crmkaro.com/api/v1";
 }
 
 export function authHeaders(extraHeaders?: HeadersInit): HeadersInit {

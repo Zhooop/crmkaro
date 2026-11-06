@@ -2,19 +2,11 @@
 
 import { LandingPage } from "@crmkaro/ui";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 
-function openInNewTab(path: string) {
-  if (typeof window === "undefined") return;
-  const host = window.location.hostname.toLowerCase();
-  const url =
-    host === "crmkaro.com" || host === "www.crmkaro.com"
-      ? `https://web.crmkaro.com${path}`
-      : path;
-  window.open(url, "_blank", "noopener,noreferrer");
-}
-
 export default function PublicLandingPage() {
+  const router = useRouter();
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   useEffect(() => {
@@ -34,11 +26,21 @@ export default function PublicLandingPage() {
     checkAuth();
   }, []);
 
+  const navigateTo = (path: string) => {
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname.toLowerCase();
+    if (host === "crmkaro.com" || host === "www.crmkaro.com") {
+      window.location.href = `https://web.crmkaro.com${path}`;
+    } else {
+      router.push(path);
+    }
+  };
+
   return (
     <LandingPage
       isAuthenticated={isAuthenticated}
-      onLoginClick={() => openInNewTab("/login")}
-      onDashboardClick={() => openInNewTab("/")}
+      onLoginClick={() => navigateTo("/login")}
+      onDashboardClick={() => navigateTo("/")}
     />
   );
 }

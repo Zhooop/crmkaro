@@ -239,6 +239,13 @@ function SubscriptionContent() {
     currentSub?.status === "ACTIVE" ||
     Boolean((currentSub as any)?.hasActiveSubscription);
 
+  const isTrial =
+    Boolean((currentSub as any)?.isTrial) ||
+    currentSub?.paymentMethod === "FREE_TRIAL" ||
+    (currentSub?.amountPaidMinor === 0 && Boolean(isActive));
+
+  const daysRemaining = (currentSub as any)?.daysRemaining ?? 14;
+
   return (
     <AppShell
       product="CRMKaro"
@@ -268,10 +275,10 @@ function SubscriptionContent() {
           </div>
 
           {isActive && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, background: "#ecfdf5", border: "1px solid #a7f3d0", padding: "8px 16px", borderRadius: 999 }}>
-              <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#10b981", display: "inline-block" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#065f46" }}>
-                AutoPay Active (₹{Math.round((currentSub?.amountPaidMinor || 24900) / 100)}/mo)
+            <div style={{ display: "flex", alignItems: "center", gap: 8, background: isTrial ? "#eff6ff" : "#ecfdf5", border: `1px solid ${isTrial ? "#bfdbfe" : "#a7f3d0"}`, padding: "8px 16px", borderRadius: 999 }}>
+              <span style={{ width: 8, height: 8, borderRadius: "50%", background: isTrial ? "#3b82f6" : "#10b981", display: "inline-block" }} />
+              <span style={{ fontSize: 13, fontWeight: 700, color: isTrial ? "#1e40af" : "#065f46" }}>
+                {isTrial ? `✨ 14-Day Free Trial (${daysRemaining} Days Remaining)` : `AutoPay Active (₹${Math.round((currentSub?.amountPaidMinor || 24900) / 100)}/mo)`}
               </span>
             </div>
           )}
@@ -325,19 +332,19 @@ function SubscriptionContent() {
         <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <StatCard
             label="Current Plan"
-            value="Launch Offer — All-in-One Business OS"
+            value={isTrial ? "14-Day Full Access Trial" : "Launch Offer — Business OS"}
             change="Official Launch Offer"
             icon="tag"
           />
           <StatCard
             label="Monthly Price"
-            value="₹249/mo"
-            change="Special 76% Launch Rate"
+            value={isTrial ? "₹0 (Free Trial)" : "₹249/mo"}
+            change={isTrial ? "Upgrade anytime to ₹249" : "Special 76% Launch Rate"}
             icon="rupee"
           />
           <StatCard
             label="Plan Status"
-            value="ACTIVE 🟢"
+            value={isTrial ? `TRIAL (${daysRemaining}d) 🟢` : "ACTIVE 🟢"}
             change="All Modules Unlocked"
             icon="shield"
           />
@@ -352,7 +359,7 @@ function SubscriptionContent() {
                   })
                 : "Monthly Renewal"
             }
-            change="Automatic monthly billing"
+            change={isTrial ? "Trial expiration date" : "Automatic monthly billing"}
             icon="calendar"
           />
         </div>

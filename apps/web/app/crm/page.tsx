@@ -113,6 +113,9 @@ function CrmContent() {
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
   const [detailLead, setDetailLead] = useState<Lead | null>(null);
   const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [postConvertResult, setPostConvertResult] = useState<any | null>(null);
+  const [lostModalOpen, setLostModalOpen] = useState(false);
+  const [lostReason, setLostReason] = useState("Not interested / Budget constraint");
   const [importOpen, setImportOpen] = useState(false);
   const [todayFollowUps, setTodayFollowUps] = useState<any[]>([]);
 
@@ -486,7 +489,9 @@ function CrmContent() {
         body: JSON.stringify({}),
       });
       if (res.ok) {
+        const data = await res.json();
         setConvertModalOpen(false);
+        setPostConvertResult(data);
         const leadRes = await authFetch(`${api}/crm/leads/${detailLead.id}`, { credentials: "include" });
         if (leadRes.ok) setDetailLead(await leadRes.json());
         loadLeads();
@@ -1154,10 +1159,7 @@ function CrmContent() {
                     </button>
                     <button
                       className="btn btn-danger btn-sm"
-                      onClick={() => {
-                        const reason = prompt("Enter reason for marking as lost:") || "Not interested";
-                        handleStatusChange(detailLead.id, "LOST", reason);
-                      }}
+                      onClick={() => setLostModalOpen(true)}
                     >
                       <Icon name="close" size={14} />
                       <span>Mark Lost</span>
@@ -1586,6 +1588,113 @@ function CrmContent() {
         onClose={() => setLeadCaptureOpen(false)}
         orgName={orgName}
       />
+
+      {/* Connected Flow: Post Lead Conversion Bridge */}
+      {postConvertResult && (
+        <Modal
+          title="🎉 Lead Successfully Converted!"
+          isOpen={Boolean(postConvertResult)}
+          onClose={() => setPostConvertResult(null)}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)" }}>
+              <strong>{postConvertResult.person?.displayName}</strong> is now converted into a registered customer. Choose your next action:
+            </p>
+
+            <div style={{ display: "grid", gap: 10 }}>
+              <button
+                type="button"
+                className="btn btn-primary"
+                style={{ justifyContent: "flex-start", padding: "14px 16px", height: "auto" }}
+                onClick={() => {
+                  const p = postConvertResult.person;
+                  router.push(`/students?admit=true&personId=${p?.id || ""}&name=${encodeURIComponent(p?.displayName || "")}&phone=${encodeURIComponent(p?.primaryPhone || "")}&email=${encodeURIComponent(p?.email || "")}`);
+                  setPostConvertResult(null);
+                }}
+              >
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontWeight: 750, fontSize: 14 }}>🏫 Admit as Student &amp; Setup Fee Cycle</div>
+                  <div style={{ fontSize: 12, opacity: 0.9 }}>Open admission form pre-filled with student and parent details</div>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className="btn btn-secondary"
+                style={{ justifyContent: "flex-start", padding: "14px 16px", height: "auto" }}
+                onClick={() => {
+                  router.push(`/quick-collect?personId=${postConvertResult.person?.id || ""}`);
+                  setPostConvertResult(null);
+                }}
+              >
+                <div style={{ textAlign: "left" }}>
+                  <div style={{ fontWeight: 750, fontSize: 14 }}>💬 Send WhatsApp Payment Link / Fee Receipt</div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>Generate instant UPI link or log cash collection</div>
+                </div>
+              </button>
+            </div>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 4 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setPostConvertResult(null)}
+              >
+                Done (Stay in CRM)
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Styled Modal for Lost Reason */}
+      {lostModalOpen && detailLead && (
+        <Modal
+          title="Mark Deal as Lost"
+          isOpen={lostModalOpen}
+          onClose={() => setLostModalOpen(false)}
+        >
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <p style={{ margin: 0, fontSize: 13.5, color: "var(--muted)" }}>
+              Specify why <strong>{detailLead.name}</strong> was marked as lost:
+            </p>
+
+            <select
+              className="filter-select"
+              value={lostReason}
+              onChange={(e) => setLostReason(e.target.value)}
+              style={{ width: "100%", height: 40 }}
+            >
+              <option value="Budget / Price too high">💰 Budget / Price too high</option>
+              <option value="Chose another competitor">🏢 Chose another institute / competitor</option>
+              <option value="Batch timing mismatch">⏰ Batch timing not suitable</option>
+              <option value="Did not respond to calls">📵 Did not respond to follow-up calls</option>
+              <option value="Location too far">📍 Location too far</option>
+              <option value="Not interested">❌ Not interested</option>
+            </select>
+
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 6 }}>
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => setLostModalOpen(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="btn btn-danger btn-sm"
+                onClick={() => {
+                  handleStatusChange(detailLead.id, "LOST", lostReason);
+                  setLostModalOpen(false);
+                }}
+              >
+                Confirm Lost
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
     </AppShell>
   );
 }

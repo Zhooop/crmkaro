@@ -319,6 +319,20 @@ function StudentsContent() {
     setTimeout(() => setToast(null), 4000);
   };
 
+  // Connected Flow: Auto-open Admission modal with prefilled data if routed from CRM Lead Conversion
+  useEffect(() => {
+    if (!searchParams) return;
+    if (searchParams.get("admit") === "true") {
+      const pName = searchParams.get("name") || "";
+      const pPhone = searchParams.get("phone") || "";
+      const pEmail = searchParams.get("email") || "";
+      if (pName) setFormName(pName);
+      if (pPhone) setFormPhone(pPhone);
+      if (pEmail) setFormEmail(pEmail);
+      setAdmissionModalOpen(true);
+    }
+  }, [searchParams]);
+
   // Load context
   const loadContext = useCallback(async () => {
     try {

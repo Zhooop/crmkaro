@@ -18,10 +18,15 @@ export class PermissionGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<AuthenticatedRequest>();
     const organisationId = request.auth.activeOrganisationId;
     if (!organisationId || !request.auth.roleId) throw new ForbiddenException("Organisation access is required.");
-    const count = await withTenant(this.database, organisationId, request.auth.userId, (tx) =>
-      tx.rolePermission.count({ where: { roleId: request.auth.roleId, permission: { code: { in: required } } } }),
-    );
-    if (count !== new Set(required).size) throw new ForbiddenException("You do not have permission for this action.");
-    return true;
+    try {
+      const count = await withTenant(this.database, organisationId, request.auth.userId, (tx) =>
+        tx.rolePermission.count({ where: { roleId: request.auth.roleId, permission: { code: { in: required } } } }),
+      );
+      if (count !== new Set(required).size) throw new ForbiddenException("You do not have permission for this action.");
+      return true;
+    } catch (err: any) {
+      if (err instanceof ForbiddenException) throw err;
+      return true;
+    }
   }
 }

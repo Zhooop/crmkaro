@@ -864,6 +864,23 @@ export function AppShell({
           </button>
 
           <div className="topbar-actions">
+            {!dark && (
+              <a
+                href="/subscription"
+                onClick={(e) => {
+                  if (onNavigate) {
+                    e.preventDefault();
+                    onNavigate("/subscription");
+                  }
+                }}
+                className="topbar-trial-badge"
+                title="14-Day Free Trial Active · Upgrade to Launch Offer"
+              >
+                <span className="trial-dot" />
+                <span>14-Day Trial</span>
+                <span className="trial-upgrade-link">₹249 Offer</span>
+              </a>
+            )}
             <button
               className="icon-button mobile-only-icon-btn"
               onClick={() => setSearchOpen(true)}
@@ -1401,13 +1418,7 @@ export function AuthPanel({
   const [modePrompt, setModePrompt] = useState<"none" | "register-needed" | "already-registered">("none");
   const [busy, setBusy] = useState(false);
 
-  const resolvedApiUrl =
-    apiUrl ||
-    (typeof window !== "undefined" &&
-    (window.location.hostname === "crmkaro.com" ||
-      window.location.hostname.endsWith(".crmkaro.com"))
-      ? "https://api.crmkaro.com/api/v1"
-      : "http://localhost:4000/api/v1");
+  const resolvedApiUrl = apiUrl || "https://api.crmkaro.com/api/v1";
 
   const [googleStartUrl, setGoogleStartUrl] = useState(
     `${resolvedApiUrl}/auth/google/start`,

@@ -456,7 +456,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
       const api = typeof process !== "undefined" && process.env?.NEXT_PUBLIC_API_URL
         ? process.env.NEXT_PUBLIC_API_URL
-        : "http://localhost:4000/api/v1";
+        : "https://api.crmkaro.com/api/v1";
 
       const meRes = await fetch(`${api}/auth/me`, {
         credentials: "include",

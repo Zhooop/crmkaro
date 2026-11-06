@@ -85,7 +85,7 @@ export default function PublicPayPage({ params }: { params: Promise<{ invoiceId:
     amountPaidMinor: number;
   } | null>(null);
 
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000/api/v1";
+  const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://api.crmkaro.com/api/v1";
 
   // Load public invoice
   useEffect(() => {

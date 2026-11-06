@@ -386,7 +386,7 @@ export function LandingPage({
     let isCancelled = false;
     const fetchPlans = async () => {
       try {
-        let apiUrl = "http://localhost:4000/api/v1";
+        let apiUrl = "https://api.crmkaro.com/api/v1";
         if (typeof window !== "undefined") {
           const host = window.location.hostname.toLowerCase();
           if (host === "crmkaro.com" || host.endsWith(".crmkaro.com")) {
@@ -430,6 +430,7 @@ export function LandingPage({
 
   const [selectedSolution, setSelectedSolution] = useState<string>("academy");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const circuitSectionRef = useRef<HTMLDivElement>(null);
   const [circuitProgress, setCircuitProgress] = useState<number>(0.15);
   const [seg1Progress, setSeg1Progress] = useState<number>(0.2);
@@ -484,7 +485,7 @@ export function LandingPage({
 
   const handleLogin = () => {
     if (onLoginClick) onLoginClick();
-    else if (typeof window !== "undefined") window.open("/login", "_blank", "noopener,noreferrer");
+    else if (typeof window !== "undefined") window.location.href = "/login";
   };
 
   const handleRegister = (planCode?: string) => {
@@ -500,7 +501,7 @@ export function LandingPage({
 
   const handleDashboard = () => {
     if (onDashboardClick) onDashboardClick();
-    else if (typeof window !== "undefined") window.open("/", "_blank", "noopener,noreferrer");
+    else if (typeof window !== "undefined") window.location.href = "/";
   };
 
   const handleSmoothScroll = (e: React.MouseEvent<HTMLAnchorElement>, targetId: string) => {
@@ -591,11 +592,117 @@ export function LandingPage({
                   Log in
                 </button>
                 <button onClick={() => handleRegister()} className="lp-btn-capsule-primary" type="button">
-                  Get Started Now
+                  Start 14-Day Free Trial
                 </button>
               </>
             )}
+
+            {/* Mobile Hamburger Button */}
+            <button
+              type="button"
+              className="lp-mobile-menu-toggle"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label="Toggle Navigation Menu"
+            >
+              {mobileMenuOpen ? (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+              ) : (
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              )}
+            </button>
           </div>
+
+          {/* Mobile Drawer Dropdown Menu */}
+          {mobileMenuOpen && (
+            <div className="lp-mobile-drawer">
+              <a
+                href="#pricing"
+                className="lp-mobile-drawer-link"
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleSmoothScroll(e, "#pricing");
+                }}
+              >
+                Plans &amp; Pricing
+              </a>
+              <a
+                href="#workflow-timeline"
+                className="lp-mobile-drawer-link"
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleSmoothScroll(e, "#workflow-timeline");
+                }}
+              >
+                How it Works
+              </a>
+              <a
+                href="#features"
+                className="lp-mobile-drawer-link"
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleSmoothScroll(e, "#features");
+                }}
+              >
+                Features
+              </a>
+              <a
+                href="#faq"
+                className="lp-mobile-drawer-link"
+                onClick={(e) => {
+                  setMobileMenuOpen(false);
+                  handleSmoothScroll(e, "#faq");
+                }}
+              >
+                FAQ
+              </a>
+              <div className="lp-mobile-drawer-divider" />
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleDashboard();
+                  }}
+                  className="lp-btn-capsule-primary"
+                  style={{ width: "100%", justifyContent: "center" }}
+                >
+                  Open Dashboard →
+                </button>
+              ) : (
+                <div style={{ display: "grid", gap: 8 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleLogin();
+                    }}
+                    className="lp-btn-capsule-login"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    Log in
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleRegister();
+                    }}
+                    className="lp-btn-capsule-primary"
+                    style={{ width: "100%", justifyContent: "center" }}
+                  >
+                    Start 14-Day Free Trial
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </header>
 
