@@ -482,6 +482,7 @@ export default function HomePage() {
       const urlToken = urlParams.get("token");
       if (urlToken) {
         localStorage.setItem("crmkaro_token", urlToken);
+        document.cookie = `crm_session=${urlToken}; path=/; max-age=2592000; SameSite=Lax; ${window.location.protocol === "https:" ? "Secure;" : ""}`;
         const cleanUrl = window.location.pathname;
         window.history.replaceState({}, document.title, cleanUrl);
         return urlToken;
@@ -524,6 +525,7 @@ export default function HomePage() {
       if (response.status === 401) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("crmkaro_token");
+          document.cookie = "crm_session=; path=/; max-age=0; SameSite=Lax;";
         }
         setViewState("unauthenticated");
         return;
@@ -539,6 +541,7 @@ export default function HomePage() {
         if (organisationsResponse.status === 401) {
           if (typeof window !== "undefined") {
             localStorage.removeItem("crmkaro_token");
+            document.cookie = "crm_session=; path=/; max-age=0; SameSite=Lax;";
           }
           setViewState("unauthenticated");
           return;
@@ -826,6 +829,7 @@ export default function HomePage() {
                     } catch {}
                     if (typeof window !== "undefined") {
                       localStorage.removeItem("crmkaro_token");
+                      document.cookie = "crm_session=; path=/; max-age=0; SameSite=Lax;";
                       window.location.href = "/";
                     }
                   }}

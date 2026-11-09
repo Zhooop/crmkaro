@@ -34,7 +34,8 @@ const KNOWN_PUBLIC_PAGES = [
 
 export function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
-  const sessionToken = request.cookies.get("crm_session")?.value;
+  const urlToken = request.nextUrl.searchParams.get("token") || undefined;
+  const sessionToken = request.cookies.get("crm_session")?.value || urlToken;
 
   // Extract host without port (e.g. 'crmkaro.com', 'web.crmkaro.com', 'localhost')
   const rawHost = request.headers.get("host") || "";
@@ -45,6 +46,7 @@ export function middleware(request: NextRequest) {
     host === "app.crmkaro.com" ||
     host.startsWith("web.") ||
     host.startsWith("app.");
+  const isSecure = process.env.NODE_ENV === "production" || request.nextUrl.protocol === "https:";
 
   // =========================================================================
   // 1. MARKETING DOMAIN (crmkaro.com & www.crmkaro.com)
@@ -112,15 +114,16 @@ export function middleware(request: NextRequest) {
       return NextResponse.redirect(loginUrl);
     }
 
-    // Authenticated user visits login/register -> redirect to dashboard
-    const isAuthRoute = AUTH_ROUTES.some(
-      (route) => pathname === route || pathname.startsWith(`${route}/`),
-    );
-    if (isAuthRoute && sessionToken) {
-      return NextResponse.redirect(new URL("/", request.url));
+    const response = NextResponse.next();
+    if (urlToken) {
+      response.cookies.set("crm_session", urlToken, {
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+        sameSite: "lax",
+        secure: isSecure,
+      });
     }
-
-    return NextResponse.next();
+    return response;
   }
 
   // =========================================================================
@@ -141,7 +144,16 @@ export function middleware(request: NextRequest) {
 
   // If at root and authenticated -> proceed to Dashboard
   if (pathname === "/" && sessionToken) {
-    return NextResponse.next();
+    const response = NextResponse.next();
+    if (urlToken) {
+      response.cookies.set("crm_session", urlToken, {
+        path: "/",
+        maxAge: 30 * 24 * 60 * 60,
+        sameSite: "lax",
+        secure: isSecure,
+      });
+    }
+    return response;
   }
 
   // Protected routes require authentication
@@ -154,15 +166,16 @@ export function middleware(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  // Auth routes when already authenticated
-  const isAuthRoute = AUTH_ROUTES.some(
-    (route) => pathname === route || pathname.startsWith(`${route}/`),
-  );
-  if (isAuthRoute && sessionToken) {
-    return NextResponse.redirect(new URL("/", request.url));
+  const response = NextResponse.next();
+  if (urlToken) {
+    response.cookies.set("crm_session", urlToken, {
+      path: "/",
+      maxAge: 30 * 24 * 60 * 60,
+      sameSite: "lax",
+      secure: isSecure,
+    });
   }
-
-  return NextResponse.next();
+  return response;
 }
 
 export const config = {

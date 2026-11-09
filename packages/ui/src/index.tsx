@@ -1461,6 +1461,7 @@ export function AuthPanel({
         if (body.token && typeof window !== "undefined") {
           try {
             localStorage.setItem("crmkaro_token", body.token);
+            document.cookie = `crm_session=${body.token}; path=/; max-age=2592000; SameSite=Lax; ${window.location.protocol === "https:" ? "Secure;" : ""}`;
           } catch {}
         }
         onAuthenticated?.();
