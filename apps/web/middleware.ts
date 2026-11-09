@@ -52,6 +52,11 @@ export function middleware(request: NextRequest) {
   // 1. MARKETING DOMAIN (crmkaro.com & www.crmkaro.com)
   // =========================================================================
   if (isMarketingDomain) {
+    // If arriving on marketing domain with an auth token -> immediately route to the web portal!
+    if (urlToken || sessionToken) {
+      return NextResponse.redirect(new URL(`https://web.crmkaro.com${pathname}${search}`));
+    }
+
     // Root URL on marketing domain -> cleanly serve the Landing Page
     if (pathname === "/") {
       return NextResponse.rewrite(new URL("/landing", request.url));

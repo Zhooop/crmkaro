@@ -153,10 +153,18 @@ export class AuthService {
       } else {
         try {
           const parsed = new URL(returnTo);
-          const webUrl = new URL(defaultUrl);
-          const adminUrl = new URL(this.config.get("ADMIN_URL", { infer: true }));
-          if (parsed.origin === webUrl.origin || parsed.origin === adminUrl.origin) {
-            safeRedirectUri = returnTo;
+          if (parsed.hostname === "crmkaro.com" || parsed.hostname === "www.crmkaro.com") {
+            safeRedirectUri = "https://web.crmkaro.com";
+          } else {
+            const webUrl = new URL(defaultUrl);
+            const adminUrl = new URL(this.config.get("ADMIN_URL", { infer: true }));
+            if (
+              parsed.origin === webUrl.origin ||
+              parsed.origin === adminUrl.origin ||
+              parsed.hostname.endsWith(".crmkaro.com")
+            ) {
+              safeRedirectUri = returnTo;
+            }
           }
         } catch {
           // fallback to default
@@ -269,6 +277,12 @@ export class AuthService {
 
     const session = await this.sessions.create(user.id, metadata);
     let targetRedirectUri = oauthState.redirectUri;
+    try {
+      const parsed = new URL(targetRedirectUri);
+      if (parsed.hostname === "crmkaro.com" || parsed.hostname === "www.crmkaro.com") {
+        targetRedirectUri = "https://web.crmkaro.com";
+      }
+    } catch {}
     const sep = targetRedirectUri.includes("?") ? "&" : "?";
     targetRedirectUri = `${targetRedirectUri}${sep}token=${encodeURIComponent(session.token)}`;
     return { ...session, redirectUri: targetRedirectUri };

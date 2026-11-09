@@ -1424,8 +1424,11 @@ export function AuthPanel({
 
   useEffect(() => {
     if (typeof window !== "undefined") {
+      const portalOrigin = window.location.hostname.includes("crmkaro.com")
+        ? "https://web.crmkaro.com"
+        : window.location.origin;
       setGoogleStartUrl(
-        `${resolvedApiUrl}/auth/google/start?returnTo=${encodeURIComponent(window.location.origin)}`,
+        `${resolvedApiUrl}/auth/google/start?returnTo=${encodeURIComponent(portalOrigin)}`,
       );
     }
   }, [resolvedApiUrl]);

@@ -28,7 +28,11 @@ function LoginContent() {
         initialMode={mode}
         onAuthenticated={() => {
           if (typeof window !== "undefined") {
-            window.location.href = "/";
+            if (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com") {
+              window.location.href = "https://web.crmkaro.com/";
+            } else {
+              window.location.href = "/";
+            }
           }
         }}
       />

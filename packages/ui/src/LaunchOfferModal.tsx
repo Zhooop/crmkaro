@@ -336,7 +336,8 @@ export function LaunchOfferModal({
       // Success! Enter Dashboard directly
       if (onComplete) onComplete();
       else if (typeof window !== "undefined") {
-        window.location.href = "/";
+        const dest = window.location.hostname.includes("crmkaro.com") ? "https://web.crmkaro.com/" : "/";
+        window.location.href = dest;
       }
     } catch (err: any) {
       if (onboardingMode === "trial") {
@@ -346,7 +347,8 @@ export function LaunchOfferModal({
             document.cookie = `crm_session=${session}; path=/; max-age=2592000; SameSite=Lax`;
             localStorage.setItem("crmkaro_org_name", businessName.trim());
             localStorage.setItem("crmkaro_industry", selectedIndustry);
-            window.location.href = "/";
+            const dest = window.location.hostname.includes("crmkaro.com") ? "https://web.crmkaro.com/" : "/";
+            window.location.href = dest;
             return;
           } catch {}
         }
