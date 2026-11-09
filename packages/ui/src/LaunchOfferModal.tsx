@@ -126,8 +126,8 @@ export function LaunchOfferModal({
 
   const getApi = () => {
     if (propApiUrl) return propApiUrl;
-    if (typeof process !== "undefined" && (process as any).env?.NEXT_PUBLIC_API_URL) {
-      return (process as any).env.NEXT_PUBLIC_API_URL;
+    if (typeof (globalThis as any).process !== "undefined" && (globalThis as any).process?.env?.NEXT_PUBLIC_API_URL) {
+      return (globalThis as any).process.env.NEXT_PUBLIC_API_URL;
     }
     return "https://api.crmkaro.com/api/v1";
   };

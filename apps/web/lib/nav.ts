@@ -416,6 +416,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!isHydrated) return;
     if (typeof window === "undefined") return;
+    const host = window.location.hostname.toLowerCase();
+    if (host === "crmkaro.com" || host === "www.crmkaro.com") return;
+    const pathname = window.location.pathname;
+    if (pathname === "/landing" || pathname === "/login") return;
     const token = localStorage.getItem("crmkaro_token");
     if (!token) return;
 

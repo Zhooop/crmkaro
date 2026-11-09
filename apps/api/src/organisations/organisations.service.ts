@@ -190,7 +190,7 @@ export class OrganisationsService {
       },
     );
 
-    // Auto-create 14-day Free Trial for newly registered workspace
+    // Auto-create 30-day Free Trial for newly registered workspace
     try {
       await withPlatformAdmin(this.database, async (tx: any) => {
         let defaultPlan = await tx.subscriptionPlan.findFirst({
@@ -226,7 +226,7 @@ export class OrganisationsService {
           });
         }
 
-        const trialEnd = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000);
+        const trialEnd = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
         await tx.organisationSubscription.create({
           data: {
             organisationId,

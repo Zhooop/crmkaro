@@ -1402,7 +1402,7 @@ export function EmptyState({
 export function AuthPanel({
   admin = false,
   apiUrl,
-  initialMode = "login",
+  initialMode: _initialMode = "login",
   onAuthenticated,
 }: {
   admin?: boolean;
@@ -1410,12 +1410,10 @@ export function AuthPanel({
   initialMode?: "login" | "register";
   onAuthenticated?: () => void;
 }) {
-  const [authMode, setAuthMode] = useState<"login" | "register">(initialMode);
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
   const [challengeId, setChallengeId] = useState("");
   const [message, setMessage] = useState("");
-  const [modePrompt, setModePrompt] = useState<"none" | "register-needed" | "already-registered">("none");
   const [busy, setBusy] = useState(false);
 
   const resolvedApiUrl = apiUrl || "https://api.crmkaro.com/api/v1";
@@ -1436,7 +1434,6 @@ export function AuthPanel({
     event.preventDefault();
     setBusy(true);
     setMessage("");
-    setModePrompt("none");
     try {
       const response = await fetch(
         `${resolvedApiUrl}/auth/email/${challengeId ? "verify-otp" : "request-otp"}`,
@@ -1445,34 +1442,25 @@ export function AuthPanel({
           credentials: "include",
           headers: { "content-type": "application/json" },
           body: JSON.stringify(
-            challengeId ? { challengeId, code } : { email: email.trim(), mode: authMode },
+            challengeId ? { challengeId, code } : { email: email.trim(), mode: "unified" },
           ),
         },
       );
       const body = (await response.json()) as {
         challengeId?: string;
         message?: string;
+        token?: string;
       };
       if (!response.ok) {
-        if (response.status === 404 || body.message?.toLowerCase().includes("no account found") || body.message?.toLowerCase().includes("register")) {
-          setModePrompt("register-needed");
-          setMessage(body.message || "No account found with this email. Please register first.");
-          return;
-        }
-        if (response.status === 409 || body.message?.toLowerCase().includes("already exists")) {
-          setModePrompt("already-registered");
-          setMessage(body.message || "An account already exists with this email. Please sign in instead.");
-          return;
-        }
         throw new Error(body.message ?? "Authentication failed.");
       }
       if (body.challengeId) {
         setChallengeId(body.challengeId);
-        setMessage("A six-digit verification code was sent to your email.");
+        setMessage("Verification code sent! Check your email inbox.");
       } else {
-        if ((body as { token?: string }).token && typeof window !== "undefined") {
+        if (body.token && typeof window !== "undefined") {
           try {
-            localStorage.setItem("crmkaro_token", (body as { token?: string }).token!);
+            localStorage.setItem("crmkaro_token", body.token);
           } catch {}
         }
         onAuthenticated?.();
@@ -1554,80 +1542,13 @@ export function AuthPanel({
       <section className="auth-form-wrap">
         <div className="auth-form-card">
           <form className="auth-form" onSubmit={submit} suppressHydrationWarning>
-            {!admin && !challengeId && (
-              <div
-                style={{
-                  display: "flex",
-                  background: "#f1f5f9",
-                  padding: 3,
-                  borderRadius: 10,
-                  marginBottom: 16,
-                }}
-              >
-                <button
-                  type="button"
-                  suppressHydrationWarning
-                  onClick={() => {
-                    setAuthMode("login");
-                    setModePrompt("none");
-                    setMessage("");
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: 7,
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    background: authMode === "login" ? "#ffffff" : "transparent",
-                    color: authMode === "login" ? "var(--brand)" : "#64748b",
-                    boxShadow: authMode === "login" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  Sign In
-                </button>
-                <button
-                  type="button"
-                  suppressHydrationWarning
-                  onClick={() => {
-                    setAuthMode("register");
-                    setModePrompt("none");
-                    setMessage("");
-                  }}
-                  style={{
-                    flex: 1,
-                    padding: "8px 12px",
-                    borderRadius: 7,
-                    border: "none",
-                    fontSize: 13,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                    background: authMode === "register" ? "#ffffff" : "transparent",
-                    color: authMode === "register" ? "var(--brand)" : "#64748b",
-                    boxShadow: authMode === "register" ? "0 2px 5px rgba(0,0,0,0.06)" : "none",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  Create Account
-                </button>
-              </div>
-            )}
-
             <h2>
-              {admin
-                ? "Platform Sign In"
-                : authMode === "login"
-                  ? "Welcome Back"
-                  : "Create Your Account"}
+              {admin ? "Platform Sign In" : "Welcome to CRMKaro"}
             </h2>
             <p>
               {admin
                 ? "Sign in with your verified platform administrator credentials."
-                : authMode === "login"
-                  ? "Sign in to access your business organisation."
-                  : "Start managing leads, student fees, and staff payroll in 30 seconds."}
+                : "Start your 30-day free trial or sign in to your workspace."}
             </p>
 
             <a className="google-button" href={googleStartUrl} suppressHydrationWarning>
@@ -1649,11 +1570,11 @@ export function AuthPanel({
                   d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.961L3.964 7.293C4.672 5.166 6.656 3.58 9 3.58z"
                 />
               </svg>
-              <span>{authMode === "login" ? "Continue with Google" : "Sign up with Google"}</span>
+              <span>Continue with Google</span>
             </a>
 
             <div className="auth-divider">
-              <span>{authMode === "login" ? "or sign in with email" : "or register with email"}</span>
+              <span>or continue with email</span>
             </div>
 
             <label htmlFor={challengeId ? "code" : "email"}>
@@ -1690,12 +1611,8 @@ export function AuthPanel({
               {busy
                 ? "Verifying…"
                 : challengeId
-                  ? authMode === "login"
-                    ? "Verify Code & Sign In"
-                    : "Verify Code & Create Account"
-                  : authMode === "login"
-                    ? "Send Login Code"
-                    : "Send Registration Code"}
+                  ? "Verify Code & Enter Workspace"
+                  : "Continue with Email →"}
             </button>
 
             {challengeId && (
@@ -1707,157 +1624,21 @@ export function AuthPanel({
                   setChallengeId("");
                   setCode("");
                   setMessage("");
-                  setModePrompt("none");
                 }}
               >
                 ← Use a different email
               </button>
             )}
 
-            {modePrompt === "register-needed" && (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  background: "#fef2f2",
-                  border: "1px solid #fecaca",
-                  borderRadius: 10,
-                  marginTop: 12,
-                }}
-              >
-                <p style={{ color: "#991b1b", fontSize: 12.5, fontWeight: 600, margin: "0 0 8px 0" }}>
-                  ⚠️ No account found with <strong>{email}</strong>.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("register");
-                    setModePrompt("none");
-                    setMessage("");
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    background: "var(--brand)",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  👉 Click here to Register / Create Account
-                </button>
-              </div>
-            )}
-
-            {modePrompt === "already-registered" && (
-              <div
-                style={{
-                  padding: "12px 14px",
-                  background: "#eff6ff",
-                  border: "1px solid #bfdbfe",
-                  borderRadius: 10,
-                  marginTop: 12,
-                }}
-              >
-                <p style={{ color: "#1e40af", fontSize: 12.5, fontWeight: 600, margin: "0 0 8px 0" }}>
-                  ℹ️ An account already exists with <strong>{email}</strong>.
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setAuthMode("login");
-                    setModePrompt("none");
-                    setMessage("");
-                  }}
-                  style={{
-                    width: "100%",
-                    padding: "8px 12px",
-                    background: "#1e3a8a",
-                    color: "#ffffff",
-                    border: "none",
-                    borderRadius: 6,
-                    fontSize: 12,
-                    fontWeight: 700,
-                    cursor: "pointer",
-                  }}
-                >
-                  👉 Click here to Sign In / Log In
-                </button>
-              </div>
-            )}
-
-            {message && modePrompt === "none" && (
+            {message && (
               <p className="auth-message" role="status">
                 {message}
               </p>
             )}
 
-            {!admin && !challengeId && (
-              <div
-                style={{
-                  textAlign: "center",
-                  marginTop: 14,
-                  fontSize: 12.5,
-                  color: "#64748b",
-                }}
-              >
-                {authMode === "login" ? (
-                  <span>
-                    Don&apos;t have an account?{" "}
-                    <button
-                      type="button"
-                      suppressHydrationWarning
-                      onClick={() => {
-                        setAuthMode("register");
-                        setModePrompt("none");
-                        setMessage("");
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--brand)",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        padding: 0,
-                        textDecoration: "underline",
-                      }}
-                    >
-                      Create Account
-                    </button>
-                  </span>
-                ) : (
-                  <span>
-                    Already have an account?{" "}
-                    <button
-                      type="button"
-                      suppressHydrationWarning
-                      onClick={() => {
-                        setAuthMode("login");
-                        setModePrompt("none");
-                        setMessage("");
-                      }}
-                      style={{
-                        background: "none",
-                        border: "none",
-                        color: "var(--brand)",
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        padding: 0,
-                        textDecoration: "underline",
-                      }}
-                    >
-                      Sign In
-                    </button>
-                  </span>
-                )}
-              </div>
-            )}
-
             <p className="auth-note">
               <Icon name="shield" size={13} />
-              <span>Protected by high-security token exchange</span>
+              <span>30-Day Free Trial • No Credit Card Required • Zero Setup Fees</span>
             </p>
           </form>
         </div>

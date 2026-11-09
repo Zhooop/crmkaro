@@ -485,18 +485,41 @@ export function LandingPage({
 
   const handleLogin = () => {
     if (onLoginClick) onLoginClick();
-    else if (typeof window !== "undefined") window.location.href = "/login";
+    else if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (host === "crmkaro.com" || host === "www.crmkaro.com") {
+        window.location.href = "https://web.crmkaro.com/login";
+      } else {
+        window.location.href = "/login";
+      }
+    }
   };
 
   const handleRegister = (planCode?: string) => {
-    const target = plans.find((p) => p.code === planCode) || plans[0] || DEFAULT_LAUNCH_PLAN;
-    setActiveCheckoutPlan(target);
-    setIsCheckoutOpen(true);
+    if (onRegisterClick) {
+      onRegisterClick(planCode);
+      return;
+    }
+    if (onLoginClick) {
+      onLoginClick();
+      return;
+    }
+    if (typeof window !== "undefined") {
+      const host = window.location.hostname.toLowerCase();
+      if (host === "crmkaro.com" || host === "www.crmkaro.com") {
+        window.location.href = "https://web.crmkaro.com/login";
+      } else {
+        window.location.href = "/login";
+      }
+    }
   };
 
   const handleSelectPlan = (plan: LandingPlanItem) => {
-    setActiveCheckoutPlan(plan);
-    setIsCheckoutOpen(true);
+    if (onSelectPlan) {
+      onSelectPlan(plan);
+      return;
+    }
+    handleRegister(plan.code);
   };
 
   const handleDashboard = () => {
@@ -592,7 +615,7 @@ export function LandingPage({
                   Log in
                 </button>
                 <button onClick={() => handleRegister()} className="lp-btn-capsule-primary" type="button">
-                  Start 14-Day Free Trial
+                  Start 30-Day Free Trial
                 </button>
               </>
             )}
@@ -697,7 +720,7 @@ export function LandingPage({
                     className="lp-btn-capsule-primary"
                     style={{ width: "100%", justifyContent: "center" }}
                   >
-                    Start 14-Day Free Trial
+                    Start 30-Day Free Trial
                   </button>
                 </div>
               )}
@@ -822,7 +845,7 @@ export function LandingPage({
               {/* Single Solid Primary CTA */}
               <div className="lp-hero-ctas-row">
                 <button onClick={() => handleRegister()} className="lp-btn-hero-solid" type="button">
-                  Claim Special Launch Offer →
+                  Start 30-Day Free Trial →
                 </button>
               </div>
             </div>
@@ -1489,7 +1512,7 @@ export function LandingPage({
 
                 <div className="lp-circuit-cta-row">
                   <button onClick={() => handleRegister()} className="lp-btn-hero-solid" type="button">
-                    Claim Special Launch Offer Now →
+                    Start 30-Day Free Trial Now →
                   </button>
                   <a href="#pricing" className="lp-btn-hero-ghost" onClick={(e) => handleSmoothScroll(e, "#pricing")}>
                     View Launch Offer (₹249/mo) ↗

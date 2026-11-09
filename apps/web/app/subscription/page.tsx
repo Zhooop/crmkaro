@@ -244,7 +244,7 @@ function SubscriptionContent() {
     currentSub?.paymentMethod === "FREE_TRIAL" ||
     (currentSub?.amountPaidMinor === 0 && Boolean(isActive));
 
-  const daysRemaining = (currentSub as any)?.daysRemaining ?? 14;
+  const daysRemaining = (currentSub as any)?.daysRemaining ?? 30;
 
   return (
     <AppShell
@@ -278,7 +278,7 @@ function SubscriptionContent() {
             <div style={{ display: "flex", alignItems: "center", gap: 8, background: isTrial ? "#eff6ff" : "#ecfdf5", border: `1px solid ${isTrial ? "#bfdbfe" : "#a7f3d0"}`, padding: "8px 16px", borderRadius: 999 }}>
               <span style={{ width: 8, height: 8, borderRadius: "50%", background: isTrial ? "#3b82f6" : "#10b981", display: "inline-block" }} />
               <span style={{ fontSize: 13, fontWeight: 700, color: isTrial ? "#1e40af" : "#065f46" }}>
-                {isTrial ? `✨ 14-Day Free Trial (${daysRemaining} Days Remaining)` : `AutoPay Active (₹${Math.round((currentSub?.amountPaidMinor || 24900) / 100)}/mo)`}
+                {isTrial ? `✨ 30-Day Free Trial (${daysRemaining} Days Remaining)` : `AutoPay Active (₹${Math.round((currentSub?.amountPaidMinor || 24900) / 100)}/mo)`}
               </span>
             </div>
           )}
@@ -332,7 +332,7 @@ function SubscriptionContent() {
         <div className="stats-grid" style={{ gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
           <StatCard
             label="Current Plan"
-            value={isTrial ? "14-Day Full Access Trial" : "Launch Offer — Business OS"}
+            value={isTrial ? "30-Day Full Access Trial" : "Launch Offer — Business OS"}
             change="Official Launch Offer"
             icon="tag"
           />

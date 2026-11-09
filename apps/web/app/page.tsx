@@ -477,6 +477,11 @@ export default function HomePage() {
   const loadDashboard = useCallback(
     async (preset = "all", start = "", end = "") => {
       if (typeof window !== "undefined") {
+        const host = window.location.hostname.toLowerCase();
+        if (host === "crmkaro.com" || host === "www.crmkaro.com") {
+          setIsUnauthenticated(true);
+          return;
+        }
         const token = localStorage.getItem("crmkaro_token");
         if (!token) {
           setIsUnauthenticated(true);
@@ -565,7 +570,7 @@ export default function HomePage() {
             {
               id: "n1",
               module: "crm",
-              title: "Welcome to your 14-Day Free Trial!",
+              title: "Welcome to your 30-Day Free Trial!",
               detail: "Explore CRM leads, student admissions, and WhatsApp fee reminders.",
               severity: "info",
             },
@@ -706,16 +711,18 @@ export default function HomePage() {
         return <DashboardLoading />;
       }
     }
+    const handleAuthRedirect = () => {
+      if (typeof window !== "undefined" && (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com")) {
+        window.location.href = "https://web.crmkaro.com/login";
+      } else {
+        router.push("/login");
+      }
+    };
     return (
       <LandingPage
         isAuthenticated={false}
-        onLoginClick={() => {
-          if (typeof window !== "undefined" && (window.location.hostname === "crmkaro.com" || window.location.hostname === "www.crmkaro.com")) {
-            window.location.href = "https://web.crmkaro.com/login";
-          } else {
-            router.push("/login");
-          }
-        }}
+        onLoginClick={handleAuthRedirect}
+        onRegisterClick={handleAuthRedirect}
         onDashboardClick={() => setIsUnauthenticated(false)}
       />
     );

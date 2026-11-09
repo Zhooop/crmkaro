@@ -697,7 +697,7 @@ export class DashboardService {
           {
             id: "n1",
             module: "crm",
-            title: "Welcome to your 14-Day Free Trial!",
+            title: "Welcome to your 30-Day Free Trial!",
             detail: "Explore CRM leads, student admissions, and WhatsApp fee reminders.",
             severity: "info" as const,
           },
