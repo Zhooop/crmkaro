@@ -734,9 +734,9 @@ export default function HomePage() {
     if (typeof window === "undefined") return;
     const host = window.location.hostname.toLowerCase();
     if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
-      router.push("/login");
+      window.location.href = "/login";
     }
-  }, [isUnauthenticated, router]);
+  }, [isUnauthenticated]);
 
   if (isUnauthenticated) {
     if (typeof window !== "undefined") {

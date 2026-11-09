@@ -257,7 +257,7 @@ export class OrganisationsService {
 
   async list(userId: string) {
     try {
-      const memberships = await withUser(this.database, userId, (transaction) =>
+      const memberships = await withPlatformAdmin(this.database, (transaction) =>
         transaction.organisationMembership.findMany({
           where: { userId, status: "ACTIVE" },
           select: { organisationId: true, roleId: true },

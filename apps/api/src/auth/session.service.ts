@@ -1,6 +1,7 @@
 import { Inject, Injectable, UnauthorizedException } from "@nestjs/common";
 import { createHash, randomBytes } from "node:crypto";
 import type { DatabaseClient } from "@crmkaro/database";
+import { withPlatformAdmin } from "@crmkaro/database";
 import { DATABASE } from "../database/database.module.js";
 import type { AuthenticatedSession } from "./auth.types.js";
 
@@ -47,20 +48,24 @@ export class SessionService {
 
       let activeOrgId = session.activeOrganisationId;
       if (!activeOrgId) {
-        const firstMembership = await this.database.organisationMembership.findFirst({
-          where: { userId: session.userId, status: "ACTIVE" },
-          orderBy: { createdAt: "asc" },
-          select: { organisationId: true },
-        });
-        if (firstMembership) {
-          activeOrgId = firstMembership.organisationId;
-          await this.database.authSession
-            .update({
-              where: { id: session.id },
-              data: { activeOrganisationId: activeOrgId },
-            })
-            .catch(() => {});
-        }
+        try {
+          const firstMembership = await withPlatformAdmin(this.database, (tx) =>
+            tx.organisationMembership.findFirst({
+              where: { userId: session.userId, status: "ACTIVE" },
+              orderBy: { createdAt: "asc" },
+              select: { organisationId: true },
+            }),
+          );
+          if (firstMembership) {
+            activeOrgId = firstMembership.organisationId;
+            await this.database.authSession
+              .update({
+                where: { id: session.id },
+                data: { activeOrganisationId: activeOrgId },
+              })
+              .catch(() => {});
+          }
+        } catch {}
       }
 
       return {
