@@ -294,6 +294,9 @@ export class OrganisationsService {
         ),
       );
     } catch (err: any) {
+      if (process.env.NODE_ENV === "production") {
+        throw err;
+      }
       console.warn("PostgreSQL unavailable in OrganisationsService.list, providing development organisation:", err.message);
       return [
         {

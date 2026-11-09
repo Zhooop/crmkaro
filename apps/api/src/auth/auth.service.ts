@@ -269,10 +269,8 @@ export class AuthService {
 
     const session = await this.sessions.create(user.id, metadata);
     let targetRedirectUri = oauthState.redirectUri;
-    if (targetRedirectUri.startsWith("com.crmkaro.app://") || targetRedirectUri.startsWith("crmkaro://")) {
-      const sep = targetRedirectUri.includes("?") ? "&" : "?";
-      targetRedirectUri = `${targetRedirectUri}${sep}token=${encodeURIComponent(session.token)}`;
-    }
+    const sep = targetRedirectUri.includes("?") ? "&" : "?";
+    targetRedirectUri = `${targetRedirectUri}${sep}token=${encodeURIComponent(session.token)}`;
     return { ...session, redirectUri: targetRedirectUri };
   }
 

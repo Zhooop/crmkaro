@@ -72,6 +72,9 @@ export class SessionService {
       };
     } catch (err: any) {
       if (err instanceof UnauthorizedException) throw err;
+      if (process.env.NODE_ENV === "production") {
+        throw new UnauthorizedException("Session verification failed. Please sign in again.");
+      }
       console.warn("PostgreSQL unavailable in SessionService.authenticate, providing development session:", err.message);
       return {
         sessionId: "sess_dev_1",

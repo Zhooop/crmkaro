@@ -474,6 +474,21 @@ export default function HomePage() {
     setSelectedServices([...preset.modules]);
   }
 
+  const getStoredOrUrlToken = useCallback(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlToken = urlParams.get("token");
+      if (urlToken) {
+        localStorage.setItem("crmkaro_token", urlToken);
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+        return urlToken;
+      }
+    } catch {}
+    return localStorage.getItem("crmkaro_token");
+  }, []);
+
   const loadDashboard = useCallback(
     async (preset = "all", start = "", end = "") => {
       if (typeof window !== "undefined") {
@@ -482,7 +497,7 @@ export default function HomePage() {
           setIsUnauthenticated(true);
           return;
         }
-        const token = localStorage.getItem("crmkaro_token");
+        const token = getStoredOrUrlToken();
         if (!token) {
           setIsUnauthenticated(true);
           return;
@@ -507,16 +522,22 @@ export default function HomePage() {
       if (response.status === 403) {
         const organisationsResponse = await authFetch(`${api}/organisations`);
         if (organisationsResponse.status === 401) {
+          if (typeof window !== "undefined") {
+            localStorage.removeItem("crmkaro_token");
+          }
           setIsUnauthenticated(true);
           return;
         }
-        if (!organisationsResponse.ok)
-          throw new Error("Your workspace could not be loaded.");
+        if (!organisationsResponse.ok) {
+          setNeedsSetup(true);
+          return;
+        }
         const orgs =
           (await organisationsResponse.json()) as OrganisationEntry[];
-        const firstOrganisation = orgs.find(
-          ({ organisation }) => organisation,
-        )?.organisation;
+        const validOrgs = Array.isArray(orgs)
+          ? orgs.filter((o) => o?.organisation?.id && o.organisation.id !== "org_dev_1")
+          : [];
+        const firstOrganisation = validOrgs[0]?.organisation;
         if (!firstOrganisation) {
           setNeedsSetup(true);
           return;
@@ -525,10 +546,15 @@ export default function HomePage() {
           `${api}/organisations/${firstOrganisation.id}/activate`,
           { method: "POST" },
         );
-        if (!activateResponse.ok)
-          throw new Error("Could not switch to your active workspace.");
+        if (!activateResponse.ok) {
+          setNeedsSetup(true);
+          return;
+        }
         const retry = await authFetch(url);
-        if (!retry.ok) throw new Error("Could not load your workspace summary.");
+        if (!retry.ok) {
+          setNeedsSetup(true);
+          return;
+        }
         const retryData = (await retry.json()) as Dashboard;
         setData(retryData);
         if (preset === "all") saveCachedDashboardData(retryData);
@@ -703,11 +729,19 @@ export default function HomePage() {
     }
   }
 
+  useEffect(() => {
+    if (!isUnauthenticated) return;
+    if (typeof window === "undefined") return;
+    const host = window.location.hostname.toLowerCase();
+    if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
+      router.push("/login");
+    }
+  }, [isUnauthenticated, router]);
+
   if (isUnauthenticated) {
     if (typeof window !== "undefined") {
       const host = window.location.hostname.toLowerCase();
       if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
-        router.push("/login");
         return <DashboardLoading />;
       }
     }
@@ -1018,11 +1052,7 @@ export default function HomePage() {
     );
 
   if (error && !data) {
-    const cached = getCachedDashboardData();
-    if (cached) {
-      setData(cached);
-    } else {
-      return (
+    return (
         <main
           style={{
             minHeight: "100vh",
@@ -1103,7 +1133,6 @@ export default function HomePage() {
           </div>
         </main>
       );
-    }
   }
 
   const orgName = data?.organisation?.name || wsOrgName;
