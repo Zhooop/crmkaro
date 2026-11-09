@@ -1327,10 +1327,10 @@ function CrmContent() {
         isOpen={createOpen}
         onClose={() => setCreateOpen(false)}
         title="Create New Lead / Inquiry"
-        subtitle="Add prospective student or client to the sales pipeline"
-        maxWidth={520}
+        subtitle="Add prospective client or deal to your sales pipeline"
+        maxWidth={540}
       >
-        <form onSubmit={handleCreateLead} style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+        <form onSubmit={handleCreateLead} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {formError && (
             <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {formError}
@@ -1338,41 +1338,44 @@ function CrmContent() {
           )}
 
           {/* Quick Lead Presets / 1-Click Templates */}
-          <div>
-            <label style={{ fontSize: 11, fontWeight: 700, color: "var(--muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>
-              ⚡ 1-Click Quick Presets
-            </label>
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 6 }}>
+          <div style={{ background: "#f8fafc", padding: "10px 14px", borderRadius: 10, border: "1px solid #e2e8f0" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+              <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+                ⚡ Quick Presets
+              </span>
+              <span style={{ fontSize: 11, color: "#94a3b8" }}>Auto-fill common deal types</span>
+            </div>
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <button
                 type="button"
-                onClick={() => applyLeadTemplate("Full Course Admission Lead", "25000", "Walk-in")}
-                style={{ padding: "4px 9px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                onClick={() => applyLeadTemplate("Standard Business Inquiry", "15000", "Website")}
+                style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
               >
-                🎓 Full Course (₹25k)
+                💬 General Inquiry (₹15k)
               </button>
               <button
                 type="button"
-                onClick={() => applyLeadTemplate("Crash Course Inquiry", "8000", "Social Media")}
-                style={{ padding: "4px 9px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                onClick={() => applyLeadTemplate("Hot Deal / High Intent", "50000", "Phone Call")}
+                style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
               >
-                📖 Crash Course (₹8k)
+                🔥 Hot Deal (₹50k)
               </button>
               <button
                 type="button"
-                onClick={() => applyLeadTemplate("Consulting Retainer Lead", "50000", "Referral")}
-                style={{ padding: "4px 9px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 7, fontSize: 11, fontWeight: 600, cursor: "pointer" }}
+                onClick={() => applyLeadTemplate("Enterprise Retainer / Contract", "150000", "Referral")}
+                style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
               >
-                💼 Consulting (₹50k)
+                💼 Enterprise (₹1.5L)
               </button>
             </div>
           </div>
 
           <div className="form-grid">
             <div className="form-group full">
-              <label>Lead / Student / Client Name *</label>
+              <label>Lead / Client Name *</label>
               <input
                 type="text"
-                placeholder="e.g. Vikram Verma or Apex Tutorials"
+                placeholder="e.g. Vikram Verma or Apex Corp"
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 required
@@ -1380,10 +1383,10 @@ function CrmContent() {
               />
             </div>
             <div className="form-group">
-              <label>Email</label>
+              <label>Email Address</label>
               <input
                 type="email"
-                placeholder="vikram@example.com"
+                placeholder="client@example.com"
                 value={formEmail}
                 onChange={(e) => setFormEmail(e.target.value)}
               />
@@ -1398,7 +1401,7 @@ function CrmContent() {
               />
             </div>
             <div className="form-group full">
-              <label>Estimated Deal / Fee Value (₹)</label>
+              <label>Estimated Value (₹)</label>
               <input
                 type="number"
                 placeholder="e.g. 25000"
@@ -1406,72 +1409,78 @@ function CrmContent() {
                 onChange={(e) => setFormValue(e.target.value)}
               />
               {/* Quick Amount Chips */}
-              <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                {[5000, 10000, 25000, 50000, 100000].map((amt) => (
-                  <button
-                    key={amt}
-                    type="button"
-                    onClick={() => setFormValue(String(amt))}
-                    style={{
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                      border: "1px solid #cbd5e1",
-                      background: formValue === String(amt) ? "#dbeafe" : "#ffffff",
-                      color: formValue === String(amt) ? "#1d4ed8" : "#475569",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ₹{amt.toLocaleString("en-IN")}
-                  </button>
-                ))}
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {[5000, 10000, 25000, 50000, 100000].map((amt) => {
+                  const isSelected = formValue === String(amt);
+                  return (
+                    <button
+                      key={amt}
+                      type="button"
+                      onClick={() => setFormValue(String(amt))}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: isSelected ? "1px solid #3b82f6" : "1px solid #cbd5e1",
+                        background: isSelected ? "#eff6ff" : "#ffffff",
+                        color: isSelected ? "#1d4ed8" : "#475569",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      ₹{amt.toLocaleString("en-IN")}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             <div className="form-group full">
               <label>Lead Source</label>
               <select
-                className="filter-select"
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
               >
                 <option value="WhatsApp">📱 WhatsApp</option>
-                <option value="Walk-in">🚶 Walk-in / Center Visit</option>
+                <option value="Walk-in">🚶 Walk-in / In-Person Visit</option>
                 <option value="Phone Call">📞 Phone Call</option>
                 <option value="Social Media">📸 Social Media / Instagram Ads</option>
                 <option value="Website">🌐 Website Inquiry</option>
                 <option value="Google Search">🔍 Google Search</option>
-                <option value="Referral">🤝 Student / Client Referral</option>
+                <option value="Referral">🤝 Client Referral</option>
                 <option value="Other">Other</option>
               </select>
               {/* Quick Source Chips */}
-              <div style={{ display: "flex", gap: 5, marginTop: 5, flexWrap: "wrap" }}>
-                {["WhatsApp", "Walk-in", "Phone Call", "Social Media", "Referral"].map((src) => (
-                  <button
-                    key={src}
-                    type="button"
-                    onClick={() => setFormSource(src)}
-                    style={{
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                      border: "1px solid #cbd5e1",
-                      background: formSource === src ? "#dbeafe" : "#ffffff",
-                      color: formSource === src ? "#1d4ed8" : "#475569",
-                      fontSize: 11,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {src}
-                  </button>
-                ))}
+              <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
+                {["WhatsApp", "Walk-in", "Phone Call", "Social Media", "Website", "Referral"].map((src) => {
+                  const isSelected = formSource === src;
+                  return (
+                    <button
+                      key={src}
+                      type="button"
+                      onClick={() => setFormSource(src)}
+                      style={{
+                        padding: "4px 10px",
+                        borderRadius: 6,
+                        border: isSelected ? "1px solid #3b82f6" : "1px solid #cbd5e1",
+                        background: isSelected ? "#eff6ff" : "#ffffff",
+                        color: isSelected ? "#1d4ed8" : "#475569",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        transition: "all 0.15s ease",
+                      }}
+                    >
+                      {src}
+                    </button>
+                  );
+                })}
               </div>
             </div>
             {stages.length > 0 && (
               <div className="form-group full">
                 <label>Initial Pipeline Stage</label>
                 <select
-                  className="filter-select"
                   value={formStageId}
                   onChange={(e) => setFormStageId(e.target.value)}
                 >

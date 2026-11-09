@@ -1,5 +1,6 @@
 "use client";
 
+import { createPortal } from "react-dom";
 import {
   useEffect,
   useState,
@@ -1277,17 +1278,33 @@ export function Modal({
   footer?: ReactNode;
   maxWidth?: number;
 }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    if (isOpen) {
+      window.addEventListener("keydown", onKeyDown);
+      try {
+        document.body.style.overflow = "hidden";
+      } catch {}
+    }
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      try {
+        document.body.style.overflow = "";
+      } catch {}
+    };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const modalEl = (
     <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
@@ -1314,6 +1331,8 @@ export function Modal({
       </div>
     </div>
   );
+
+  return createPortal(modalEl, document.body);
 }
 
 export function Drawer({
@@ -1331,17 +1350,33 @@ export function Drawer({
   children: ReactNode;
   width?: number;
 }) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    if (isOpen) window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    if (isOpen) {
+      window.addEventListener("keydown", onKeyDown);
+      try {
+        document.body.style.overflow = "hidden";
+      } catch {}
+    }
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      try {
+        document.body.style.overflow = "";
+      } catch {}
+    };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
+  if (!isOpen || !mounted) return null;
 
-  return (
+  const drawerEl = (
     <div className="drawer-overlay" onClick={onClose}>
       <div
         className="drawer-panel"
@@ -1367,6 +1402,8 @@ export function Drawer({
       </div>
     </div>
   );
+
+  return createPortal(drawerEl, document.body);
 }
 
 export function EmptyState({
