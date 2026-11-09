@@ -434,14 +434,15 @@ const SOLUTION_PRESETS = [
   return { label: "All Time" };
 }
 
+type ViewState = "initializing" | "unauthenticated" | "needs_setup" | "ready";
+
 export default function HomePage() {
   const router = useRouter();
   const { orgName: wsOrgName, userName: wsUserName, userRole: wsUserRole, organisations: wsOrgs, navItems: wsNav, updateWorkspace } = useWorkspace();
   const [data, setData] = useState<Dashboard | null>(null);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>(() => wsOrgs);
   const [error, setError] = useState("");
-  const [isUnauthenticated, setIsUnauthenticated] = useState<boolean>(false);
-  const [needsSetup, setNeedsSetup] = useState(false);
+  const [viewState, setViewState] = useState<ViewState>("initializing");
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
   const [customBusinessType, setCustomBusinessType] = useState("");
@@ -494,12 +495,12 @@ export default function HomePage() {
       if (typeof window !== "undefined") {
         const host = window.location.hostname.toLowerCase();
         if (host === "crmkaro.com" || host === "www.crmkaro.com") {
-          setIsUnauthenticated(true);
+          setViewState("unauthenticated");
           return;
         }
         const token = getStoredOrUrlToken();
         if (!token) {
-          setIsUnauthenticated(true);
+          setViewState("unauthenticated");
           return;
         }
       }
@@ -511,25 +512,39 @@ export default function HomePage() {
       const qs = params.toString();
       if (qs) url += `?${qs}`;
 
-      const response = await authFetch(url);
+      let response: Response;
+      try {
+        response = await authFetch(url);
+      } catch (err: any) {
+        console.warn("Could not connect to backend dashboard:", err);
+        setError("Network error connecting to workspace overview.");
+        return;
+      }
+
       if (response.status === 401) {
         if (typeof window !== "undefined") {
           localStorage.removeItem("crmkaro_token");
         }
-        setIsUnauthenticated(true);
+        setViewState("unauthenticated");
         return;
       }
       if (response.status === 403) {
-        const organisationsResponse = await authFetch(`${api}/organisations`);
+        let organisationsResponse: Response;
+        try {
+          organisationsResponse = await authFetch(`${api}/organisations`);
+        } catch {
+          setViewState("needs_setup");
+          return;
+        }
         if (organisationsResponse.status === 401) {
           if (typeof window !== "undefined") {
             localStorage.removeItem("crmkaro_token");
           }
-          setIsUnauthenticated(true);
+          setViewState("unauthenticated");
           return;
         }
         if (!organisationsResponse.ok) {
-          setNeedsSetup(true);
+          setViewState("needs_setup");
           return;
         }
         const orgs =
@@ -539,7 +554,7 @@ export default function HomePage() {
           : [];
         const firstOrganisation = validOrgs[0]?.organisation;
         if (!firstOrganisation) {
-          setNeedsSetup(true);
+          setViewState("needs_setup");
           return;
         }
         const activateResponse = await authFetch(
@@ -547,18 +562,26 @@ export default function HomePage() {
           { method: "POST" },
         );
         if (!activateResponse.ok) {
-          setNeedsSetup(true);
+          setViewState("needs_setup");
           return;
         }
         const retry = await authFetch(url);
         if (!retry.ok) {
-          setNeedsSetup(true);
+          setViewState("needs_setup");
           return;
         }
         const retryData = (await retry.json()) as Dashboard;
         setData(retryData);
         if (preset === "all") saveCachedDashboardData(retryData);
         saveActiveServicesToStorage(retryData.services || []);
+        updateWorkspace({
+          orgName: retryData.organisation.name,
+          userName: retryData.user?.name || undefined,
+          currency: retryData.organisation.currency || "INR",
+          businessType: retryData.organisation.businessType || undefined,
+          activeServices: retryData.services || [],
+        });
+        setViewState("ready");
 
         // Also load groups
         try {
@@ -617,6 +640,7 @@ export default function HomePage() {
         businessType: dashboardData.organisation.businessType || undefined,
         activeServices: dashboardData.services || [],
       });
+      setViewState("ready");
 
       // Also load groups for Today's Batches widget
       try {
@@ -720,7 +744,7 @@ export default function HomePage() {
       const body = (await response.json()) as { message?: string };
       if (!response.ok)
         throw new Error(body.message ?? "Workspace setup failed.");
-      setNeedsSetup(false);
+      setViewState("initializing");
       await loadDashboard();
     } catch (reason) {
       setSetupError((reason as Error).message);
@@ -730,15 +754,19 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    if (!isUnauthenticated) return;
+    if (viewState !== "unauthenticated") return;
     if (typeof window === "undefined") return;
     const host = window.location.hostname.toLowerCase();
     if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
-      window.location.href = "/login";
+      window.location.replace("/login");
     }
-  }, [isUnauthenticated]);
+  }, [viewState]);
 
-  if (isUnauthenticated) {
+  if (viewState === "initializing") {
+    return <DashboardLoading />;
+  }
+
+  if (viewState === "unauthenticated") {
     if (typeof window !== "undefined") {
       const host = window.location.hostname.toLowerCase();
       if (host === "web.crmkaro.com" || host === "app.crmkaro.com" || host.startsWith("web.")) {
@@ -757,11 +785,14 @@ export default function HomePage() {
         isAuthenticated={false}
         onLoginClick={handleAuthRedirect}
         onRegisterClick={handleAuthRedirect}
-        onDashboardClick={() => setIsUnauthenticated(false)}
+        onDashboardClick={() => {
+          setViewState("initializing");
+          loadDashboard();
+        }}
       />
     );
   }
-  if (needsSetup)
+  if (viewState === "needs_setup")
     return (
       <main className="onboarding-page">
         <section className="onboarding-card">
@@ -1133,6 +1164,10 @@ export default function HomePage() {
           </div>
         </main>
       );
+  }
+
+  if (!data) {
+    return <DashboardLoading />;
   }
 
   const orgName = data?.organisation?.name || wsOrgName;

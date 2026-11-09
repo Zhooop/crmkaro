@@ -397,7 +397,7 @@ export function LaunchOfferModal({
                     transition: "all 0.15s ease",
                   }}
                 >
-                  ✨ 14-Day Free Trial (₹0)
+                  ✨ 30-Day Free Trial (₹0)
                 </button>
                 <button
                   type="button"
@@ -419,7 +419,7 @@ export function LaunchOfferModal({
               </div>
 
               <h2 style={{ fontSize: "1.4rem", fontWeight: 800, margin: "0 0 6px 0", color: "#ffffff" }}>
-                {onboardingMode === "trial" ? "Start Your 14-Day Free Trial" : "Claim All-in-One Business OS"}
+                {onboardingMode === "trial" ? "Start Your 30-Day Free Trial" : "Claim All-in-One Business OS"}
               </h2>
               <p style={{ margin: 0, fontSize: "0.84rem", color: "#bfdbfe" }}>
                 {onboardingMode === "trial"
@@ -507,7 +507,7 @@ export function LaunchOfferModal({
                 {busy
                   ? "Setting up your access…"
                   : onboardingMode === "trial"
-                  ? "Start 14-Day Free Trial (₹0) →"
+                  ? "Start 30-Day Free Trial (₹0) →"
                   : "Proceed to Pay ₹249 & Claim Offer →"}
               </button>
 

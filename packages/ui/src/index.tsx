@@ -874,10 +874,10 @@ export function AppShell({
                   }
                 }}
                 className="topbar-trial-badge"
-                title="14-Day Free Trial Active · Upgrade to Launch Offer"
+                title="30-Day Free Trial Active · Upgrade to Launch Offer"
               >
                 <span className="trial-dot" />
-                <span>14-Day Trial</span>
+                <span>30-Day Trial</span>
                 <span className="trial-upgrade-link">₹249 Offer</span>
               </a>
             )}
