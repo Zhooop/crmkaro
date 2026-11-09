@@ -505,6 +505,56 @@ export default function HomePage() {
           return;
         }
       }
+      // 1. Fetch user's organisations first to verify workspace availability without triggering 403 on /dashboard
+      let organisationsResponse: Response;
+      try {
+        organisationsResponse = await authFetch(`${api}/organisations`);
+      } catch (err: any) {
+        console.warn("Could not connect to backend organisations:", err);
+        setError("Network error connecting to workspace overview.");
+        return;
+      }
+
+      if (organisationsResponse.status === 401) {
+        if (typeof window !== "undefined") {
+          localStorage.removeItem("crmkaro_token");
+          document.cookie = "crm_session=; path=/; max-age=0; SameSite=Lax;";
+        }
+        setViewState("unauthenticated");
+        return;
+      }
+
+      if (!organisationsResponse.ok) {
+        setViewState("needs_setup");
+        return;
+      }
+
+      const orgs = (await organisationsResponse.json()) as OrganisationEntry[];
+      const validOrgs = Array.isArray(orgs)
+        ? orgs.filter((o) => o?.organisation?.id && o.organisation.id !== "org_dev_1")
+        : [];
+
+      // Update available organisations list
+      setOrganisations(
+        validOrgs
+          .map((o) => o.organisation as { id: string; name: string; businessType?: string })
+          .filter(Boolean),
+      );
+
+      // If user has NO active organisation -> Trigger Step 2 Onboarding directly (Zero 403 errors!)
+      const firstOrganisation = validOrgs[0]?.organisation;
+      if (!firstOrganisation) {
+        setViewState("needs_setup");
+        return;
+      }
+
+      // Ensure first organisation is active on session
+      await authFetch(
+        `${api}/organisations/${firstOrganisation.id}/activate`,
+        { method: "POST" },
+      ).catch(() => {});
+
+      // 2. Now call /dashboard with certainty that active organisation exists
       const { startDate, endDate } = getDateBoundsForPreset(preset, start, end);
       let url = `${api}/dashboard`;
       const params = new URLSearchParams();
@@ -530,109 +580,13 @@ export default function HomePage() {
         setViewState("unauthenticated");
         return;
       }
-      if (response.status === 403) {
-        let organisationsResponse: Response;
-        try {
-          organisationsResponse = await authFetch(`${api}/organisations`);
-        } catch {
-          setViewState("needs_setup");
-          return;
-        }
-        if (organisationsResponse.status === 401) {
-          if (typeof window !== "undefined") {
-            localStorage.removeItem("crmkaro_token");
-            document.cookie = "crm_session=; path=/; max-age=0; SameSite=Lax;";
-          }
-          setViewState("unauthenticated");
-          return;
-        }
-        if (!organisationsResponse.ok) {
-          setViewState("needs_setup");
-          return;
-        }
-        const orgs =
-          (await organisationsResponse.json()) as OrganisationEntry[];
-        const validOrgs = Array.isArray(orgs)
-          ? orgs.filter((o) => o?.organisation?.id && o.organisation.id !== "org_dev_1")
-          : [];
-        const firstOrganisation = validOrgs[0]?.organisation;
-        if (!firstOrganisation) {
-          setViewState("needs_setup");
-          return;
-        }
-        const activateResponse = await authFetch(
-          `${api}/organisations/${firstOrganisation.id}/activate`,
-          { method: "POST" },
-        );
-        if (!activateResponse.ok) {
-          setViewState("needs_setup");
-          return;
-        }
-        const retry = await authFetch(url);
-        if (!retry.ok) {
-          setViewState("needs_setup");
-          return;
-        }
-        const retryData = (await retry.json()) as Dashboard;
-        setData(retryData);
-        if (preset === "all") saveCachedDashboardData(retryData);
-        saveActiveServicesToStorage(retryData.services || []);
-        updateWorkspace({
-          orgName: retryData.organisation.name,
-          userName: retryData.user?.name || undefined,
-          currency: retryData.organisation.currency || "INR",
-          businessType: retryData.organisation.businessType || undefined,
-          activeServices: retryData.services || [],
-        });
-        setViewState("ready");
 
-        // Also load groups
-        try {
-          const gRes = await authFetch(`${api}/groups?limit=30`);
-          if (gRes.ok) {
-            const gData = await gRes.json();
-            setGroupsList(gData.items || []);
-          }
-        } catch {}
+      if (!response.ok) {
+        setError(`Failed to load workspace overview (${response.status})`);
         return;
       }
 
-      let dashboardData: Dashboard;
-      if (!response.ok) {
-        console.warn("Backend dashboard overview unavailable. Using resilient local overview.");
-        dashboardData = {
-          organisation: {
-            id: "org_dev_1",
-            name: (typeof window !== "undefined" ? localStorage.getItem("crmkaro_org_name") : null) || "Zhooop Academy",
-            currency: "INR",
-            timezone: "Asia/Kolkata",
-            businessType: (typeof window !== "undefined" ? localStorage.getItem("crmkaro_industry") : null) || "Coaching / Tuition",
-            createdAt: new Date().toISOString(),
-          },
-          user: { name: "Zhooop", email: "zhoopinfotech@gmail.com", isNewUser: true },
-          role: { name: "Owner", code: "OWNER" },
-          services: ["crm", "students", "finance", "payroll", "groups"],
-          cards: [
-            { key: "leads", label: "Active CRM Leads", value: 4, detail: "2 new this week", format: "number", tone: "blue" },
-            { key: "students", label: "Enrolled Students", value: 12, detail: "Active batches", format: "number", tone: "emerald" },
-            { key: "fees_due", label: "Pending Fees Due", value: 18500, detail: "3 installments pending", format: "money", tone: "amber" },
-            { key: "collected", label: "Fees Collected (This Month)", value: 42000, detail: "100% on-time", format: "money", tone: "teal" },
-          ],
-          notifications: [
-            {
-              id: "n1",
-              module: "crm",
-              title: "Welcome to your 30-Day Free Trial!",
-              detail: "Explore CRM leads, student admissions, and WhatsApp fee reminders.",
-              severity: "info",
-            },
-          ],
-          activity: [],
-          generatedAt: new Date().toISOString(),
-        };
-      } else {
-        dashboardData = (await response.json()) as Dashboard;
-      }
+      const dashboardData = (await response.json()) as Dashboard;
       setData(dashboardData);
       if (preset === "all") saveCachedDashboardData(dashboardData);
       saveActiveServicesToStorage(dashboardData.services || []);
