@@ -217,6 +217,149 @@ function IconFactory({ size = 18 }: { size?: number }) {
 }
 
 /* =========================================================================
+   HERO INDUSTRY NICHES (DYNAMIC AUDIENCE SWITCHER - ZERO CASUAL EMOJIS)
+   ========================================================================= */
+
+type HeroNicheKey = "coaching" | "realestate" | "gym" | "services";
+
+interface HeroNicheConfig {
+  id: HeroNicheKey;
+  label: string;
+  badge: string;
+  icon: (props: { size?: number }) => React.JSX.Element;
+  headlineMain: string;
+  headlineHighlight: string;
+  points: {
+    icon: (props: { size?: number }) => React.JSX.Element;
+    title: string;
+    desc: string;
+  }[];
+}
+
+const HERO_NICHES: Record<HeroNicheKey, HeroNicheConfig> = {
+  coaching: {
+    id: "coaching",
+    label: "Coaching & Institutes",
+    badge: "For Tuition Centres, Coaching & Schools",
+    icon: IconGraduation,
+    headlineMain: "Run Your Entire Institute. ",
+    headlineHighlight: "Collect Fees in 1-Click.",
+    points: [
+      {
+        icon: IconGraduation,
+        title: "Make Groups, Batches & Classes",
+        desc: "Organize division rosters & daily attendance marking",
+      },
+      {
+        icon: IconReceipt,
+        title: "Collect Fees in 1-Click",
+        desc: "Track who's paid & who's pending with WhatsApp bills",
+      },
+      {
+        icon: IconLead,
+        title: "Inquiry & Admission Pipeline",
+        desc: "Auto-sync student inquiries & telecaller follow-up calls",
+      },
+      {
+        icon: IconPayroll,
+        title: "Teacher Payouts & Payroll",
+        desc: "Batch teacher payouts, kharcha ledger & salary slips",
+      },
+    ],
+  },
+  realestate: {
+    id: "realestate",
+    label: "Real Estate & Sales",
+    badge: "For Property Brokers, Agencies & Builders",
+    icon: IconBuilding,
+    headlineMain: "Sell & Lease Properties Faster. ",
+    headlineHighlight: "Organize Inquiries in 1-Click.",
+    points: [
+      {
+        icon: IconBuilding,
+        title: "Property Listings & Inventory",
+        desc: "Match buyer requirements with inventory instantly",
+      },
+      {
+        icon: IconLead,
+        title: "Lead Tracking & Telecaller Logs",
+        desc: "Auto-assign leads from portals & schedule site visits",
+      },
+      {
+        icon: IconReceipt,
+        title: "Token & Commission Invoicing",
+        desc: "Instant payment slips on WhatsApp with GST details",
+      },
+      {
+        icon: IconPayroll,
+        title: "Broker & Staff Incentives",
+        desc: "Track payouts, deal commissions & team attendance",
+      },
+    ],
+  },
+  gym: {
+    id: "gym",
+    label: "Gym & Fitness",
+    badge: "For Gyms, Fitness Clubs & Yoga Studios",
+    icon: IconZap,
+    headlineMain: "Grow Your Gym Memberships. ",
+    headlineHighlight: "Automate Renewals in 1-Click.",
+    points: [
+      {
+        icon: IconZap,
+        title: "Member Plans & Active Batches",
+        desc: "Track personal training & membership batch slots",
+      },
+      {
+        icon: IconReceipt,
+        title: "Automated Membership Dues",
+        desc: "WhatsApp renewal reminders before plan expiry",
+      },
+      {
+        icon: IconLead,
+        title: "Walk-in & Trial Conversions",
+        desc: "Follow up on demo passes & convert walk-ins to members",
+      },
+      {
+        icon: IconPayroll,
+        title: "Trainer Commissions & Payroll",
+        desc: "Monthly trainer payouts, shifts & salary slips",
+      },
+    ],
+  },
+  services: {
+    id: "services",
+    label: "Services & Agencies",
+    badge: "For Agencies, Consultancies & Service SMBs",
+    icon: IconLead,
+    headlineMain: "Scale Your Agency & Services. ",
+    headlineHighlight: "Get Paid Faster on UPI.",
+    points: [
+      {
+        icon: IconBuilding,
+        title: "Client Projects & Retainers",
+        desc: "Milestone tracking, deliverables & client roster",
+      },
+      {
+        icon: IconReceipt,
+        title: "UPI & WhatsApp Invoicing",
+        desc: "Professional GST invoices & payment collection links",
+      },
+      {
+        icon: IconLead,
+        title: "Sales Deals & CRM Pipeline",
+        desc: "Track prospect pipeline & closing stages effortlessly",
+      },
+      {
+        icon: IconPayroll,
+        title: "Staff Payroll & Advances",
+        desc: "Monthly salary slips, advances & expense tracking",
+      },
+    ],
+  },
+};
+
+/* =========================================================================
    SOLUTIONS DATA (PROFESSIONAL LABELS, ZERO EMOJIS)
    ========================================================================= */
 
@@ -428,6 +571,7 @@ export function LandingPage({
     };
   }, [propPlans]);
 
+  const [activeHeroNiche, setActiveHeroNiche] = useState<HeroNicheKey>("coaching");
   const [selectedSolution, setSelectedSolution] = useState<string>("academy");
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -783,7 +927,7 @@ export function LandingPage({
           <div className="lp-hero-top-row">
             <div className="lp-pill-chip">
               <span style={{ fontSize: 9 }}>●</span>
-              <span>India's #1 Business Operating System</span>
+              <span>{HERO_NICHES[activeHeroNiche].badge}</span>
             </div>
             <div className="lp-social-stars">
               <span className="lp-stars-badge">★★★★★</span>
@@ -791,55 +935,52 @@ export function LandingPage({
             </div>
           </div>
 
+          {/* Dynamic Multi-Industry Audience Switcher Tabs (Zero WhatsApp Emojis) */}
+          <div className="lp-hero-niche-tabs" role="tablist" aria-label="Select your business industry">
+            {(Object.keys(HERO_NICHES) as HeroNicheKey[]).map((key) => {
+              const niche = HERO_NICHES[key];
+              const TabIcon = niche.icon;
+              const isActive = activeHeroNiche === key;
+              return (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  className={`lp-hero-niche-tab ${isActive ? "active" : ""}`}
+                  onClick={() => setActiveHeroNiche(key)}
+                >
+                  <TabIcon size={15} />
+                  <span>{niche.label}</span>
+                </button>
+              );
+            })}
+          </div>
+
           <div className="lp-hero-grid">
             {/* Left Column */}
             <div className="lp-hero-left">
               <h1>
-                Run Your Entire Business.{" "}
-                <span className="cyan-highlight">Collect Fees in 1-Click.</span>
+                {HERO_NICHES[activeHeroNiche].headlineMain}
+                <span className="cyan-highlight">{HERO_NICHES[activeHeroNiche].headlineHighlight}</span>
               </h1>
 
               {/* 4 KEY POINTS ARRANGE IN CLEAN GRID */}
               <div className="lp-hero-feature-points">
-                <div className="lp-hero-point-item">
-                  <div className="lp-point-icon-badge">
-                    <IconGraduation size={16} />
-                  </div>
-                  <div className="lp-point-text">
-                    <strong>Make Groups, Batches & Classes</strong>
-                    <span>Organize division rosters & daily attendance</span>
-                  </div>
-                </div>
-
-                <div className="lp-hero-point-item">
-                  <div className="lp-point-icon-badge">
-                    <IconReceipt size={16} />
-                  </div>
-                  <div className="lp-point-text">
-                    <strong>Collect Fees in 1-Click</strong>
-                    <span>Track who's paid & who's pending with WhatsApp bills</span>
-                  </div>
-                </div>
-
-                <div className="lp-hero-point-item">
-                  <div className="lp-point-icon-badge">
-                    <IconLead size={16} />
-                  </div>
-                  <div className="lp-point-text">
-                    <strong>Collect Leads for Telecallers</strong>
-                    <span>Auto-sync inquiries & schedule follow-up call logs</span>
-                  </div>
-                </div>
-
-                <div className="lp-hero-point-item">
-                  <div className="lp-point-icon-badge">
-                    <IconPayroll size={16} />
-                  </div>
-                  <div className="lp-point-text">
-                    <strong>Salary Management System</strong>
-                    <span>Teacher payouts, kharcha ledger & salary slips</span>
-                  </div>
-                </div>
+                {HERO_NICHES[activeHeroNiche].points.map((pt, idx) => {
+                  const PtIcon = pt.icon;
+                  return (
+                    <div key={idx} className="lp-hero-point-item">
+                      <div className="lp-point-icon-badge">
+                        <PtIcon size={16} />
+                      </div>
+                      <div className="lp-point-text">
+                        <strong>{pt.title}</strong>
+                        <span>{pt.desc}</span>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
 
               {/* Single Solid Primary CTA */}
@@ -892,224 +1033,6 @@ export function LandingPage({
             </div>
           </div>
         </div>
-      </section>
-
-      {/* PRICING SECTION - DYNAMIC ADMIN-POWERED OR LAUNCH OFFER */}
-      <section id="pricing" className="lp-solution-section" style={{ margin: "56px auto 36px" }}>
-        <div className="lp-section-center-head">
-          <span className="lp-orbit-tag">Special Launch Offer · 76% OFF</span>
-          <h2>
-            {plans.length === 1 && singlePlan
-              ? `Everything You Need At Just ₹${Math.round(singlePlan.discountPriceMinor / 100)} / Month`
-              : "Transparent, Affordable Plans For Indian Businesses"}
-          </h2>
-          <p>
-            {plans.length === 1 && singlePlan
-              ? `Real price ₹${Math.round(singlePlan.originalPriceMinor / 100)}/mo. Special launch discount with recurring UPI & Cards. No hidden setup costs.`
-              : "Lock in lifetime early-adopter pricing. Cancel anytime without penalties."}
-          </p>
-        </div>
-
-        {plans.length === 1 && singlePlan ? (
-          /* SINGLE LAUNCH OFFER CARD */
-          <div className="lp-pricing-single-wrap">
-            <div className="lp-pricing-card featured single-card">
-              <div className="lp-pricing-popular">
-                {singlePlan.badge || "🚀 Special Launch Offer · 76% OFF"}
-              </div>
-
-              <div style={{ textAlign: "center", marginBottom: 12 }}>
-                <h3 style={{ fontSize: 26, fontWeight: 900, margin: "8px 0 6px", color: "#38bdf8" }}>
-                  {singlePlan.name}
-                </h3>
-                <p style={{ fontSize: 14.5, color: "#bfdbfe", margin: 0 }}>
-                  All-in-One Business Operating System for Coaching Centres, Academies, Tutors & SMBs.
-                </p>
-              </div>
-
-              {/* Price Deal Display */}
-              <div
-                className="lp-price-deal-wrap"
-                style={{ justifyContent: "center", alignItems: "baseline", gap: 14, margin: "20px 0 6px" }}
-              >
-                <span className="lp-price-struck" style={{ fontSize: 26, textDecorationThickness: 3 }}>
-                  ₹{Math.round(singlePlan.originalPriceMinor / 100).toLocaleString("en-IN")}
-                </span>
-                <span className="lp-price-val-zero" style={{ fontSize: 56, color: "#ffffff" }}>
-                  ₹{Math.round(singlePlan.discountPriceMinor / 100).toLocaleString("en-IN")}
-                </span>
-                <span style={{ fontSize: 16, color: "#93c5fd", fontWeight: 700 }}>/ month</span>
-                <span
-                  className="lp-price-free-pill"
-                  style={{
-                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
-                    color: "#ffffff",
-                    fontSize: 11.5,
-                    fontWeight: 900,
-                    padding: "6px 12px",
-                  }}
-                >
-                  SAVE ₹{Math.round((singlePlan.originalPriceMinor - singlePlan.discountPriceMinor) / 100).toLocaleString("en-IN")}/MO
-                </span>
-              </div>
-
-              <div style={{ textAlign: "center", fontSize: 13.5, color: "#cbd5e1", marginBottom: 24 }}>
-                ⚡ Auto-renews monthly via UPI & Cards · Cancel or pause anytime in 1 click
-              </div>
-
-              {/* Features List */}
-              <div
-                style={{
-                  margin: "8px 0 28px",
-                  display: "grid",
-                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-                  gap: "14px 24px",
-                  fontSize: 14,
-                  color: "#f1f5f9",
-                  background: "rgba(15, 23, 42, 0.45)",
-                  padding: "24px 20px",
-                  borderRadius: 20,
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                }}
-              >
-                {singlePlan.features.map((feature: string, idx: number) => (
-                  <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
-                    <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
-                      <IconCheck size={16} />
-                    </div>
-                    <span style={{ lineHeight: 1.45 }}>{feature}</span>
-                  </div>
-                ))}
-              </div>
-
-              {/* Call to Action Button */}
-              <button
-                onClick={() => handleSelectPlan(singlePlan)}
-                className="lp-btn-hero-solid"
-                style={{
-                  width: "100%",
-                  justifyContent: "center",
-                  fontSize: 17,
-                  fontWeight: 800,
-                  padding: "16px 28px",
-                  borderRadius: 14,
-                  boxShadow: "0 10px 30px -5px rgba(37, 99, 235, 0.65)",
-                  cursor: "pointer",
-                }}
-                type="button"
-              >
-                Claim Launch Offer at ₹{Math.round(singlePlan.discountPriceMinor / 100)}/mo →
-              </button>
-
-              {/* Supported Payment Badges */}
-              <div
-                style={{
-                  marginTop: 18,
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: 8,
-                  textAlign: "center",
-                }}
-              >
-                <div
-                  style={{
-                    fontSize: 12.5,
-                    color: "#94a3b8",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    flexWrap: "wrap",
-                    justifyContent: "center",
-                  }}
-                >
-                  <span style={{ fontWeight: 600, color: "#cbd5e1" }}>🔒 Recurring payment supported on:</span>
-                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Google Pay</span>
-                  <span>•</span>
-                  <span style={{ color: "#c084fc", fontWeight: 700 }}>PhonePe</span>
-                  <span>•</span>
-                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Paytm</span>
-                  <span>•</span>
-                  <span style={{ color: "#4ade80", fontWeight: 700 }}>BHIM UPI</span>
-                  <span>•</span>
-                  <span style={{ color: "#f8fafc", fontWeight: 700 }}>Credit / Debit Cards</span>
-                </div>
-                <div style={{ fontSize: 12, color: "#64748b" }}>
-                  ₹{Math.round(singlePlan.discountPriceMinor / 100)} next month renewal via RBI/NPCI compliant mandate.
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
-          /* MULTIPLE PLANS GRID (WHEN ADMIN CREATES 2, 3, OR 4 PLANS) */
-          <div className="lp-pricing-grid">
-            {plans.map((plan) => (
-              <div
-                key={plan.id}
-                className={`lp-pricing-card ${plan.isPopular ? "featured" : ""}`}
-              >
-                {plan.badge && <div className="lp-pricing-popular">{plan.badge}</div>}
-                <h3
-                  style={{
-                    fontSize: 20,
-                    fontWeight: 800,
-                    margin: "0 0 6px",
-                    color: plan.isPopular ? "#38bdf8" : "#ffffff",
-                  }}
-                >
-                  {plan.name}
-                </h3>
-                <div className="lp-price-deal-wrap">
-                  {plan.originalPriceMinor > plan.discountPriceMinor && (
-                    <span className="lp-price-struck">
-                      ₹{Math.round(plan.originalPriceMinor / 100).toLocaleString("en-IN")}
-                    </span>
-                  )}
-                  <span className="lp-price-val-zero">
-                    ₹{Math.round(plan.discountPriceMinor / 100).toLocaleString("en-IN")}
-                  </span>
-                  <span style={{ fontSize: 13.5, color: "#93c5fd", fontWeight: 600 }}>
-                    /{plan.billingPeriod || "mo"}
-                  </span>
-                  {plan.originalPriceMinor > plan.discountPriceMinor && (
-                    <span className="lp-price-free-pill">
-                      SAVE ₹{Math.round((plan.originalPriceMinor - plan.discountPriceMinor) / 100)}
-                    </span>
-                  )}
-                </div>
-                <div className="lp-price-sub">Renews monthly · Cancel anytime</div>
-                <div
-                  style={{
-                    margin: "24px 0",
-                    flex: 1,
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 10,
-                    fontSize: 13.5,
-                    color: "#e2e8f0",
-                  }}
-                >
-                  {plan.features.map((feat: string, fIdx: number) => (
-                    <div key={fIdx} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
-                        <IconCheck size={14} />
-                      </div>
-                      <span>{feat}</span>
-                    </div>
-                  ))}
-                </div>
-                <button
-                  onClick={() => handleSelectPlan(plan)}
-                  className={plan.isPopular ? "lp-btn-hero-solid" : "lp-btn-hero-ghost"}
-                  style={{ width: "100%", justifyContent: "center" }}
-                  type="button"
-                >
-                  Select {plan.name} →
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
       </section>
 
       {/* TRUST LOGOS BAR (CLEAN VECTOR ICONS) */}
@@ -1727,6 +1650,224 @@ export function LandingPage({
         </div>
       </section>
 
+      {/* PRICING SECTION - REPOSITIONED BELOW BENTO & COMPARISON (HIGH CONVERTING FLOW) */}
+      <section id="pricing" className="lp-solution-section" style={{ margin: "56px auto 36px" }}>
+        <div className="lp-section-center-head">
+          <span className="lp-orbit-tag">Special Launch Offer · 76% OFF</span>
+          <h2>
+            {plans.length === 1 && singlePlan
+              ? `Everything You Need At Just ₹${Math.round(singlePlan.discountPriceMinor / 100)} / Month`
+              : "Transparent, Affordable Plans For Indian Businesses"}
+          </h2>
+          <p>
+            {plans.length === 1 && singlePlan
+              ? `Real price ₹${Math.round(singlePlan.originalPriceMinor / 100)}/mo. Special launch discount with recurring UPI & Cards. No hidden setup costs.`
+              : "Lock in lifetime early-adopter pricing. Cancel anytime without penalties."}
+          </p>
+        </div>
+
+        {plans.length === 1 && singlePlan ? (
+          /* SINGLE LAUNCH OFFER CARD */
+          <div className="lp-pricing-single-wrap">
+            <div className="lp-pricing-card featured single-card">
+              <div className="lp-pricing-popular">
+                {singlePlan.badge || "✦ Special Launch Offer · 76% OFF"}
+              </div>
+
+              <div style={{ textAlign: "center", marginBottom: 12 }}>
+                <h3 style={{ fontSize: 26, fontWeight: 900, margin: "8px 0 6px", color: "#38bdf8" }}>
+                  {singlePlan.name}
+                </h3>
+                <p style={{ fontSize: 14.5, color: "#bfdbfe", margin: 0 }}>
+                  All-in-One Business Operating System for Coaching Centres, Academies, Tutors & SMBs.
+                </p>
+              </div>
+
+              {/* Price Deal Display */}
+              <div
+                className="lp-price-deal-wrap"
+                style={{ justifyContent: "center", alignItems: "baseline", gap: 14, margin: "20px 0 6px" }}
+              >
+                <span className="lp-price-struck" style={{ fontSize: 26, textDecorationThickness: 3 }}>
+                  ₹{Math.round(singlePlan.originalPriceMinor / 100).toLocaleString("en-IN")}
+                </span>
+                <span className="lp-price-val-zero" style={{ fontSize: 56, color: "#ffffff" }}>
+                  ₹{Math.round(singlePlan.discountPriceMinor / 100).toLocaleString("en-IN")}
+                </span>
+                <span style={{ fontSize: 16, color: "#93c5fd", fontWeight: 700 }}>/ month</span>
+                <span
+                  className="lp-price-free-pill"
+                  style={{
+                    background: "linear-gradient(135deg, #10b981 0%, #059669 100%)",
+                    color: "#ffffff",
+                    fontSize: 11.5,
+                    fontWeight: 900,
+                    padding: "6px 12px",
+                  }}
+                >
+                  SAVE ₹{Math.round((singlePlan.originalPriceMinor - singlePlan.discountPriceMinor) / 100).toLocaleString("en-IN")}/MO
+                </span>
+              </div>
+
+              <div style={{ textAlign: "center", fontSize: 13.5, color: "#cbd5e1", marginBottom: 24 }}>
+                ✦ Auto-renews monthly via UPI & Cards · Cancel or pause anytime in 1 click
+              </div>
+
+              {/* Features List */}
+              <div
+                style={{
+                  margin: "8px 0 28px",
+                  display: "grid",
+                  gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+                  gap: "14px 24px",
+                  fontSize: 14,
+                  color: "#f1f5f9",
+                  background: "rgba(15, 23, 42, 0.45)",
+                  padding: "24px 20px",
+                  borderRadius: 20,
+                  border: "1px solid rgba(255, 255, 255, 0.08)",
+                }}
+              >
+                {singlePlan.features.map((feature: string, idx: number) => (
+                  <div key={idx} style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+                    <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
+                      <IconCheck size={16} />
+                    </div>
+                    <span style={{ lineHeight: 1.45 }}>{feature}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Call to Action Button */}
+              <button
+                onClick={() => handleSelectPlan(singlePlan)}
+                className="lp-btn-hero-solid"
+                style={{
+                  width: "100%",
+                  justifyContent: "center",
+                  fontSize: 17,
+                  fontWeight: 800,
+                  padding: "16px 28px",
+                  borderRadius: 14,
+                  boxShadow: "0 10px 30px -5px rgba(37, 99, 235, 0.65)",
+                  cursor: "pointer",
+                }}
+                type="button"
+              >
+                Claim Launch Offer at ₹{Math.round(singlePlan.discountPriceMinor / 100)}/mo →
+              </button>
+
+              {/* Supported Payment Badges */}
+              <div
+                style={{
+                  marginTop: 18,
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  gap: 8,
+                  textAlign: "center",
+                }}
+              >
+                <div
+                  style={{
+                    fontSize: 12.5,
+                    color: "#94a3b8",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    flexWrap: "wrap",
+                    justifyContent: "center",
+                  }}
+                >
+                  <span style={{ fontWeight: 600, color: "#cbd5e1" }}>Recurring payment supported on:</span>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Google Pay</span>
+                  <span>•</span>
+                  <span style={{ color: "#c084fc", fontWeight: 700 }}>PhonePe</span>
+                  <span>•</span>
+                  <span style={{ color: "#38bdf8", fontWeight: 700 }}>Paytm</span>
+                  <span>•</span>
+                  <span style={{ color: "#4ade80", fontWeight: 700 }}>BHIM UPI</span>
+                  <span>•</span>
+                  <span style={{ color: "#f8fafc", fontWeight: 700 }}>Credit / Debit Cards</span>
+                </div>
+                <div style={{ fontSize: 12, color: "#64748b" }}>
+                  ₹{Math.round(singlePlan.discountPriceMinor / 100)} next month renewal via RBI/NPCI compliant mandate.
+                </div>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* MULTIPLE PLANS GRID (WHEN ADMIN CREATES 2, 3, OR 4 PLANS) */
+          <div className="lp-pricing-grid">
+            {plans.map((plan) => (
+              <div
+                key={plan.id}
+                className={`lp-pricing-card ${plan.isPopular ? "featured" : ""}`}
+              >
+                {plan.badge && <div className="lp-pricing-popular">{plan.badge}</div>}
+                <h3
+                  style={{
+                    fontSize: 20,
+                    fontWeight: 800,
+                    margin: "0 0 6px",
+                    color: plan.isPopular ? "#38bdf8" : "#ffffff",
+                  }}
+                >
+                  {plan.name}
+                </h3>
+                <div className="lp-price-deal-wrap">
+                  {plan.originalPriceMinor > plan.discountPriceMinor && (
+                    <span className="lp-price-struck">
+                      ₹{Math.round(plan.originalPriceMinor / 100).toLocaleString("en-IN")}
+                    </span>
+                  )}
+                  <span className="lp-price-val-zero">
+                    ₹{Math.round(plan.discountPriceMinor / 100).toLocaleString("en-IN")}
+                  </span>
+                  <span style={{ fontSize: 13.5, color: "#93c5fd", fontWeight: 600 }}>
+                    /{plan.billingPeriod || "mo"}
+                  </span>
+                  {plan.originalPriceMinor > plan.discountPriceMinor && (
+                    <span className="lp-price-free-pill">
+                      SAVE ₹{Math.round((plan.originalPriceMinor - plan.discountPriceMinor) / 100)}
+                    </span>
+                  )}
+                </div>
+                <div className="lp-price-sub">Renews monthly · Cancel anytime</div>
+                <div
+                  style={{
+                    margin: "24px 0",
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 10,
+                    fontSize: 13.5,
+                    color: "#e2e8f0",
+                  }}
+                >
+                  {plan.features.map((feat: string, fIdx: number) => (
+                    <div key={fIdx} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+                      <div style={{ color: "#38bdf8", marginTop: 2, flexShrink: 0 }}>
+                        <IconCheck size={14} />
+                      </div>
+                      <span>{feat}</span>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleSelectPlan(plan)}
+                  className={plan.isPopular ? "lp-btn-hero-solid" : "lp-btn-hero-ghost"}
+                  style={{ width: "100%", justifyContent: "center" }}
+                  type="button"
+                >
+                  Select {plan.name} →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
       {/* FAQ ACCORDION */}
       <section id="faq" className="lp-solution-section">
         <div className="lp-section-center-head">
@@ -1881,6 +2022,21 @@ export function LandingPage({
           </div>
         </div>
       </footer>
+
+      {/* MOBILE STICKY BOTTOM ACTION BAR (ZERO CASUAL EMOJIS) */}
+      <div className="lp-mobile-sticky-cta" role="region" aria-label="Quick Action">
+        <div className="lp-mobile-sticky-info">
+          <span className="lp-mobile-sticky-title">30-Day Free Trial</span>
+          <span className="lp-mobile-sticky-badge">₹249 Launch Offer · No Card Needed</span>
+        </div>
+        <button
+          type="button"
+          onClick={() => handleRegister()}
+          className="lp-mobile-sticky-btn"
+        >
+          Start Free Trial →
+        </button>
+      </div>
 
       <LaunchOfferModal
         isOpen={isCheckoutOpen}
