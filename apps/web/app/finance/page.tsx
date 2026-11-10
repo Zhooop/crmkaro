@@ -668,7 +668,7 @@ function FinanceContent() {
   async function handleSaveInvoice(e: FormEvent) {
     e.preventDefault();
     if (!formPersonId) {
-      setInvoiceError(isSchool ? "Please select a student from the directory." : isRealEstate ? "Please select a client from the directory." : "Please select a customer / client from the directory.");
+      setInvoiceError("Please select a customer / student from the directory.");
       return;
     }
     const validItems = formItems.filter((it) => it.description.trim() && Number(it.quantity) > 0);
@@ -1241,11 +1241,9 @@ function FinanceContent() {
                 <Icon name="finance" size={18} />
               </div>
               <div>
-                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>
-                  {isSchool ? "Student Fee Demands & Slips" : isRealEstate ? "Client Invoices & Deals" : "Customer Invoices & Billing"}
-                </strong>
+                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Customer Invoices & Billing (Income / Inflow)</strong>
                 <div style={{ fontSize: 12, color: "#2563eb" }}>
-                  {isSchool ? "Create itemized fee bills for your students, collect payments, and track pending dues." : "Create itemized invoices for your clients and customers, collect payments, and track pending dues."}
+                  Create itemized tax bills for your students or clients, collect payments, and track pending dues.
                 </div>
               </div>
             </div>
@@ -1468,9 +1466,7 @@ function FinanceContent() {
               <div>
                 <strong style={{ fontSize: 13, color: "#14532d" }}>Payment Collections & Receipts</strong>
                 <div style={{ fontSize: 12, color: "#16a34a" }}>
-                  {isCoachingOrSchool
-                    ? "Real-time transaction records of all payments collected from students and parents via UPI, Bank Transfer, Cash or Cards."
-                    : "Real-time transaction records of all payments collected from clients and customers via UPI, Bank Transfer, Cash or Cards."}
+                  Real-time transaction records of all payments collected from students/clients via UPI, Bank Transfer, Cash or Cards.
                 </div>
               </div>
             </div>
@@ -1890,7 +1886,7 @@ function FinanceContent() {
             {/* Key Value Details */}
             <div className="key-value-list">
               <div className="key-value-item">
-                <label>{isSchool ? "Student / Parent" : isRealEstate ? "Client / Customer" : "Customer / Client"}</label>
+                <label>Customer / Student</label>
                 <span>{detailInvoice.person?.displayName || "—"}</span>
               </div>
               <div className="key-value-item">
@@ -2022,7 +2018,7 @@ function FinanceContent() {
       >
         <form onSubmit={handleSaveInvoice} className="invoice-modal-body">
           {invoiceError && (
-            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+            <div role="alert" aria-live="assertive" style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {invoiceError}
             </div>
           )}
@@ -2397,13 +2393,7 @@ function FinanceContent() {
                     <input
                       type="text"
                       list="invoice-item-presets"
-                      placeholder={
-                        isRealEstate
-                          ? "e.g. Booking Advance, Brokerage, Consulting Retainer…"
-                          : isCoachingOrSchool
-                          ? "e.g. Tuition Fees, Admission Fee, Study Material…"
-                          : "e.g. Consulting, Service Retainer, Product SKU…"
-                      }
+                      placeholder="e.g. Tuition Fees, Salary, Consulting, Product SKU…"
                       value={item.description}
                       onChange={(e) => {
                         const updated = [...formItems];
@@ -2887,10 +2877,10 @@ function FinanceContent() {
               <div>
                 <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, margin: 0 }}>
                   <Icon name="whatsapp" size={20} />
-                  <span>{isSchool ? "Share Fee Receipt / Slip" : isRealEstate ? "Share Invoice & Payment Link" : "Share Bill / Receipt"}</span>
+                  <span>{isSchool ? "Share Fee Receipt / Slip" : "Share Fee Bill / Receipt"}</span>
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
-                  Share directly with {shareInvoice.person?.displayName || (isSchool ? "Student / Parent" : isRealEstate ? "Client" : "Customer / Client")} on WhatsApp or copy receipt text
+                  Share directly with {shareInvoice.person?.displayName || (isSchool ? "Student / Parent" : "Student / Customer")} on WhatsApp or copy receipt text
                 </p>
               </div>
               <button

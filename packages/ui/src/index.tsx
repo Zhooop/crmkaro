@@ -931,11 +931,13 @@ export function AppShell({
                 placeholder="Search people, leads, invoices, products..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                aria-label="Search people, leads, invoices, products"
                 autoFocus
               />
               <button
                 className="icon-button"
                 onClick={() => setSearchOpen(false)}
+                aria-label="Close search dialog"
               >
                 <Icon name="close" size={16} />
               </button>
@@ -1000,15 +1002,19 @@ export function AppShell({
             className="modal-content"
             style={{ maxWidth: 560 }}
             onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="quick-add-dialog-title"
           >
             <div className="modal-header">
               <div>
-                <h2>Quick Add</h2>
+                <h2 id="quick-add-dialog-title">Quick Add</h2>
                 <p>Create a new record in one click</p>
               </div>
               <button
                 className="icon-button"
                 onClick={() => setQuickAddOpen(false)}
+                aria-label="Close quick add dialog"
               >
                 <Icon name="close" />
               </button>
@@ -1103,15 +1109,22 @@ export function AppShell({
           className="drawer-overlay"
           onClick={() => setNotificationsOpen(false)}
         >
-          <div className="drawer-panel" onClick={(e) => e.stopPropagation()}>
+          <div
+            className="drawer-panel"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="notifications-drawer-title"
+          >
             <div className="drawer-header">
               <div>
-                <h2>Notifications</h2>
+                <h2 id="notifications-drawer-title">Notifications</h2>
                 <p>Important business alerts & reminders</p>
               </div>
               <button
                 className="icon-button"
                 onClick={() => setNotificationsOpen(false)}
+                aria-label="Close notifications"
               >
                 <Icon name="close" />
               </button>
@@ -1312,10 +1325,11 @@ export function Modal({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="crmkaro-modal-title"
       >
         <div className="modal-header">
           <div>
-            <h2>{title}</h2>
+            <h2 id="crmkaro-modal-title">{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button
@@ -1384,10 +1398,11 @@ export function Drawer({
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
+        aria-labelledby="crmkaro-drawer-title"
       >
         <div className="drawer-header">
           <div>
-            <h2>{title}</h2>
+            <h2 id="crmkaro-drawer-title">{title}</h2>
             {subtitle && <p>{subtitle}</p>}
           </div>
           <button

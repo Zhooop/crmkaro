@@ -608,8 +608,10 @@ export default function SettingsPage() {
                         <Icon name="upload" size={14} />
                         <span>{formLogoUrl ? "Change Logo" : "Upload Logo"}</span>
                         <input
+                          id="setting-logo-upload"
                           type="file"
                           accept="image/png,image/jpeg,image/webp"
+                          aria-label="Upload Business Logo Image"
                           style={{ display: "none" }}
                           onChange={handleLogoUpload}
                         />
@@ -620,6 +622,7 @@ export default function SettingsPage() {
                           className="secondary-button"
                           onClick={() => setFormLogoUrl(null)}
                           style={{ padding: "6px 12px", fontSize: 12.5, color: "#dc2626" }}
+                          aria-label="Remove uploaded logo"
                         >
                           Remove Logo
                         </button>
@@ -631,10 +634,11 @@ export default function SettingsPage() {
                 {/* Form Fields Grid */}
                 <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16 }}>
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    <label htmlFor="setting-business-name" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                       Business / Institute Name *
                     </label>
                     <input
+                      id="setting-business-name"
                       type="text"
                       className="input-field"
                       style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
@@ -645,10 +649,11 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    <label htmlFor="setting-business-type" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                       Category / Business Type
                     </label>
                     <input
+                      id="setting-business-type"
                       type="text"
                       className="input-field"
                       style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
@@ -659,10 +664,11 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    <label htmlFor="setting-phone" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                       Official Invoicing Phone
                     </label>
                     <input
+                      id="setting-phone"
                       type="text"
                       className="input-field"
                       style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
@@ -673,10 +679,11 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
-                    <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                    <label htmlFor="setting-address" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                       Office / Institute Address
                     </label>
                     <input
+                      id="setting-address"
                       type="text"
                       className="input-field"
                       style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
@@ -1021,10 +1028,11 @@ export default function SettingsPage() {
             <form onSubmit={handleSavePayouts}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 20 }}>
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-acc-holder" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Account Holder Name *
                   </label>
                   <input
+                    id="payout-acc-holder"
                     type="text"
                     required
                     placeholder="e.g. Apex Academy Pvt Ltd or Rohit Kumar"
@@ -1035,10 +1043,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-bank-name" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Bank Name *
                   </label>
                   <input
+                    id="payout-bank-name"
                     type="text"
                     required
                     placeholder="e.g. HDFC Bank, State Bank of India, ICICI"
@@ -1049,10 +1058,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-acc-number" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Bank Account Number *
                   </label>
                   <input
+                    id="payout-acc-number"
                     type="text"
                     required
                     placeholder="e.g. 50100492817291"
@@ -1063,10 +1073,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-confirm-acc" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Confirm Account Number *
                   </label>
                   <input
+                    id="payout-confirm-acc"
                     type="text"
                     required
                     placeholder="Re-enter Account Number"
@@ -1077,10 +1088,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-ifsc" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     IFSC Code *
                   </label>
                   <input
+                    id="payout-ifsc"
                     type="text"
                     required
                     maxLength={11}
@@ -1092,26 +1104,29 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-upi-id" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Institute UPI ID (VPA)
                   </label>
                   <input
+                    id="payout-upi-id"
                     type="text"
+                    aria-describedby="payout-upi-desc"
                     placeholder="e.g. apexacademy@okhdfcbank"
                     value={payoutForm.upiId}
                     onChange={(e) => setPayoutForm({ ...payoutForm, upiId: e.target.value.toLowerCase() })}
                     style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
                   />
-                  <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, display: "block" }}>
+                  <span id="payout-upi-desc" style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, display: "block" }}>
                     Generated QR code on public payment links will route 100% money directly to this UPI ID.
                   </span>
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-pan" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     PAN Number
                   </label>
                   <input
+                    id="payout-pan"
                     type="text"
                     maxLength={10}
                     placeholder="e.g. ABCDE1234F"
@@ -1122,10 +1137,11 @@ export default function SettingsPage() {
                 </div>
 
                 <div>
-                  <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                  <label htmlFor="payout-gstin" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                     Business GSTIN (Optional)
                   </label>
                   <input
+                    id="payout-gstin"
                     type="text"
                     maxLength={15}
                     placeholder="e.g. 27AAAAA0000A1Z5"
@@ -1208,10 +1224,11 @@ export default function SettingsPage() {
                 {payoutForm.gatewayMode === "CUSTOM_KEYS" && (
                   <div style={{ marginTop: 16, padding: "16px 18px", background: "#f8fafc", borderRadius: 10, border: "1px solid #e2e8f0", display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 14 }}>
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      <label htmlFor="payout-rzp-key" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                         Razorpay Key ID *
                       </label>
                       <input
+                        id="payout-rzp-key"
                         type="text"
                         placeholder="rzp_live_..."
                         value={payoutForm.customRazorpayKeyId}
@@ -1220,10 +1237,11 @@ export default function SettingsPage() {
                       />
                     </div>
                     <div>
-                      <label style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
+                      <label htmlFor="payout-rzp-secret" style={{ display: "block", fontSize: 12, fontWeight: 700, color: "var(--muted)", marginBottom: 6, textTransform: "uppercase" }}>
                         Razorpay Key Secret *
                       </label>
                       <input
+                        id="payout-rzp-secret"
                         type="password"
                         placeholder="Enter API Key Secret"
                         value={payoutForm.customRazorpaySecret}
@@ -1384,6 +1402,8 @@ export default function SettingsPage() {
 
       {toast && (
         <div
+          role="alert"
+          aria-live="polite"
           style={{
             position: "fixed",
             bottom: 24,

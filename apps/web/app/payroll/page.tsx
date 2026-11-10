@@ -628,19 +628,119 @@ export default function PayrollPage() {
             <>
               <div className="desktop-table-view">
                 <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Employee</th>
-                  <th>Code</th>
-                  <th>Department</th>
-                  <th>Designation</th>
-                  <th>Monthly Compensation</th>
-                  <th>Salary Cycle & Due</th>
-                  <th>Status</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+                  <thead>
+                    <tr>
+                      <th>Employee</th>
+                      <th>Code</th>
+                      <th>Department</th>
+                      <th>Designation</th>
+                      <th>Monthly Compensation</th>
+                      <th>Salary Cycle & Due</th>
+                      <th>Status</th>
+                      <th style={{ textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {employees.map((emp) => {
+                      const salary = emp.salaryStructures?.[0];
+                      const grossMinor = salary
+                        ? salary.basicSalaryMinor + salary.hraMinor + salary.allowancesMinor
+                        : 0;
+                      const netMinor = salary ? grossMinor - salary.deductionsMinor : 0;
+
+                      return (
+                        <tr key={emp.id}>
+                          <td>
+                            <div className="table-primary-cell">
+                              <div className="table-avatar">
+                                {emp.person?.displayName.slice(0, 2).toUpperCase()}
+                              </div>
+                              <div>
+                                <strong>{emp.person?.displayName}</strong>
+                                <small style={{ color: "var(--muted)", display: "block" }}>
+                                  Joined {new Date(emp.joiningDate).toLocaleDateString()}
+                                </small>
+                              </div>
+                            </div>
+                          </td>
+                          <td>
+                            <code>{emp.employeeCode}</code>
+                          </td>
+                          <td>{emp.department || "General"}</td>
+                          <td>{emp.designation || "Staff"}</td>
+                          <td>
+                            {salary ? (
+                              <div>
+                                <strong>{formatMoney(netMinor)} / mo</strong>
+                                <small style={{ color: "var(--muted)", display: "block" }}>
+                                  Gross: {formatMoney(grossMinor)}
+                                </small>
+                              </div>
+                            ) : (
+                              <span style={{ color: "var(--muted)" }}>No salary set</span>
+                            )}
+                          </td>
+                          <td>
+                            <div>
+                              <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1e3a8a", display: "flex", alignItems: "center", gap: 4 }}>
+                                <Icon name="calendar" size={12} />
+                                Due 1st of month
+                              </span>
+                              <span style={{ fontSize: 10.5, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "1px 5px", borderRadius: 4, display: "inline-block", marginTop: 2 }}>
+                                Rolling: {MONTH_NAMES[new Date().getMonth()]} {new Date().getFullYear()}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <Badge tone={emp.status === "ACTIVE" ? "green" : "red"}>
+                              {emp.status}
+                            </Badge>
+                          </td>
+                          <td style={{ textAlign: "right" }}>
+                            <div className="table-actions">
+                              <button
+                                className="btn btn-secondary btn-sm"
+                                onClick={() => {
+                                  setSelectedEmployee(emp);
+                                  if (salary) {
+                                    setBasicPay((salary.basicSalaryMinor / 100).toString());
+                                    setHra((salary.hraMinor / 100).toString());
+                                    setAllowances((salary.allowancesMinor / 100).toString());
+                                    setDeductions((salary.deductionsMinor / 100).toString());
+                                  } else {
+                                    setBasicPay("30000");
+                                    setHra("12000");
+                                    setAllowances("5000");
+                                    setDeductions("2000");
+                                  }
+                                  setSalaryModalOpen(true);
+                                }}
+                              >
+                                <Icon name="rupee" size={13} />
+                                <span>Salary</span>
+                              </button>
+                              {emp.status === "ACTIVE" && (
+                                <button
+                                  className="btn btn-secondary btn-sm"
+                                  onClick={() => {
+                                    setSelectedEmployee(emp);
+                                    setExitModalOpen(true);
+                                  }}
+                                >
+                                  <span>Exit</span>
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Employee Cards */}
+              <div className="mobile-cards-view">
                 {employees.map((emp) => {
                   const salary = emp.salaryStructures?.[0];
                   const grossMinor = salary
@@ -649,179 +749,79 @@ export default function PayrollPage() {
                   const netMinor = salary ? grossMinor - salary.deductionsMinor : 0;
 
                   return (
-                    <tr key={emp.id}>
-                      <td>
-                        <div className="table-primary-cell">
-                          <div className="table-avatar">
+                    <div key={emp.id} className="mobile-record-card">
+                      <div className="mobile-card-header">
+                        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                          <div className="mobile-card-avatar">
                             {emp.person?.displayName.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
-                            <strong>{emp.person?.displayName}</strong>
-                            <small style={{ color: "var(--muted)", display: "block" }}>
-                              Joined {new Date(emp.joiningDate).toLocaleDateString()}
-                            </small>
+                            <div className="mobile-card-name">{emp.person?.displayName}</div>
+                            <div className="mobile-card-subtext">
+                              Code: {emp.employeeCode} · {emp.designation || "Staff"}
+                            </div>
                           </div>
                         </div>
-                      </td>
-                      <td>
-                        <code>{emp.employeeCode}</code>
-                      </td>
-                      <td>{emp.department || "General"}</td>
-                      <td>{emp.designation || "Staff"}</td>
-                      <td>
-                        {salary ? (
-                          <div>
-                            <strong>{formatMoney(netMinor)} / mo</strong>
-                            <small style={{ color: "var(--muted)", display: "block" }}>
-                              Gross: {formatMoney(grossMinor)}
-                            </small>
-                          </div>
-                        ) : (
-                          <span style={{ color: "var(--muted)" }}>No salary set</span>
-                        )}
-                      </td>
-                      <td>
-                        <div>
-                          <span style={{ fontSize: 11.5, fontWeight: 700, color: "#1e3a8a", display: "flex", alignItems: "center", gap: 4 }}>
-                            <Icon name="calendar" size={12} />
-                            Due 1st of month
-                          </span>
-                          <span style={{ fontSize: 10.5, color: "#166534", background: "#f0fdf4", border: "1px solid #bbf7d0", padding: "1px 5px", borderRadius: 4, display: "inline-block", marginTop: 2 }}>
-                            Rolling: {MONTH_NAMES[new Date().getMonth()]} {new Date().getFullYear()}
-                          </span>
-                        </div>
-                      </td>
-                      <td>
                         <Badge tone={emp.status === "ACTIVE" ? "green" : "red"}>
                           {emp.status}
                         </Badge>
-                      </td>
-                      <td style={{ textAlign: "right" }}>
-                        <div className="table-actions">
+                      </div>
+
+                      <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                        <div>
+                          <div className="mobile-card-label">Department</div>
+                          <div className="mobile-card-value">{emp.department || "General"}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="mobile-card-label">Monthly Net Pay</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 700, color: "#16a34a", fontSize: 13.5 }}>
+                            {salary ? formatMoney(netMinor) : "Not Set"}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          style={{ padding: "6px 12px", borderRadius: 7 }}
+                          onClick={() => {
+                            setSelectedEmployee(emp);
+                            if (salary) {
+                              setBasicPay((salary.basicSalaryMinor / 100).toString());
+                              setHra((salary.hraMinor / 100).toString());
+                              setAllowances((salary.allowancesMinor / 100).toString());
+                              setDeductions((salary.deductionsMinor / 100).toString());
+                            } else {
+                              setBasicPay("30000");
+                              setHra("12000");
+                              setAllowances("5000");
+                              setDeductions("2000");
+                            }
+                            setSalaryModalOpen(true);
+                          }}
+                        >
+                          <Icon name="rupee" size={13} />
+                          <span>Salary Structure</span>
+                        </button>
+                        {emp.status === "ACTIVE" && (
                           <button
                             className="btn btn-secondary btn-sm"
+                            style={{ padding: "6px 12px", borderRadius: 7 }}
                             onClick={() => {
                               setSelectedEmployee(emp);
-                              if (salary) {
-                                setBasicPay((salary.basicSalaryMinor / 100).toString());
-                                setHra((salary.hraMinor / 100).toString());
-                                setAllowances((salary.allowancesMinor / 100).toString());
-                                setDeductions((salary.deductionsMinor / 100).toString());
-                              } else {
-                                setBasicPay("30000");
-                                setHra("12000");
-                                setAllowances("5000");
-                                setDeductions("2000");
-                              }
-                              setSalaryModalOpen(true);
+                              setExitModalOpen(true);
                             }}
                           >
-                            <Icon name="rupee" size={13} />
-                            <span>Salary</span>
+                            <span>Exit</span>
                           </button>
-                          {emp.status === "ACTIVE" && (
-                            <button
-                              className="btn btn-secondary btn-sm"
-                              onClick={() => {
-                                setSelectedEmployee(emp);
-                                setExitModalOpen(true);
-                              }}
-                            >
-                              <span>Exit</span>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
+                        )}
+                      </div>
+                    </div>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile View: Employee Cards */}
-          <div className="mobile-cards-view">
-            {employees.map((emp) => {
-              const salary = emp.salaryStructures?.[0];
-              const grossMinor = salary
-                ? salary.basicSalaryMinor + salary.hraMinor + salary.allowancesMinor
-                : 0;
-              const netMinor = salary ? grossMinor - salary.deductionsMinor : 0;
-
-              return (
-                <div key={emp.id} className="mobile-record-card">
-                  <div className="mobile-card-header">
-                    <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                      <div className="mobile-card-avatar">
-                        {emp.person?.displayName.slice(0, 2).toUpperCase()}
-                      </div>
-                      <div>
-                        <div className="mobile-card-name">{emp.person?.displayName}</div>
-                        <div className="mobile-card-subtext">
-                          Code: {emp.employeeCode} · {emp.designation || "Staff"}
-                        </div>
-                      </div>
-                    </div>
-                    <Badge tone={emp.status === "ACTIVE" ? "green" : "red"}>
-                      {emp.status}
-                    </Badge>
-                  </div>
-
-                  <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
-                    <div>
-                      <div className="mobile-card-label">Department</div>
-                      <div className="mobile-card-value">{emp.department || "General"}</div>
-                    </div>
-                    <div style={{ textAlign: "right" }}>
-                      <div className="mobile-card-label">Monthly Net Pay</div>
-                      <div className="mobile-card-value" style={{ fontWeight: 700, color: "#16a34a", fontSize: 13.5 }}>
-                        {salary ? formatMoney(netMinor) : "Not Set"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", gap: 8, justifyContent: "flex-end" }}>
-                    <button
-                      className="btn btn-secondary btn-sm"
-                      style={{ padding: "6px 12px", borderRadius: 7 }}
-                      onClick={() => {
-                        setSelectedEmployee(emp);
-                        if (salary) {
-                          setBasicPay((salary.basicSalaryMinor / 100).toString());
-                          setHra((salary.hraMinor / 100).toString());
-                          setAllowances((salary.allowancesMinor / 100).toString());
-                          setDeductions((salary.deductionsMinor / 100).toString());
-                        } else {
-                          setBasicPay("30000");
-                          setHra("12000");
-                          setAllowances("5000");
-                          setDeductions("2000");
-                        }
-                        setSalaryModalOpen(true);
-                      }}
-                    >
-                      <Icon name="rupee" size={13} />
-                      <span>Salary Structure</span>
-                    </button>
-                    {emp.status === "ACTIVE" && (
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        style={{ padding: "6px 12px", borderRadius: 7 }}
-                        onClick={() => {
-                          setSelectedEmployee(emp);
-                          setExitModalOpen(true);
-                        }}
-                      >
-                        <span>Exit</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </>
-      )}
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -840,30 +840,81 @@ export default function PayrollPage() {
             <>
               <div className="desktop-table-view">
                 <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Period</th>
-                  <th>Status</th>
-                  <th>Employees</th>
-                  <th>Total Gross</th>
-                  <th>Deductions</th>
-                  <th>Net Payout</th>
-                  <th style={{ textAlign: "right" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
+                  <thead>
+                    <tr>
+                      <th>Period</th>
+                      <th>Status</th>
+                      <th>Employees</th>
+                      <th>Total Gross</th>
+                      <th>Deductions</th>
+                      <th>Net Payout</th>
+                      <th style={{ textAlign: "right" }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {runs.map((run) => (
+                      <tr
+                        key={run.id}
+                        className="clickable"
+                        onClick={() => setDetailRun(run)}
+                      >
+                        <td>
+                          <strong>
+                            {MONTH_NAMES[run.month - 1]} {run.year}
+                          </strong>
+                        </td>
+                        <td>
+                          <Badge
+                            tone={
+                              run.status === "PAID"
+                                ? "green"
+                                : run.status === "APPROVED"
+                                  ? "blue"
+                                  : "amber"
+                            }
+                          >
+                            {run.status}
+                          </Badge>
+                        </td>
+                        <td>{run.items?.length || 0}</td>
+                        <td>{formatMoney(run.totalGrossMinor)}</td>
+                        <td>{formatMoney(run.totalDeductionsMinor)}</td>
+                        <td>
+                          <strong>{formatMoney(run.totalNetMinor)}</strong>
+                        </td>
+                        <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => setDetailRun(run)}
+                          >
+                            <Icon name="eye" size={14} />
+                            <span>View Run</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile View: Payroll Run Cards */}
+              <div className="mobile-cards-view">
                 {runs.map((run) => (
-                  <tr
+                  <div
                     key={run.id}
-                    className="clickable"
+                    className="mobile-record-card"
                     onClick={() => setDetailRun(run)}
+                    style={{ cursor: "pointer" }}
                   >
-                    <td>
-                      <strong>
-                        {MONTH_NAMES[run.month - 1]} {run.year}
-                      </strong>
-                    </td>
-                    <td>
+                    <div className="mobile-card-header">
+                      <div>
+                        <div className="mobile-card-name">
+                          {MONTH_NAMES[run.month - 1]} {run.year}
+                        </div>
+                        <div className="mobile-card-subtext">
+                          {run.items?.length || 0} Employees
+                        </div>
+                      </div>
                       <Badge
                         tone={
                           run.status === "PAID"
@@ -875,87 +926,36 @@ export default function PayrollPage() {
                       >
                         {run.status}
                       </Badge>
-                    </td>
-                    <td>{run.items?.length || 0}</td>
-                    <td>{formatMoney(run.totalGrossMinor)}</td>
-                    <td>{formatMoney(run.totalDeductionsMinor)}</td>
-                    <td>
-                      <strong>{formatMoney(run.totalNetMinor)}</strong>
-                    </td>
-                    <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                    </div>
+
+                    <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                      <div>
+                        <div className="mobile-card-label">Total Gross</div>
+                        <div className="mobile-card-value">{formatMoney(run.totalGrossMinor)}</div>
+                      </div>
+                      <div style={{ textAlign: "right" }}>
+                        <div className="mobile-card-label">Net Disbursed</div>
+                        <div className="mobile-card-value" style={{ fontWeight: 750, color: "#16a34a", fontSize: 13.5 }}>
+                          {formatMoney(run.totalNetMinor)}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => setDetailRun(run)}
+                        style={{ padding: "6px 14px", borderRadius: 7 }}
                       >
-                        <Icon name="eye" size={14} />
-                        <span>View Run</span>
+                        <Icon name="eye" size={13} />
+                        <span>View Run Details</span>
                       </button>
-                    </td>
-                  </tr>
+                    </div>
+                  </div>
                 ))}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Mobile View: Payroll Run Cards */}
-          <div className="mobile-cards-view">
-            {runs.map((run) => (
-              <div
-                key={run.id}
-                className="mobile-record-card"
-                onClick={() => setDetailRun(run)}
-                style={{ cursor: "pointer" }}
-              >
-                <div className="mobile-card-header">
-                  <div>
-                    <div className="mobile-card-name">
-                      {MONTH_NAMES[run.month - 1]} {run.year}
-                    </div>
-                    <div className="mobile-card-subtext">
-                      {run.items?.length || 0} Employees
-                    </div>
-                  </div>
-                  <Badge
-                    tone={
-                      run.status === "PAID"
-                        ? "green"
-                        : run.status === "APPROVED"
-                          ? "blue"
-                          : "amber"
-                    }
-                  >
-                    {run.status}
-                  </Badge>
-                </div>
-
-                <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
-                  <div>
-                    <div className="mobile-card-label">Total Gross</div>
-                    <div className="mobile-card-value">{formatMoney(run.totalGrossMinor)}</div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <div className="mobile-card-label">Net Disbursed</div>
-                    <div className="mobile-card-value" style={{ fontWeight: 750, color: "#16a34a", fontSize: 13.5 }}>
-                      {formatMoney(run.totalNetMinor)}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
-                  <button
-                    className="btn btn-secondary btn-sm"
-                    onClick={() => setDetailRun(run)}
-                    style={{ padding: "6px 14px", borderRadius: 7 }}
-                  >
-                    <Icon name="eye" size={13} />
-                    <span>View Run Details</span>
-                  </button>
-                </div>
               </div>
-            ))}
-          </div>
-        </>
-      )}
+            </>
+          )}
         </div>
       )}
 
@@ -1606,6 +1606,8 @@ export default function PayrollPage() {
       {/* Toast Notification Feedback Card */}
       {toast && (
         <div
+          role="alert"
+          aria-live="polite"
           style={{
             position: "fixed",
             bottom: 24,
@@ -1629,6 +1631,7 @@ export default function PayrollPage() {
           <button
             type="button"
             onClick={() => setToast(null)}
+            aria-label="Dismiss notification"
             style={{
               background: "rgba(255, 255, 255, 0.2)",
               border: "none",

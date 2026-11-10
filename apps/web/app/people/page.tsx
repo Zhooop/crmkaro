@@ -1322,35 +1322,13 @@ function PeopleContent() {
     }
   }
 
-  const tabItems = isRealEstate
-    ? [
-        { id: "ALL", label: "All Contacts" },
-        { id: "CUSTOMER", label: "Clients & Buyers" },
-        { id: "EMPLOYEE", label: "Agents & Staff" },
-        { id: "ARCHIVED", label: "Archived" },
-      ]
-    : isAcademy
-    ? [
-        { id: "ALL", label: "All Directory" },
-        { id: "STUDENT", label: isSchool ? "Students" : "Students / Learners" },
-        { id: "CUSTOMER", label: isSchool ? "Parents / Guardians" : "Customers / Clients" },
-        { id: "EMPLOYEE", label: isSchool ? "Teachers & Staff" : "Faculty & Staff" },
-        { id: "ARCHIVED", label: "Archived" },
-      ]
-    : isGym
-    ? [
-        { id: "ALL", label: "All Directory" },
-        { id: "MEMBER", label: "Gym Members" },
-        { id: "CUSTOMER", label: "Walk-ins & Inquiries" },
-        { id: "EMPLOYEE", label: "Trainers & Staff" },
-        { id: "ARCHIVED", label: "Archived" },
-      ]
-    : [
-        { id: "ALL", label: "All Contacts" },
-        { id: "CUSTOMER", label: "Clients & Customers" },
-        { id: "EMPLOYEE", label: "Team & Staff" },
-        { id: "ARCHIVED", label: "Archived" },
-      ];
+  const tabItems = [
+    { id: "ALL", label: "All Directory" },
+    { id: "STUDENT", label: "Students / Learners" },
+    { id: "CUSTOMER", label: "Customers / Clients" },
+    { id: "EMPLOYEE", label: "Employees / Staff" },
+    { id: "ARCHIVED", label: "Archived" },
+  ];
 
   // Reusable render function for the 2-column segmented Add/Edit Member Form
   const renderMemberForm = (isEdit: boolean) => (
@@ -1388,13 +1366,13 @@ function PeopleContent() {
       {/* Right Form Content */}
       <div className="add-member-content">
         {formError && (
-          <div style={{ padding: "10px 12px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
+          <div role="alert" aria-live="assertive" style={{ padding: "10px 12px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12 }}>
             {formError}
           </div>
         )}
 
         {duplicateWarnings.length > 0 && (
-          <div style={{ padding: "10px 12px", background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: 12 }}>
+          <div role="status" aria-live="polite" style={{ padding: "10px 12px", background: "#fef3c7", color: "#92400e", borderRadius: 8, fontSize: 12 }}>
             <strong>Potential duplicate found:</strong>
             <ul style={{ margin: "4px 0 0", paddingLeft: 18 }}>
               {duplicateWarnings.map((d) => (
@@ -1554,10 +1532,10 @@ function PeopleContent() {
             </label>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               {[
-                ...(isGym ? [{ type: "MEMBER" as PersonType, label: "Gym Member" }] : []),
-                ...(isAcademy && !isRealEstate ? [{ type: "STUDENT" as PersonType, label: isSchool ? "Student" : "Student / Learner" }] : []),
-                { type: "CUSTOMER" as PersonType, label: isRealEstate ? "Client / Buyer" : isSchool ? "Parent / Guardian" : "Customer / Client" },
-                { type: "EMPLOYEE" as PersonType, label: isRealEstate ? "Agent / Staff" : isSchool ? "Teacher / Staff" : isCoaching ? "Faculty / Staff" : "Staff / Employee" },
+                { type: "MEMBER" as PersonType, label: "Member" },
+                { type: "STUDENT" as PersonType, label: "Student / Learner" },
+                { type: "CUSTOMER" as PersonType, label: "Customer / Client" },
+                { type: "EMPLOYEE" as PersonType, label: "Staff / Employee" },
               ].map(({ type, label }) => {
                 const checked = formTypes.includes(type);
                 return (
@@ -3520,7 +3498,7 @@ function PeopleContent() {
             <div style={{ borderTop: "1px solid var(--line)", paddingTop: 16 }}>
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
                 <label style={{ fontSize: 11, color: "var(--muted)", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.04em" }}>
-                  {isSchool || isCoaching ? "Fees & Monthly Billing" : "Invoices & Billing History"}
+                  Fees & Monthly Billing
                 </label>
                 <a
                   href={`/finance?action=new-invoice&personId=${detailPerson.id}`}
@@ -3535,7 +3513,7 @@ function PeopleContent() {
                   }}
                 >
                   <Icon name="plus" size={12} />
-                  <span>{isSchool ? "+ Issue Fee Slip" : "+ Create Invoice"}</span>
+                  <span>+ Create Custom Bill</span>
                 </a>
               </div>
 
@@ -3568,81 +3546,79 @@ function PeopleContent() {
 
                 return (
                   <>
-                    {isAcademy && !isRealEstate && (
-                      <div style={{ background: "#f0fdf4", padding: "10px 12px", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 12 }}>
-                        <div style={{ fontSize: 11, fontWeight: 750, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                          <span>1-Click Month Fee Bill ({new Date().getFullYear()}–{new Date().getFullYear() + 1})</span>
-                          <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d" }}>₹{planAmountRs.toLocaleString("en-IN")}/mo</span>
-                        </div>
-                        <div style={{ fontSize: 10.5, color: "#166534", marginBottom: 6 }}>
-                          Admitted: <strong>{admLabel}</strong> · Bills start from admission month onwards:
-                        </div>
-                        <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                          {[
-                            "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
-                          ].map((m) => {
-                            const mNumMap: Record<string, string> = {
-                              Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09",
-                              Oct: "10", Nov: "11", Dec: "12", Jan: "01", Feb: "02", Mar: "03"
-                            };
-                            const fullMonthMap: Record<string, string> = {
-                              Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
-                              Sep: "September", Oct: "October", Nov: "November", Dec: "December",
-                              Jan: "January", Feb: "February", Mar: "March"
-                            };
-                            const fullMonth = fullMonthMap[m] || m;
-                            const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
-                            const thisYyyyMm = `${year}-${mNumMap[m]}`;
-                            const isPreAdmission = thisYyyyMm < admYyyyMm;
-                            const feeDesc = `Monthly Academic / Tuition Fees — ${fullMonth} ${year}`;
+                    <div style={{ background: "#f0fdf4", padding: "10px 12px", borderRadius: 10, border: "1px solid #bbf7d0", marginBottom: 12 }}>
+                      <div style={{ fontSize: 11, fontWeight: 750, color: "#166534", marginBottom: 6, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span>1-Click Month Fee Bill ({new Date().getFullYear()}–{new Date().getFullYear() + 1})</span>
+                        <span style={{ fontSize: 10, fontWeight: 700, color: "#15803d" }}>₹{planAmountRs.toLocaleString("en-IN")}/mo</span>
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "#166534", marginBottom: 6 }}>
+                        Admitted: <strong>{admLabel}</strong> · Bills start from admission month onwards:
+                      </div>
+                      <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                        {[
+                          "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
+                        ].map((m) => {
+                          const mNumMap: Record<string, string> = {
+                            Apr: "04", May: "05", Jun: "06", Jul: "07", Aug: "08", Sep: "09",
+                            Oct: "10", Nov: "11", Dec: "12", Jan: "01", Feb: "02", Mar: "03"
+                          };
+                          const fullMonthMap: Record<string, string> = {
+                            Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
+                            Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+                            Jan: "January", Feb: "February", Mar: "March"
+                          };
+                          const fullMonth = fullMonthMap[m] || m;
+                          const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
+                          const thisYyyyMm = `${year}-${mNumMap[m]}`;
+                          const isPreAdmission = thisYyyyMm < admYyyyMm;
+                          const feeDesc = `Monthly Academic / Tuition Fees — ${fullMonth} ${year}`;
 
-                            if (isPreAdmission) {
-                              return (
-                                <span
-                                  key={m}
-                                  style={{
-                                    padding: "3px 8px",
-                                    borderRadius: 6,
-                                    border: "1px dashed #cbd5e1",
-                                    background: "#f1f5f9",
-                                    color: "#94a3b8",
-                                    fontSize: 10.5,
-                                    fontWeight: 600,
-                                    cursor: "not-allowed",
-                                  }}
-                                  title={`Pre-admission month (${fullMonth} ${year}) — Student admitted in ${admLabel}`}
-                                >
-                                  {m} (Pre-Adm)
-                                </span>
-                              );
-                            }
-
+                          if (isPreAdmission) {
                             return (
-                              <a
+                              <span
                                 key={m}
-                                href={`/finance?action=new-invoice&personId=${detailPerson.id}&description=${encodeURIComponent(feeDesc)}&price=${planAmountRs}`}
                                 style={{
                                   padding: "3px 8px",
                                   borderRadius: 6,
-                                  border: "1px solid #86efac",
-                                  background: "#ffffff",
-                                  color: "#166534",
-                                  fontSize: 11,
-                                  fontWeight: 700,
-                                  textDecoration: "none",
-                                  display: "inline-flex",
-                                  alignItems: "center",
-                                  boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                                  border: "1px dashed #cbd5e1",
+                                  background: "#f1f5f9",
+                                  color: "#94a3b8",
+                                  fontSize: 10.5,
+                                  fontWeight: 600,
+                                  cursor: "not-allowed",
                                 }}
-                                title={`Generate fee bill for ${fullMonth} ${year}`}
+                                title={`Pre-admission month (${fullMonth} ${year}) — Student admitted in ${admLabel}`}
                               >
-                                + {m}
-                              </a>
+                                {m} (Pre-Adm)
+                              </span>
                             );
-                          })}
-                        </div>
+                          }
+
+                          return (
+                            <a
+                              key={m}
+                              href={`/finance?action=new-invoice&personId=${detailPerson.id}&description=${encodeURIComponent(feeDesc)}&price=${planAmountRs}`}
+                              style={{
+                                padding: "3px 8px",
+                                borderRadius: 6,
+                                border: "1px solid #86efac",
+                                background: "#ffffff",
+                                color: "#166534",
+                                fontSize: 11,
+                                fontWeight: 700,
+                                textDecoration: "none",
+                                display: "inline-flex",
+                                alignItems: "center",
+                                boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                              }}
+                              title={`Generate fee bill for ${fullMonth} ${year}`}
+                            >
+                              + {m}
+                            </a>
+                          );
+                        })}
                       </div>
-                    )}
+                    </div>
 
                     {/* Invoices List / Payment Status */}
                     {invoicesLoading ? (
@@ -3725,7 +3701,7 @@ function PeopleContent() {
                       </div>
                     ) : (
                       <div style={{ fontSize: 11.5, color: "var(--muted)", padding: "4px 0" }}>
-                        {isSchool || isCoaching ? "No fee bills issued yet for this student." : "No invoices issued yet for this contact."}
+                        No fee bills issued yet for this member.
                       </div>
                     )}
                   </>
@@ -3753,16 +3729,14 @@ function PeopleContent() {
                   <Icon name="finance" size={14} />
                   <span>New Invoice</span>
                 </a>
-                {isAcademy && !isRealEstate && (
-                  <a
-                    href={`/students?action=new-admission`}
-                    className="btn btn-secondary btn-sm"
-                    style={{ color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}
-                  >
-                    <Icon name="student" size={14} />
-                    <span>Admit as Student</span>
-                  </a>
-                )}
+                <a
+                  href={`/students?action=new-admission`}
+                  className="btn btn-secondary btn-sm"
+                  style={{ color: "#2563eb", borderColor: "#bfdbfe", background: "#eff6ff" }}
+                >
+                  <Icon name="student" size={14} />
+                  <span>Admit as Student</span>
+                </a>
                 <button
                   className="btn btn-secondary btn-sm"
                   onClick={() => {

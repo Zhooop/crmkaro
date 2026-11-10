@@ -274,7 +274,7 @@ function QuickCollectContent() {
               await authFetch(`${api}/finance/invoices/${invData.id}/issue`, {
                 method: "POST",
                 credentials: "include",
-              }).catch(() => {});
+              }).catch(() => { });
             }
           }
 
@@ -384,6 +384,8 @@ function QuickCollectContent() {
         {/* Error Notification */}
         {errorMessage && (
           <div
+            role="alert"
+            aria-live="assertive"
             style={{
               padding: "12px 16px",
               background: "#fef2f2",
@@ -401,6 +403,7 @@ function QuickCollectContent() {
             <button
               type="button"
               onClick={() => setErrorMessage("")}
+              aria-label="Dismiss error notification"
               style={{ background: "transparent", border: "none", color: "#991b1b", cursor: "pointer", padding: 0 }}
             >
               <Icon name="close" size={14} />
@@ -1004,6 +1007,8 @@ function QuickCollectContent() {
       {/* Floating Copy Feedback Toast */}
       {toastMessage && (
         <div
+          role="status"
+          aria-live="polite"
           style={{
             position: "fixed",
             bottom: 24,

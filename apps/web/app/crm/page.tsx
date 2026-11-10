@@ -1351,7 +1351,7 @@ function CrmContent() {
       >
         <form onSubmit={handleCreateLead} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {formError && (
-            <div style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
+            <div role="alert" aria-live="assertive" style={{ padding: "10px 14px", background: "#fee2e2", color: "#b91c1c", borderRadius: 8, fontSize: 12, fontWeight: 600 }}>
               {formError}
             </div>
           )}
@@ -1362,89 +1362,38 @@ function CrmContent() {
               <span style={{ fontSize: 11, fontWeight: 700, color: "#64748b", textTransform: "uppercase", letterSpacing: "0.05em" }}>
                 ⚡ Quick Presets
               </span>
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Auto-fill common deal types</span>
+              <span style={{ fontSize: 11, color: "#64748b" }}>Auto-fill common deal types</span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              {isRealEstate ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("2 BHK / 3 BHK Apartment Buyer", "7500000", "Website")}
-                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    🏡 Buyer Inquiry (₹75L)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Commercial Office / Retail Space", "15000000", "Phone Call")}
-                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    🏢 Commercial Deal (₹1.5Cr)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Plot / Land Investment", "5000000", "Referral")}
-                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    📍 Plot / Land (₹50L)
-                  </button>
-                </>
-              ) : isCoachingOrSchool ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Full Course Admission Lead", "25000", "Walk-in")}
-                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    🎓 Full Course (₹25k)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Crash Course Inquiry", "8000", "Social Media")}
-                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    📖 Crash Course (₹8k)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Consulting Retainer Lead", "50000", "Referral")}
-                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    💼 Consulting (₹50k)
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Standard Business Inquiry", "15000", "Website")}
-                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    💬 General Inquiry (₹15k)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Hot Deal / High Intent", "50000", "Phone Call")}
-                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    🔥 Hot Deal (₹50k)
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => applyLeadTemplate("Enterprise Retainer / Contract", "150000", "Referral")}
-                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-                  >
-                    💼 Enterprise (₹1.5L)
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Standard Business Inquiry", "15000", "Website")}
+                style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              >
+                💬 General Inquiry (₹15k)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Hot Deal / High Intent", "50000", "Phone Call")}
+                style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              >
+                🔥 Hot Deal (₹50k)
+              </button>
+              <button
+                type="button"
+                onClick={() => applyLeadTemplate("Enterprise Retainer / Contract", "150000", "Referral")}
+                style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+              >
+                💼 Enterprise (₹1.5L)
+              </button>
             </div>
           </div>
 
           <div className="form-grid">
             <div className="form-group full">
-              <label>Lead / Client Name *</label>
+              <label htmlFor="lead-form-name">Lead / Client Name *</label>
               <input
+                id="lead-form-name"
                 type="text"
                 placeholder={isRealEstate ? "e.g. Ramesh Sharma (3BHK Buyer)" : isCoachingOrSchool ? "e.g. Vikram Verma (Class 10)" : "e.g. Vikram Verma or Apex Corp"}
                 value={formName}
@@ -1454,8 +1403,9 @@ function CrmContent() {
               />
             </div>
             <div className="form-group">
-              <label>Email Address</label>
+              <label htmlFor="lead-form-email">Email Address</label>
               <input
+                id="lead-form-email"
                 type="email"
                 placeholder="client@example.com"
                 value={formEmail}
@@ -1463,8 +1413,9 @@ function CrmContent() {
               />
             </div>
             <div className="form-group">
-              <label>Phone Number</label>
+              <label htmlFor="lead-form-phone">Phone Number</label>
               <input
+                id="lead-form-phone"
                 type="tel"
                 placeholder="+91 98765 43210"
                 value={formPhone}
@@ -1472,8 +1423,9 @@ function CrmContent() {
               />
             </div>
             <div className="form-group full">
-              <label>Estimated Value (₹)</label>
+              <label htmlFor="lead-form-value">Estimated Value (₹)</label>
               <input
+                id="lead-form-value"
                 type="number"
                 placeholder={isRealEstate ? "e.g. 7500000" : "e.g. 25000"}
                 value={formValue}
@@ -1488,6 +1440,7 @@ function CrmContent() {
                       key={amt}
                       type="button"
                       onClick={() => setFormValue(String(amt))}
+                      aria-label={`Set amount to ₹${amt}`}
                       style={{
                         padding: "4px 10px",
                         borderRadius: 6,
@@ -1511,8 +1464,9 @@ function CrmContent() {
               </div>
             </div>
             <div className="form-group full">
-              <label>Lead Source</label>
+              <label htmlFor="lead-form-source">Lead Source</label>
               <select
+                id="lead-form-source"
                 value={formSource}
                 onChange={(e) => setFormSource(e.target.value)}
               >
@@ -1534,6 +1488,7 @@ function CrmContent() {
                       key={src}
                       type="button"
                       onClick={() => setFormSource(src)}
+                      aria-label={`Select source ${src}`}
                       style={{
                         padding: "4px 10px",
                         borderRadius: 6,
@@ -1554,8 +1509,9 @@ function CrmContent() {
             </div>
             {stages.length > 0 && (
               <div className="form-group full">
-                <label>Initial Pipeline Stage</label>
+                <label htmlFor="lead-form-stage">Initial Pipeline Stage</label>
                 <select
+                  id="lead-form-stage"
                   value={formStageId}
                   onChange={(e) => setFormStageId(e.target.value)}
                 >
