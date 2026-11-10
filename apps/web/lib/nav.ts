@@ -208,6 +208,23 @@ export function saveCachedWorkspaceContext(ctx: Partial<WorkspaceContext>) {
   } catch {}
 }
 
+export function isRealEstateWorkspace(businessType?: string, orgName?: string): boolean {
+  const bt = (businessType || "").toLowerCase();
+  const on = (orgName || "").toLowerCase();
+  return (
+    bt.includes("real estate") ||
+    bt.includes("property") ||
+    bt.includes("broker") ||
+    bt.includes("realt") ||
+    bt.includes("builder") ||
+    bt.includes("sales") ||
+    on.includes("real estate") ||
+    on.includes("properties") ||
+    on.includes("realty") ||
+    on.includes("saleswale")
+  );
+}
+
 export function isGymWorkspace(businessType?: string, orgName?: string): boolean {
   const bt = (businessType || "").toLowerCase();
   const on = (orgName || "").toLowerCase();
@@ -326,13 +343,28 @@ export const SCHOOL_SERVICE_NAV_MAP: Record<string, NavItem> = {
   inventory: { label: "Books & Inventory", icon: "inventory", href: "/inventory" },
 };
 
-export function buildNavItems(activeServices: string[], businessType?: string, orgName?: string): NavItem[] {
-  const isGym = isGymWorkspace(businessType, orgName);
-  const isSchool = !isGym && isSchoolWorkspace(businessType, orgName);
-  const isCoaching = !isGym && !isSchool && isCoachingWorkspace(businessType, orgName);
-  const isServices = !isGym && !isSchool && !isCoaching && isServicesWorkspace(businessType, orgName);
+export const REAL_ESTATE_SERVICE_NAV_MAP: Record<string, NavItem> = {
+  crm: { label: "Leads & CRM Pipeline", icon: "crm", href: "/crm" },
+  people: { label: "Clients & Investors", icon: "people", href: "/people" },
+  finance: { label: "Invoices & Revenue", icon: "finance", href: "/finance" },
+  payroll: { label: "Agents & Staff", icon: "payroll", href: "/payroll" },
+  transactions: { label: "Receipts & Ledger", icon: "transactions", href: "/transactions" },
+  "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
+  groups: { label: "Property Projects", icon: "activity", href: "/groups" },
+  students: { label: "Client Bookings", icon: "student", href: "/students" },
+  inventory: { label: "Units & Listings", icon: "inventory", href: "/inventory" },
+};
 
-  const map = isGym
+export function buildNavItems(activeServices: string[], businessType?: string, orgName?: string): NavItem[] {
+  const isRealEstate = isRealEstateWorkspace(businessType, orgName);
+  const isGym = !isRealEstate && isGymWorkspace(businessType, orgName);
+  const isSchool = !isRealEstate && !isGym && isSchoolWorkspace(businessType, orgName);
+  const isCoaching = !isRealEstate && !isGym && !isSchool && isCoachingWorkspace(businessType, orgName);
+  const isServices = !isRealEstate && !isGym && !isSchool && !isCoaching && isServicesWorkspace(businessType, orgName);
+
+  const map = isRealEstate
+    ? REAL_ESTATE_SERVICE_NAV_MAP
+    : isGym
     ? GYM_SERVICE_NAV_MAP
     : isSchool
     ? SCHOOL_SERVICE_NAV_MAP
@@ -354,6 +386,18 @@ export function buildNavItems(activeServices: string[], businessType?: string, o
         "quick-collect",
         "transactions",
         "payroll",
+      ]
+    : isRealEstate
+    ? [
+        "crm",
+        "people",
+        "finance",
+        "transactions",
+        "payroll",
+        "quick-collect",
+        "groups",
+        "students",
+        "inventory",
       ]
     : [
         "people",

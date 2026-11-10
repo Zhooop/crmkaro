@@ -106,7 +106,23 @@ function CrmContent() {
   const [statusFilter, setStatusFilter] = useState<"OPEN" | "CONVERTED" | "LOST" | "ALL">("OPEN");
   const [search, setSearch] = useState("");
 
-  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType, activeServices } = useWorkspace();
+
+  const isCoachingOrSchool = (() => {
+    const bt = (businessType || "").toLowerCase();
+    const on = (orgName || "").toLowerCase();
+    return (
+      bt.includes("coaching") ||
+      bt.includes("tuition") ||
+      bt.includes("academy") ||
+      bt.includes("school") ||
+      bt.includes("classes") ||
+      on.includes("coaching") ||
+      on.includes("classes") ||
+      on.includes("tutorials") ||
+      (Boolean(activeServices?.includes("students")) && !bt.includes("real estate") && !on.includes("saleswale") && !bt.includes("sales"))
+    );
+  })();
 
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
@@ -1617,13 +1633,23 @@ function CrmContent() {
                 style={{ justifyContent: "flex-start", padding: "14px 16px", height: "auto" }}
                 onClick={() => {
                   const p = postConvertResult.person;
-                  router.push(`/students?admit=true&personId=${p?.id || ""}&name=${encodeURIComponent(p?.displayName || "")}&phone=${encodeURIComponent(p?.primaryPhone || "")}&email=${encodeURIComponent(p?.email || "")}`);
+                  if (isCoachingOrSchool) {
+                    router.push(`/students?admit=true&personId=${p?.id || ""}&name=${encodeURIComponent(p?.displayName || "")}&phone=${encodeURIComponent(p?.primaryPhone || "")}&email=${encodeURIComponent(p?.email || "")}`);
+                  } else {
+                    router.push(`/finance?personId=${p?.id || ""}&name=${encodeURIComponent(p?.displayName || "")}`);
+                  }
                   setPostConvertResult(null);
                 }}
               >
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: 750, fontSize: 14 }}>🏫 Admit as Student &amp; Setup Fee Cycle</div>
-                  <div style={{ fontSize: 12, opacity: 0.9 }}>Open admission form pre-filled with student and parent details</div>
+                  <div style={{ fontWeight: 750, fontSize: 14 }}>
+                    {isCoachingOrSchool ? "🏫 Admit as Student & Setup Fee Cycle" : "💼 Onboard as Client & Create Deal / Invoice"}
+                  </div>
+                  <div style={{ fontSize: 12, opacity: 0.9 }}>
+                    {isCoachingOrSchool
+                      ? "Open admission form pre-filled with student and parent details"
+                      : "Create invoice or record client ledger pre-filled with deal details"}
+                  </div>
                 </div>
               </button>
 
@@ -1637,8 +1663,14 @@ function CrmContent() {
                 }}
               >
                 <div style={{ textAlign: "left" }}>
-                  <div style={{ fontWeight: 750, fontSize: 14 }}>💬 Send WhatsApp Payment Link / Fee Receipt</div>
-                  <div style={{ fontSize: 12, color: "var(--muted)" }}>Generate instant UPI link or log cash collection</div>
+                  <div style={{ fontWeight: 750, fontSize: 14 }}>
+                    {isCoachingOrSchool
+                      ? "💬 Send WhatsApp Payment Link / Fee Receipt"
+                      : "💬 Send WhatsApp Payment Link / Booking Advance"}
+                  </div>
+                  <div style={{ fontSize: 12, color: "var(--muted)" }}>
+                    Generate instant UPI link or log payment collection
+                  </div>
                 </div>
               </button>
             </div>

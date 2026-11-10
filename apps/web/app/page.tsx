@@ -311,13 +311,18 @@ function DashboardLoading() {
 }
 
 const BUSINESS_TYPE_OPTIONS = [
+  "Real Estate, Property & Brokers",
+  "Sales Agency, Marketing & Consulting",
+  "Financial Services, Loans & Insurance",
   "Coaching & Education Institute",
   "Schools, Colleges & Formal Institutes",
   "Tuition & Training Center",
   "Dance, Music & Art Academy",
   "Fitness, Gym & Sports Club",
   "Beauty, Salon & Spa",
-  "Other",
+  "Healthcare, Clinic & Diagnostic",
+  "IT, Software & SaaS Services",
+  "Construction, Interior & Architecture",
 ];
 
 function PresetIcon({ id, color }: { id: string; color: string }) {
@@ -445,7 +450,6 @@ export default function HomePage() {
   const [viewState, setViewState] = useState<ViewState>("initializing");
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
-  const [customBusinessType, setCustomBusinessType] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("academy");
   const [selectedServices, setSelectedServices] = useState<string[]>([
     "students",
@@ -674,13 +678,10 @@ export default function HomePage() {
 
   async function createWorkspace(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const effectiveBusinessType =
-      selectedBusinessType === "Other"
-        ? customBusinessType.trim()
-        : selectedBusinessType;
+    const effectiveBusinessType = selectedBusinessType.trim();
 
     if (!effectiveBusinessType) {
-      setSetupError("Please select or enter your business type.");
+      setSetupError("Please select your business type.");
       return;
     }
 
@@ -880,21 +881,6 @@ export default function HomePage() {
                 </select>
               </div>
             </div>
-
-            {selectedBusinessType === "Other" && (
-              <div className="onboarding-custom-field">
-                <label htmlFor="custom-business-type">
-                  Describe your business <span style={{ color: "#ef4444" }}>*</span>
-                </label>
-                <input
-                  id="custom-business-type"
-                  value={customBusinessType}
-                  onChange={(e) => setCustomBusinessType(e.target.value)}
-                  placeholder="e.g. Dance Academy, Solar Installation, Dental Clinic"
-                  required
-                />
-              </div>
-            )}
 
             {/* Solution Package Selector */}
             <fieldset className="service-selection-fieldset">
@@ -1176,6 +1162,26 @@ export default function HomePage() {
     );
   })();
 
+  const isRealEstateOrSales = (() => {
+    const bt = (data?.organisation?.businessType || "").toLowerCase();
+    const on = (data?.organisation?.name || "").toLowerCase();
+    return (
+      bt.includes("real estate") ||
+      bt.includes("property") ||
+      bt.includes("broker") ||
+      bt.includes("realt") ||
+      bt.includes("builder") ||
+      bt.includes("sales") ||
+      bt.includes("consult") ||
+      bt.includes("agency") ||
+      on.includes("real estate") ||
+      on.includes("properties") ||
+      on.includes("realty") ||
+      on.includes("saleswale") ||
+      (Boolean(data?.services.includes("crm")) && !data?.services.includes("students"))
+    );
+  })();
+
   return (
     <AppShell
       currentPath="/"
@@ -1426,7 +1432,7 @@ export default function HomePage() {
             return null;
           })()}
 
-          {data.services.includes("students") && (
+          {data.services.includes("students") && !isRealEstateOrSales && (
             <>
               <button
                 onClick={() => router.push("/students?action=new-admission")}
@@ -1472,7 +1478,7 @@ export default function HomePage() {
             </>
           )}
 
-          {data.services.includes("crm") && !((data.organisation.businessType || "").toLowerCase().includes("crm") || (data.organisation.businessType || "").toLowerCase().includes("real estate")) && (
+          {data.services.includes("crm") && !isRealEstateOrSales && (
             <button
               onClick={() => router.push("/crm")}
               className="hero-launch-btn"
@@ -1734,7 +1740,9 @@ export default function HomePage() {
                 Welcome to your {data.organisation.name} workspace!
               </h3>
               <p style={{ margin: "4px 0 0", fontSize: 13, color: "#64748b" }}>
-                Complete these 3 quick steps to automate your attendance, fee receipts, and customer records.
+                {isRealEstateOrSales
+                  ? "Complete these 3 quick steps to automate your leads pipeline, deal tracking, and client invoicing."
+                  : "Complete these 3 quick steps to automate your attendance, fee receipts, and customer records."}
               </p>
             </div>
           </div>
@@ -1742,7 +1750,7 @@ export default function HomePage() {
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: 14 }}>
             {/* Step 1 */}
             <div
-              onClick={() => router.push("/groups")}
+              onClick={() => router.push(isRealEstateOrSales ? "/crm" : "/groups")}
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -1758,18 +1766,22 @@ export default function HomePage() {
                   1
                 </div>
                 <div>
-                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>Create Batches &amp; Timings</strong>
-                  <span style={{ fontSize: 11.5, color: "#64748b" }}>Setup morning/evening batches</span>
+                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>
+                    {isRealEstateOrSales ? "Add Your First Lead / Inquiry" : "Create Batches & Timings"}
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    {isRealEstateOrSales ? "Add buyer, investor, or client inquiries" : "Setup morning/evening batches"}
+                  </span>
                 </div>
               </div>
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: "100%", justifyContent: "center" }}>
-                Setup Batches →
+                {isRealEstateOrSales ? "Create Lead →" : "Setup Batches →"}
               </button>
             </div>
 
             {/* Step 2 */}
             <div
-              onClick={() => router.push("/students?admit=true")}
+              onClick={() => router.push(isRealEstateOrSales ? "/crm" : "/students?admit=true")}
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -1785,18 +1797,22 @@ export default function HomePage() {
                   2
                 </div>
                 <div>
-                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>Admit First Student / Client</strong>
-                  <span style={{ fontSize: 11.5, color: "#64748b" }}>Or import existing roster from Excel</span>
+                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>
+                    {isRealEstateOrSales ? "Manage Deal Pipeline" : "Admit First Student / Member"}
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    {isRealEstateOrSales ? "Track stages from site visit to negotiation" : "Or import existing roster from Excel"}
+                  </span>
                 </div>
               </div>
               <button type="button" className="btn btn-primary btn-sm" style={{ width: "100%", justifyContent: "center" }}>
-                Admit Student →
+                {isRealEstateOrSales ? "View Pipeline →" : (isGymOrStudio ? "Enroll Member →" : "Admit Student →")}
               </button>
             </div>
 
             {/* Step 3 */}
             <div
-              onClick={() => router.push("/quick-collect")}
+              onClick={() => router.push(isRealEstateOrSales ? "/finance" : "/quick-collect")}
               style={{
                 background: "#ffffff",
                 border: "1px solid #e2e8f0",
@@ -1812,12 +1828,16 @@ export default function HomePage() {
                   3
                 </div>
                 <div>
-                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>Test WhatsApp Fee Link</strong>
-                  <span style={{ fontSize: 11.5, color: "#64748b" }}>Instant UPI collect &amp; PDF receipt</span>
+                  <strong style={{ fontSize: 14, color: "#0f172a", display: "block" }}>
+                    {isRealEstateOrSales ? "Create Invoice or Receipt" : "Test WhatsApp Fee Link"}
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    {isRealEstateOrSales ? "Generate booking receipt or deal invoice" : "Instant UPI collect & PDF receipt"}
+                  </span>
                 </div>
               </div>
               <button type="button" className="btn btn-secondary btn-sm" style={{ width: "100%", justifyContent: "center" }}>
-                Quick Collect Link →
+                {isRealEstateOrSales ? "Create Invoice →" : "Quick Collect Link →"}
               </button>
             </div>
           </div>
@@ -1826,7 +1846,7 @@ export default function HomePage() {
 
       {/* 📊 Live Stat Cards */}
       <div className="stats-grid" style={{ marginBottom: 12 }}>
-        {data.academySummary && datePreset === "all" ? (
+        {data.academySummary && datePreset === "all" && !isRealEstateOrSales ? (
           <>
             <StatCard
               label={isGymOrStudio ? "Active Members" : "Active Students"}
@@ -1878,7 +1898,7 @@ export default function HomePage() {
             return (
               <StatCard
                 key={card.key}
-                label={card.label}
+                label={isRealEstateOrSales && card.key === "total_members" ? "Total Clients" : card.label}
                 value={
                   card.format === "money"
                     ? money(card.value, data.organisation.currency)
