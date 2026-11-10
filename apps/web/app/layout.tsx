@@ -126,6 +126,12 @@ export default function RootLayout({ children }: Readonly<{ children: ReactNode 
       <head>
         <link rel="icon" href="/brand/crmkaro-mark.png" type="image/png" />
         <link rel="apple-touch-icon" href="/brand/crmkaro-mark.png" />
+        <link
+          rel="preload"
+          as="image"
+          href="/landing/hero-manage-everything.png"
+          fetchPriority="high"
+        />
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}

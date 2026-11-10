@@ -873,6 +873,7 @@ export function LandingPage({
                   width={900}
                   height={560}
                   loading="eager"
+                  fetchPriority="high"
                 />
               </div>
 
@@ -1550,7 +1551,8 @@ export function LandingPage({
                 alt="Quick Collect"
                 width={600}
                 height={300}
-                loading="eager"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>
@@ -1614,7 +1616,8 @@ export function LandingPage({
                 alt="Leads CRM Pipeline"
                 width={600}
                 height={300}
-                loading="eager"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>
@@ -1636,7 +1639,8 @@ export function LandingPage({
                 alt="Batches & Attendance"
                 width={600}
                 height={300}
-                loading="eager"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>
@@ -1658,7 +1662,8 @@ export function LandingPage({
                 alt="Staff Payroll"
                 width={600}
                 height={300}
-                loading="eager"
+                loading="lazy"
+                decoding="async"
               />
             </div>
           </div>

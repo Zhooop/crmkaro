@@ -444,10 +444,11 @@ type ViewState = "initializing" | "unauthenticated" | "needs_setup" | "ready";
 export default function HomePage() {
   const router = useRouter();
   const { orgName: wsOrgName, userName: wsUserName, userRole: wsUserRole, organisations: wsOrgs, navItems: wsNav, updateWorkspace } = useWorkspace();
-  const [data, setData] = useState<Dashboard | null>(null);
+  const cachedData = getCachedDashboardData();
+  const [data, setData] = useState<Dashboard | null>(cachedData);
   const [organisations, setOrganisations] = useState<OrganisationSummary[]>(() => wsOrgs);
   const [error, setError] = useState("");
-  const [viewState, setViewState] = useState<ViewState>("initializing");
+  const [viewState, setViewState] = useState<ViewState>(() => (cachedData ? "ready" : "initializing"));
   const [organisationName, setOrganisationName] = useState("");
   const [selectedBusinessType, setSelectedBusinessType] = useState("");
   const [selectedPresetId, setSelectedPresetId] = useState<string>("academy");
