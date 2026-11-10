@@ -18,6 +18,9 @@ import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
   isSchoolWorkspace,
+  isRealEstateWorkspace,
+  isGymWorkspace,
+  isCoachingWorkspace,
 } from "@/lib/nav";
 
 const INVOICE_ITEM_PRESETS = [
@@ -146,7 +149,7 @@ function generateInvoiceShareText(inv: Invoice, orgName: string, isSchool?: bool
 
   return (
     `*INVOICE / BILL - ${orgName || "CRMKaro"}*\n\n` +
-    `*Customer / Student:* ${inv.person?.displayName || "—"}\n` +
+    `*Billed To:* ${inv.person?.displayName || "—"}\n` +
     `*Invoice No:* ${inv.invoiceNumber}\n` +
     `*Date:* ${inv.issueDate ? new Date(inv.issueDate).toLocaleDateString("en-IN") : "Today"}\n` +
     `*Due Date:* ${inv.dueDate ? new Date(inv.dueDate).toLocaleDateString("en-IN") : "Immediate / On Demand"}\n` +
@@ -248,7 +251,7 @@ function printInvoiceHtml(invoice: Invoice, orgName: string, isSchool?: boolean)
 
         <div class="info-grid">
           <div class="info-block">
-            <h4>Billed To (Customer / Student)</h4>
+            <h4>Billed To</h4>
             <p style="font-weight: 700; font-size: 15px;">${invoice.person?.displayName || "—"}</p>
             ${invoice.person?.primaryPhone ? `<p>Phone: ${invoice.person.primaryPhone}</p>` : ""}
             ${invoice.person?.email ? `<p>Email: ${invoice.person.email}</p>` : ""}
@@ -339,7 +342,11 @@ function FinanceContent() {
   const [search, setSearch] = useState("");
 
   const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
-  const isSchool = isSchoolWorkspace(businessType);
+  const isSchool = isSchoolWorkspace(businessType, orgName);
+  const isRealEstate = isRealEstateWorkspace(businessType, orgName);
+  const isGym = isGymWorkspace(businessType, orgName);
+  const isCoaching = isCoachingWorkspace(businessType, orgName);
+  const isCoachingOrSchool = isSchool || isCoaching;
 
   // Modals & Drawers
   const [createInvoiceOpen, setCreateInvoiceOpen] = useState(false);
@@ -661,7 +668,7 @@ function FinanceContent() {
   async function handleSaveInvoice(e: FormEvent) {
     e.preventDefault();
     if (!formPersonId) {
-      setInvoiceError("Please select a customer / student from the directory.");
+      setInvoiceError(isSchool ? "Please select a student from the directory." : isRealEstate ? "Please select a client from the directory." : "Please select a customer / client from the directory.");
       return;
     }
     const validItems = formItems.filter((it) => it.description.trim() && Number(it.quantity) > 0);
@@ -1028,9 +1035,31 @@ function FinanceContent() {
     : eligiblePeople.slice(0, 40);
 
   const tabItems = [
-    { id: "invoices", label: isSchool ? "Fee Demands & Slips" : "Invoices & Student Fees", count: invoices.length },
-    { id: "payments", label: isSchool ? "Fee Collections & Receipts" : "Fee Collections & Receipts", count: allPayments.length },
-    { id: "expenses", label: isSchool ? "School Expenses & Kharcha" : "Kharcha / Expenses", count: expenses.length },
+    {
+      id: "invoices",
+      label: isSchool
+        ? "Fee Demands & Slips"
+        : isCoaching
+        ? "Invoices & Student Fees"
+        : isRealEstate
+        ? "Client Invoices & Deals"
+        : "Invoices & Billing",
+      count: invoices.length,
+    },
+    {
+      id: "payments",
+      label: isSchool || isCoaching
+        ? "Fee Collections & Receipts"
+        : "Payments & Collections",
+      count: allPayments.length,
+    },
+    {
+      id: "expenses",
+      label: isSchool
+        ? "School Expenses & Kharcha"
+        : "Kharcha / Expenses",
+      count: expenses.length,
+    },
   ];
 
   return (
@@ -1049,13 +1078,32 @@ function FinanceContent() {
       <div className="page-heading">
         <div>
           <p className="eyebrow">
-            <Icon name="finance" size={14} /> {isSchool ? "Student Fees & Accounts" : "Revenue, Fees & Kharcha"}
+            <Icon name="finance" size={14} />{" "}
+            {isSchool
+              ? "Student Fees & Accounts"
+              : isRealEstate
+              ? "Revenue, Invoices & Collections"
+              : isGym
+              ? "Membership Revenue & Kharcha"
+              : "Revenue, Invoices & Kharcha"}
           </p>
-          <h1>{isSchool ? "School Fees & Accounts" : "Finance & Fees Billing"}</h1>
+          <h1>
+            {isSchool
+              ? "School Fees & Accounts"
+              : isRealEstate
+              ? "Invoices & Revenue Ledger"
+              : isGym
+              ? "Membership Fees & Accounts"
+              : "Finance & Invoices"}
+          </h1>
           <p className="subheading">
             {isSchool
               ? "Manage student fee structures, collect term fees, issue receipts, and track school operating kharcha."
-              : "Track student fees, issue client invoices, collect payments, and log company kharcha / operating expenses."}
+              : isRealEstate
+              ? "Generate client invoices, track booking advances, collect payments, and manage operating expenses."
+              : isGym
+              ? "Track member dues, issue invoices, collect fees, and manage gym operating expenses."
+              : "Track client invoices, collect payments, issue receipts, and log operating kharcha / expenses."}
           </p>
         </div>
         <div className="toolbar-actions">
@@ -1070,7 +1118,13 @@ function FinanceContent() {
           <button
             className="btn btn-primary btn-sm"
             onClick={() => openCreateInvoiceModal()}
-            title={isSchool ? "Generate a fee slip or receipt for a student" : "Generate a bill or invoice for your student or customer"}
+            title={
+              isSchool
+                ? "Generate a fee slip or receipt for a student"
+                : isRealEstate
+                ? "Generate a bill or invoice for your client"
+                : "Generate a bill or invoice for your customer"
+            }
           >
             <Icon name="plus" size={15} />
             <span>{isSchool ? "Issue Fee Slip / Demand" : "Create Invoice / Bill"}</span>
@@ -1187,9 +1241,11 @@ function FinanceContent() {
                 <Icon name="finance" size={18} />
               </div>
               <div>
-                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>Customer Invoices & Billing (Income / Inflow)</strong>
+                <strong style={{ fontSize: 13, color: "#1e3a8a" }}>
+                  {isSchool ? "Student Fee Demands & Slips" : isRealEstate ? "Client Invoices & Deals" : "Customer Invoices & Billing"}
+                </strong>
                 <div style={{ fontSize: 12, color: "#2563eb" }}>
-                  Create itemized tax bills for your students or clients, collect payments, and track pending dues.
+                  {isSchool ? "Create itemized fee bills for your students, collect payments, and track pending dues." : "Create itemized invoices for your clients and customers, collect payments, and track pending dues."}
                 </div>
               </div>
             </div>
@@ -1412,7 +1468,9 @@ function FinanceContent() {
               <div>
                 <strong style={{ fontSize: 13, color: "#14532d" }}>Payment Collections & Receipts</strong>
                 <div style={{ fontSize: 12, color: "#16a34a" }}>
-                  Real-time transaction records of all payments collected from students/clients via UPI, Bank Transfer, Cash or Cards.
+                  {isCoachingOrSchool
+                    ? "Real-time transaction records of all payments collected from students and parents via UPI, Bank Transfer, Cash or Cards."
+                    : "Real-time transaction records of all payments collected from clients and customers via UPI, Bank Transfer, Cash or Cards."}
                 </div>
               </div>
             </div>
@@ -1832,7 +1890,7 @@ function FinanceContent() {
             {/* Key Value Details */}
             <div className="key-value-list">
               <div className="key-value-item">
-                <label>Customer / Student</label>
+                <label>{isSchool ? "Student / Parent" : isRealEstate ? "Client / Customer" : "Customer / Client"}</label>
                 <span>{detailInvoice.person?.displayName || "—"}</span>
               </div>
               <div className="key-value-item">
@@ -1974,7 +2032,7 @@ function FinanceContent() {
             {/* Customer Search / Selection */}
             <div className="form-group" style={{ margin: 0, position: "relative" }}>
               <label style={{ fontSize: 12, fontWeight: 750, color: "var(--ink)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span>Billed To (Customer / Student / Client) *</span>
+                <span>{isSchool ? "Billed To (Student) *" : isRealEstate ? "Billed To (Client / Customer) *" : "Billed To (Customer / Client) *"}</span>
                 <span style={{ fontSize: 11, fontWeight: 500, color: "var(--muted)" }}>Live Directory Search</span>
               </label>
               {selectedPerson ? (
@@ -2034,7 +2092,13 @@ function FinanceContent() {
                 <div className="person-combobox-wrap">
                   <input
                     type="text"
-                    placeholder="Type customer name, student ID, phone number or email…"
+                    placeholder={
+                      isSchool
+                        ? "Type student name, roll number, phone or email…"
+                        : isRealEstate
+                        ? "Type client name, phone number or email…"
+                        : "Type customer name, phone number or email…"
+                    }
                     value={personSearchQuery}
                     onChange={(e) => {
                       setPersonSearchQuery(e.target.value);
@@ -2062,8 +2126,8 @@ function FinanceContent() {
                       {displayedPeople.length === 0 ? (
                         <div style={{ padding: 14, fontSize: 12, color: "var(--muted)", textAlign: "center" }}>
                           {personSearchLoading
-                            ? "Searching customer directory..."
-                            : `No customer or student found for "${personSearchQuery}".`}
+                            ? "Searching directory..."
+                            : `No contact found for "${personSearchQuery}".`}
                         </div>
                       ) : (
                         displayedPeople.map((p) => {
@@ -2184,15 +2248,33 @@ function FinanceContent() {
             {/* Quick Presets Bar */}
             <div className="invoice-presets-bar" style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", padding: "8px 10px", background: "#f8fafc", borderRadius: 8, border: "1px solid var(--line)" }}>
               <span style={{ fontSize: 11, fontWeight: 750, color: "#64748b" }}>Common Presets:</span>
-              {[
-                "Full Course Fees",
-                "Admission / Reg. Fee",
-                "Books & Materials Kit",
-                "Examination Fee",
-                "Consulting Retainer",
-                "Software / AMC",
-                "Product Sale",
-              ].map((name) => (
+              {(isRealEstate
+                ? [
+                    "Booking / Token Advance",
+                    "Brokerage / Commission",
+                    "Consulting Retainer",
+                    "Property Valuation / Legal Fee",
+                    "Documentation & Registration",
+                    "Service Invoice",
+                  ]
+                : isCoachingOrSchool
+                ? [
+                    "Full Course Fees",
+                    "Admission / Reg. Fee",
+                    "Books & Materials Kit",
+                    "Examination Fee",
+                    "Monthly Tuition Fee",
+                    "Transport Fee",
+                  ]
+                : [
+                    "Consulting Retainer",
+                    "Professional Services",
+                    "Monthly Retainer / Service",
+                    "Software / AMC",
+                    "Product Sale",
+                    "Advance Payment",
+                  ]
+              ).map((name) => (
                 <button
                   key={name}
                   type="button"
@@ -2216,76 +2298,78 @@ function FinanceContent() {
             </div>
 
             {/* Month-Wise Student Fees Selector Bar */}
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 12px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
-                <span style={{ fontSize: 11, fontWeight: 750, color: "#166534" }}>
-                  Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
-                </span>
-                <span style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
-                  Click month to add fee item row
-                </span>
-              </div>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {[
-                  "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
-                ].map((m) => {
-                  const fullMonth = {
-                    Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
-                    Sep: "September", Oct: "October", Nov: "November", Dec: "December",
-                    Jan: "January", Feb: "February", Mar: "March"
-                  }[m] || m;
-                  const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
-                  return (
+            {isCoachingOrSchool && (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, padding: "8px 12px", background: "#f0fdf4", borderRadius: 8, border: "1px solid #bbf7d0" }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 6 }}>
+                  <span style={{ fontSize: 11, fontWeight: 750, color: "#166534" }}>
+                    Select Month-Wise Student Fees (Session {new Date().getFullYear()}–{new Date().getFullYear() + 1}):
+                  </span>
+                  <span style={{ fontSize: 10.5, color: "#15803d", fontWeight: 600 }}>
+                    Click month to add fee item row
+                  </span>
+                </div>
+                <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                  {[
+                    "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec", "Jan", "Feb", "Mar"
+                  ].map((m) => {
+                    const fullMonth = {
+                      Apr: "April", May: "May", Jun: "June", Jul: "July", Aug: "August",
+                      Sep: "September", Oct: "October", Nov: "November", Dec: "December",
+                      Jan: "January", Feb: "February", Mar: "March"
+                    }[m] || m;
+                    const year = ["Jan", "Feb", "Mar"].includes(m) ? new Date().getFullYear() + 1 : new Date().getFullYear();
+                    return (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => applyMonthFee(fullMonth, year)}
+                        style={{
+                          padding: "3px 8px",
+                          borderRadius: 6,
+                          border: "1px solid #86efac",
+                          background: "#ffffff",
+                          color: "#166534",
+                          fontSize: 11,
+                          fontWeight: 700,
+                          cursor: "pointer",
+                          boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+                        }}
+                        title={`Add fee bill for ${fullMonth} ${year}`}
+                      >
+                        + {m} {year}
+                      </button>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
+                  {[
+                    { label: "Q1 (Apr–Jun)", name: "Q1 (Apr–Jun)" },
+                    { label: "Q2 (Jul–Sep)", name: "Q2 (Jul–Sep)" },
+                    { label: "Q3 (Oct–Dec)", name: "Q3 (Oct–Dec)" },
+                    { label: "Q4 (Jan–Mar)", name: "Q4 (Jan–Mar)" },
+                    { label: "Full Session 2026-27 (Annual)", name: "Annual Full Session 2026–27" },
+                  ].map((q) => (
                     <button
-                      key={m}
+                      key={q.label}
                       type="button"
-                      onClick={() => applyMonthFee(fullMonth, year)}
+                      onClick={() => applyQuarterFee(q.name)}
                       style={{
-                        padding: "3px 8px",
-                        borderRadius: 6,
+                        padding: "2px 7px",
+                        borderRadius: 5,
                         border: "1px solid #86efac",
-                        background: "#ffffff",
+                        background: "#f0fdf4",
                         color: "#166534",
-                        fontSize: 11,
-                        fontWeight: 700,
+                        fontSize: 10.5,
+                        fontWeight: 650,
                         cursor: "pointer",
-                        boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
                       }}
-                      title={`Add fee bill for ${fullMonth} ${year}`}
                     >
-                      + {m} {year}
+                      + {q.label}
                     </button>
-                  );
-                })}
+                  ))}
+                </div>
               </div>
-              <div style={{ display: "flex", gap: 6, marginTop: 2, flexWrap: "wrap" }}>
-                {[
-                  { label: "Q1 (Apr–Jun)", name: "Q1 (Apr–Jun)" },
-                  { label: "Q2 (Jul–Sep)", name: "Q2 (Jul–Sep)" },
-                  { label: "Q3 (Oct–Dec)", name: "Q3 (Oct–Dec)" },
-                  { label: "Q4 (Jan–Mar)", name: "Q4 (Jan–Mar)" },
-                  { label: "Full Session 2026-27 (Annual)", name: "Annual Full Session 2026–27" },
-                ].map((q) => (
-                  <button
-                    key={q.label}
-                    type="button"
-                    onClick={() => applyQuarterFee(q.name)}
-                    style={{
-                      padding: "2px 7px",
-                      borderRadius: 5,
-                      border: "1px solid #86efac",
-                      background: "#f0fdf4",
-                      color: "#166534",
-                      fontSize: 10.5,
-                      fontWeight: 650,
-                      cursor: "pointer",
-                    }}
-                  >
-                    + {q.label}
-                  </button>
-                ))}
-              </div>
-            </div>
+            )}
 
             <datalist id="invoice-item-presets">
               {INVOICE_ITEM_PRESETS.map((preset) => (
@@ -2313,7 +2397,13 @@ function FinanceContent() {
                     <input
                       type="text"
                       list="invoice-item-presets"
-                      placeholder="e.g. Tuition Fees, Salary, Consulting, Product SKU…"
+                      placeholder={
+                        isRealEstate
+                          ? "e.g. Booking Advance, Brokerage, Consulting Retainer…"
+                          : isCoachingOrSchool
+                          ? "e.g. Tuition Fees, Admission Fee, Study Material…"
+                          : "e.g. Consulting, Service Retainer, Product SKU…"
+                      }
                       value={item.description}
                       onChange={(e) => {
                         const updated = [...formItems];
@@ -2797,10 +2887,10 @@ function FinanceContent() {
               <div>
                 <h2 style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 18, margin: 0 }}>
                   <Icon name="whatsapp" size={20} />
-                  <span>{isSchool ? "Share Fee Receipt / Slip" : "Share Fee Bill / Receipt"}</span>
+                  <span>{isSchool ? "Share Fee Receipt / Slip" : isRealEstate ? "Share Invoice & Payment Link" : "Share Bill / Receipt"}</span>
                 </h2>
                 <p style={{ margin: "4px 0 0", fontSize: 12, color: "var(--muted)" }}>
-                  Share directly with {shareInvoice.person?.displayName || (isSchool ? "Student / Parent" : "Student / Customer")} on WhatsApp or copy receipt text
+                  Share directly with {shareInvoice.person?.displayName || (isSchool ? "Student / Parent" : isRealEstate ? "Client" : "Customer / Client")} on WhatsApp or copy receipt text
                 </p>
               </div>
               <button

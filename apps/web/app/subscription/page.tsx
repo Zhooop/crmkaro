@@ -46,13 +46,13 @@ const DEFAULT_LAUNCH_PLAN: SubscriptionPlan = {
   badge: "Special Launch Offer · 76% OFF",
   isPopular: true,
   features: [
-    "Unlimited Students, Batches & Client Management",
+    "Unlimited Clients, Contacts & Member Profiles",
     "Instant WhatsApp Receipts & Automated Due Reminders",
-    "1-Click Attendance Tracker & Parent Alert Automation",
+    "Attendance Tracking & Automated WhatsApp Alerts",
     "Staff Salary, Advance Tracking & Payroll Payslips",
     "Visual Inquiries Pipeline & Lead CRM with Call Reminders",
     "GST / Non-GST Invoicing & 1-Click Razorpay UPI Pay Links",
-    "Mobile Web App Access for Staff, Trainers & Admins",
+    "Mobile Web App Access for Staff, Teams & Admins",
     "Automated Monthly UPI & Recurring Card Renewal",
     "Priority WhatsApp Onboarding & Excel Data Migration",
   ],
@@ -406,7 +406,7 @@ function SubscriptionContent() {
                 Launch Offer — All-in-One Business OS
               </h2>
               <p style={{ fontSize: 12, color: "var(--muted, #64748b)", margin: "3px 0 0" }}>
-                Full access to student batches, daily attendance, staff payroll, sales CRM, and 1-click invoicing.
+                Full access to CRM leads, client directory, staff payroll, billing, and 1-click invoicing.
               </p>
             </div>
 
@@ -429,9 +429,9 @@ function SubscriptionContent() {
             </h4>
             <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: "8px 16px" }}>
               {[
-                "Unlimited Students, Members & Customer Profiles",
+                "Unlimited Clients, Contacts & Member Profiles",
                 "1-Click WhatsApp PDF Receipts & Invoices",
-                "Daily Batch Attendance & Parent WhatsApp Alerts",
+                "Attendance Tracking & Automated WhatsApp Alerts",
                 "Staff Salary Structures, Advance Tracking & Payslips",
                 "GST / Non-GST Invoicing & Daily Expense Tracker",
                 "Sales CRM Visual Pipelines & Follow-up Reminders",
@@ -469,7 +469,7 @@ function SubscriptionContent() {
                   Workspace Subscription is Active:
                 </strong>
                 <span style={{ fontSize: 11.5, color: "#047857" }}>
-                  All business modules, student fee collectors, and CRM tools are fully unlocked.
+                  All business modules, billing tools, and CRM pipelines are fully unlocked.
                 </span>
               </div>
             </div>

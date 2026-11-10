@@ -16,6 +16,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
+  isRealEstateWorkspace,
 } from "@/lib/nav";
 import { LeadCaptureModal } from "./LeadCaptureModal";
 
@@ -124,6 +125,8 @@ function CrmContent() {
     );
   })();
 
+  const isRealEstate = isRealEstateWorkspace(businessType, orgName);
+
   // Modals & Drawers
   const [createOpen, setCreateOpen] = useState(false);
   const [leadCaptureOpen, setLeadCaptureOpen] = useState(false);
@@ -166,19 +169,19 @@ function CrmContent() {
     if (type === "TODAY_5PM") {
       target.setHours(17, 0, 0, 0);
       if (target <= now) target.setDate(target.getDate() + 1);
-      note = "Call & Fee Discussion";
+      note = isCoachingOrSchool ? "Call & Fee Discussion" : "Call & Deal Discussion";
     } else if (type === "TOMORROW_11AM") {
       target.setDate(target.getDate() + 1);
       target.setHours(11, 0, 0, 0);
-      note = "WhatsApp & Course Details";
+      note = isCoachingOrSchool ? "WhatsApp & Course Details" : "WhatsApp & Property / Deal Brochure";
     } else if (type === "IN_3_DAYS") {
       target.setDate(target.getDate() + 3);
       target.setHours(12, 0, 0, 0);
-      note = "Check Admission Decision";
+      note = isCoachingOrSchool ? "Check Admission Decision" : "Site Visit / Proposal Follow-up";
     } else if (type === "NEXT_WEEK") {
       target.setDate(target.getDate() + 7);
       target.setHours(15, 0, 0, 0);
-      note = "Demo Class Feedback & Closing";
+      note = isCoachingOrSchool ? "Demo Class Feedback & Closing" : "Final Negotiation & Deal Closing";
     }
 
     const year = target.getFullYear();
@@ -1362,27 +1365,79 @@ function CrmContent() {
               <span style={{ fontSize: 11, color: "#94a3b8" }}>Auto-fill common deal types</span>
             </div>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <button
-                type="button"
-                onClick={() => applyLeadTemplate("Standard Business Inquiry", "15000", "Website")}
-                style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-              >
-                💬 General Inquiry (₹15k)
-              </button>
-              <button
-                type="button"
-                onClick={() => applyLeadTemplate("Hot Deal / High Intent", "50000", "Phone Call")}
-                style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-              >
-                🔥 Hot Deal (₹50k)
-              </button>
-              <button
-                type="button"
-                onClick={() => applyLeadTemplate("Enterprise Retainer / Contract", "150000", "Referral")}
-                style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
-              >
-                💼 Enterprise (₹1.5L)
-              </button>
+              {isRealEstate ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("2 BHK / 3 BHK Apartment Buyer", "7500000", "Website")}
+                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    🏡 Buyer Inquiry (₹75L)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Commercial Office / Retail Space", "15000000", "Phone Call")}
+                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    🏢 Commercial Deal (₹1.5Cr)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Plot / Land Investment", "5000000", "Referral")}
+                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    📍 Plot / Land (₹50L)
+                  </button>
+                </>
+              ) : isCoachingOrSchool ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Full Course Admission Lead", "25000", "Walk-in")}
+                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    🎓 Full Course (₹25k)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Crash Course Inquiry", "8000", "Social Media")}
+                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    📖 Crash Course (₹8k)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Consulting Retainer Lead", "50000", "Referral")}
+                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    💼 Consulting (₹50k)
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Standard Business Inquiry", "15000", "Website")}
+                    style={{ padding: "6px 12px", background: "#eff6ff", border: "1px solid #bfdbfe", color: "#1d4ed8", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    💬 General Inquiry (₹15k)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Hot Deal / High Intent", "50000", "Phone Call")}
+                    style={{ padding: "6px 12px", background: "#f0fdf4", border: "1px solid #bbf7d0", color: "#15803d", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    🔥 Hot Deal (₹50k)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => applyLeadTemplate("Enterprise Retainer / Contract", "150000", "Referral")}
+                    style={{ padding: "6px 12px", background: "#faf5ff", border: "1px solid #e9d5ff", color: "#7e22ce", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer", transition: "all 0.15s" }}
+                  >
+                    💼 Enterprise (₹1.5L)
+                  </button>
+                </>
+              )}
             </div>
           </div>
 
@@ -1391,7 +1446,7 @@ function CrmContent() {
               <label>Lead / Client Name *</label>
               <input
                 type="text"
-                placeholder="e.g. Vikram Verma or Apex Corp"
+                placeholder={isRealEstate ? "e.g. Ramesh Sharma (3BHK Buyer)" : isCoachingOrSchool ? "e.g. Vikram Verma (Class 10)" : "e.g. Vikram Verma or Apex Corp"}
                 value={formName}
                 onChange={(e) => setFormName(e.target.value)}
                 required
@@ -1420,13 +1475,13 @@ function CrmContent() {
               <label>Estimated Value (₹)</label>
               <input
                 type="number"
-                placeholder="e.g. 25000"
+                placeholder={isRealEstate ? "e.g. 7500000" : "e.g. 25000"}
                 value={formValue}
                 onChange={(e) => setFormValue(e.target.value)}
               />
               {/* Quick Amount Chips */}
               <div style={{ display: "flex", gap: 6, marginTop: 8, flexWrap: "wrap" }}>
-                {[5000, 10000, 25000, 50000, 100000].map((amt) => {
+                {(isRealEstate ? [500000, 2500000, 5000000, 7500000, 15000000] : [5000, 10000, 25000, 50000, 100000]).map((amt) => {
                   const isSelected = formValue === String(amt);
                   return (
                     <button
@@ -1445,7 +1500,11 @@ function CrmContent() {
                         transition: "all 0.15s ease",
                       }}
                     >
-                      ₹{amt.toLocaleString("en-IN")}
+                      {isRealEstate && amt >= 10000000
+                        ? `₹${amt / 10000000}Cr`
+                        : isRealEstate && amt >= 100000
+                        ? `₹${amt / 100000}L`
+                        : `₹${amt.toLocaleString("en-IN")}`}
                     </button>
                   );
                 })}
@@ -1707,10 +1766,16 @@ function CrmContent() {
               style={{ width: "100%", height: 40 }}
             >
               <option value="Budget / Price too high">💰 Budget / Price too high</option>
-              <option value="Chose another competitor">🏢 Chose another institute / competitor</option>
-              <option value="Batch timing mismatch">⏰ Batch timing not suitable</option>
+              <option value="Chose another competitor">
+                {isCoachingOrSchool ? "🏢 Chose another institute / competitor" : "🏢 Chose another competitor / agency"}
+              </option>
+              {isCoachingOrSchool ? (
+                <option value="Batch timing mismatch">⏰ Batch timing not suitable</option>
+              ) : (
+                <option value="Requirement / Plan deferred">⏰ Requirement deferred / on hold</option>
+              )}
               <option value="Did not respond to calls">📵 Did not respond to follow-up calls</option>
-              <option value="Location too far">📍 Location too far</option>
+              <option value="Location too far">📍 Location / Property mismatch</option>
               <option value="Not interested">❌ Not interested</option>
             </select>
 

@@ -978,7 +978,7 @@ export default function SettingsPage() {
                 </span>
               </div>
               <p style={{ fontSize: 13, color: "var(--muted)", margin: 0, maxWidth: 620 }}>
-                Configure where student fee payments and customer invoices should be deposited. Supports <strong>Instant Direct UPI QR (0% platform charge)</strong> and <strong>Automated Next-Day Bank Settlement (T+1)</strong>.
+                Configure where client payments and customer invoices should be deposited. Supports <strong>Instant Direct UPI QR (0% platform charge)</strong> and <strong>Automated Next-Day Bank Settlement (T+1)</strong>.
               </p>
             </div>
           </div>
@@ -1017,7 +1017,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Bank Account Form */}
-          <SectionCard title="Business Bank Account Information" subtitle="Direct beneficiary details for fee settlements and invoice collections">
+          <SectionCard title="Business Bank Account Information" subtitle="Direct beneficiary details for payment settlements and invoice collections">
             <form onSubmit={handleSavePayouts}>
               <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: 16, marginBottom: 20 }}>
                 <div>
@@ -1103,7 +1103,7 @@ export default function SettingsPage() {
                     style={{ width: "100%", padding: "9px 12px", borderRadius: 8, border: "1px solid #cbd5e1", fontSize: 13.5 }}
                   />
                   <span style={{ fontSize: 11.5, color: "var(--muted)", marginTop: 3, display: "block" }}>
-                    Generated QR code on public fee links will route 100% money directly to this UPI ID.
+                    Generated QR code on public payment links will route 100% money directly to this UPI ID.
                   </span>
                 </div>
 
@@ -1168,7 +1168,7 @@ export default function SettingsPage() {
                         CRMKaro Auto-Route (Recommended)
                       </strong>
                       <p style={{ fontSize: 12, color: "var(--muted)", margin: "3px 0 0", lineHeight: 1.4 }}>
-                        Zero technical setup. Online payments made by students are automatically routed & settled into your bank account (T+1).
+                        Zero technical setup. Online payments made by clients and customers are automatically routed & settled into your bank account (T+1).
                       </p>
                     </div>
                   </label>
@@ -1290,7 +1290,7 @@ export default function SettingsPage() {
                           : r.name === "Admin"
                             ? "Full operational and read/write capabilities across all modules."
                             : r.name === "Manager"
-                              ? "Can manage customer/student records and team operations."
+                              ? "Can manage client/customer records and team operations."
                               : "Standard operational permissions."}
                       </td>
                     </tr>
@@ -1314,7 +1314,7 @@ export default function SettingsPage() {
                       : r.name === "Admin"
                         ? "Full operational and read/write capabilities across all modules."
                         : r.name === "Manager"
-                          ? "Can manage customer/student records and team operations."
+                          ? "Can manage client/customer records and team operations."
                           : "Standard operational permissions."}
                   </div>
                 </div>

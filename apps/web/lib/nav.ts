@@ -13,13 +13,13 @@ import React, {
 } from "react";
 
 export const SERVICE_NAV_MAP: Record<string, NavItem> = {
-  people: { label: "Members", icon: "people", href: "/people" },
+  people: { label: "Clients & Directory", icon: "people", href: "/people" },
   groups: { label: "Groups", icon: "activity", href: "/groups" },
   "quick-collect": { label: "Quick Collect", icon: "zap", href: "/quick-collect" },
   transactions: { label: "Transactions", icon: "transactions", href: "/transactions" },
-  students: { label: "Students & Attendance", icon: "student", href: "/students" },
+  students: { label: "Client Bookings", icon: "student", href: "/students" },
   crm: { label: "Leads & CRM", icon: "crm", href: "/crm" },
-  finance: { label: "Finance & Fees", icon: "finance", href: "/finance" },
+  finance: { label: "Finance & Invoices", icon: "finance", href: "/finance" },
   payroll: { label: "Staff & Salary", icon: "payroll", href: "/payroll" },
   inventory: { label: "Inventory & Stock", icon: "inventory", href: "/inventory" },
 };
@@ -28,10 +28,10 @@ export const ALL_AVAILABLE_SERVICES = [
   {
     code: "people",
     name: "People & Directory",
-    label: "Members",
+    label: "Clients & Directory",
     icon: "people" as const,
-    detail: "Centralized directory for customers, students, members, and employees.",
-    desc: "Centralized directory for customers, students, members, and employees.",
+    detail: "Centralized directory for customers, clients, members, and employees.",
+    desc: "Centralized directory for customers, clients, members, and employees.",
   },
   {
     code: "groups",
@@ -75,11 +75,11 @@ export const ALL_AVAILABLE_SERVICES = [
   },
   {
     code: "finance",
-    name: "Finance & Fees",
-    label: "Finance & Fees",
+    name: "Finance & Invoices",
+    label: "Finance & Invoices",
     icon: "finance" as const,
-    detail: "Student fees, invoices, payments receipts, and expense tracking.",
-    desc: "Student fees, invoices, payments receipts, and expense tracking.",
+    detail: "Client invoices, payments receipts, and expense tracking.",
+    desc: "Client invoices, payments receipts, and expense tracking.",
   },
   {
     code: "payroll",
@@ -287,11 +287,20 @@ export function isServicesWorkspace(businessType?: string, orgName?: string): bo
     bt.includes("clinic") ||
     bt.includes("salon") ||
     bt.includes("spa") ||
+    bt.includes("sales") ||
+    bt.includes("marketing") ||
+    bt.includes("loan") ||
+    bt.includes("finance") ||
+    bt.includes("insurance") ||
+    bt.includes("b2b") ||
+    bt.includes("tech") ||
     on.includes("agency") ||
     on.includes("consulting") ||
     on.includes("clinic") ||
     on.includes("salon") ||
-    on.includes("spa")
+    on.includes("spa") ||
+    on.includes("sales") ||
+    on.includes("marketing")
   );
 }
 

@@ -230,7 +230,7 @@ function QuickCollectContent() {
       return;
     }
 
-    const feeNotes = notes.trim() || "Quick Collect Fee";
+    const feeNotes = notes.trim() || "Quick Payment";
     setSubmitting(true);
     setErrorMessage("");
 
@@ -502,7 +502,7 @@ function QuickCollectContent() {
                     const payUrl = item.invoiceId && typeof window !== "undefined"
                       ? `${window.location.origin}/pay/${item.invoiceId}`
                       : "";
-                    const whatsappMsg = `Dear ${item.name},\nYour fee payment of ${amountFormatted} for "${item.notes}" is requested. Reference: ${item.invoiceNumber || "INV"}.\n\nPay online via UPI, Cards, or NetBanking:\n${payUrl}\n\nThank you,\n${orgName}`;
+                    const whatsappMsg = `Dear ${item.name},\nYour payment of ${amountFormatted} for "${item.notes}" is requested. Reference: ${item.invoiceNumber || "INV"}.\n\nPay online via UPI, Cards, or NetBanking:\n${payUrl}\n\nThank you,\n${orgName}`;
                     const whatsappUrl = item.phone
                       ? `https://wa.me/${item.phone.replace(/\D/g, "")}?text=${encodeURIComponent(whatsappMsg)}`
                       : null;
@@ -639,12 +639,12 @@ function QuickCollectContent() {
               Payment Details
             </h3>
             <p style={{ fontSize: 12.5, color: "var(--muted, #64748b)", margin: "3px 0 0" }}>
-              Specify the fee amount and description for each selected payer.
+              Specify the amount and description for each selected payer.
             </p>
           </div>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1.5fr", gap: 16 }}>
-            {/* Fee Amount */}
+            {/* Payment Amount */}
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5, color: "var(--ink)" }}>
                 Amount (INR) <span style={{ color: "#ef4444" }}>*</span>
@@ -703,17 +703,17 @@ function QuickCollectContent() {
             {/* Notes */}
             <div className="form-group" style={{ margin: 0 }}>
               <label style={{ fontSize: 12, fontWeight: 700, display: "block", marginBottom: 5, color: "var(--ink)" }}>
-                Fee Description / Purpose
+                Payment Description / Purpose
               </label>
               <input
                 type="text"
-                placeholder="e.g. Monthly Tuition Fee / Registration"
+                placeholder="e.g. Booking Advance / Service Invoice / Monthly Dues"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 style={{ width: "100%", padding: "8px 12px", borderRadius: 8, border: "1px solid var(--line, #cbd5e1)", fontSize: 13 }}
               />
               <small style={{ color: "var(--muted)", fontSize: 11, display: "block", marginTop: 4 }}>
-                Defaults to &quot;Quick Collect Fee&quot; if left empty
+                Defaults to &quot;Quick Payment&quot; if left empty
               </small>
             </div>
           </div>

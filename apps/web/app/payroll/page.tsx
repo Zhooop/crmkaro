@@ -17,6 +17,10 @@ import { useRouter } from "next/navigation";
 import { authFetch, getApiUrl } from "@/lib/api";
 import {
   useWorkspace,
+  isRealEstateWorkspace,
+  isGymWorkspace,
+  isSchoolWorkspace,
+  isCoachingWorkspace,
 } from "@/lib/nav";
 
 type SalaryStructure = {
@@ -110,7 +114,15 @@ export default function PayrollPage() {
     setTimeout(() => setToast(null), 4500);
   }
 
-  const { orgName, userName, userRole, organisations, navItems, updateWorkspace } = useWorkspace();
+  const { orgName, userName, userRole, organisations, navItems, updateWorkspace, businessType } = useWorkspace();
+  const isSchool = isSchoolWorkspace(businessType, orgName);
+  const isCoaching = isCoachingWorkspace(businessType, orgName);
+  const isRealEstate = isRealEstateWorkspace(businessType, orgName);
+  const isGym = isGymWorkspace(businessType, orgName);
+  const isCoachingOrSchool = isSchool || isCoaching;
+
+  const defaultDept = isRealEstate ? "Sales & Marketing" : isGym ? "Fitness & Training" : isCoachingOrSchool ? "Teaching / Faculty" : "Operations & Sales";
+  const defaultDesig = isRealEstate ? "Sales Manager / Agent" : isGym ? "Fitness Trainer / Coach" : isCoachingOrSchool ? "Teacher / Faculty" : "Staff Member";
 
   // Modals & Drawers
   const [addEmployeeOpen, setAddEmployeeOpen] = useState(false);
@@ -127,8 +139,8 @@ export default function PayrollPage() {
   const [formStaffPhone, setFormStaffPhone] = useState("");
   const [formPersonId, setFormPersonId] = useState("");
   const [formCode, setFormCode] = useState("");
-  const [formDept, setFormDept] = useState("Teaching / Faculty");
-  const [formDesig, setFormDesig] = useState("Teacher / Faculty");
+  const [formDept, setFormDept] = useState(defaultDept);
+  const [formDesig, setFormDesig] = useState(defaultDesig);
   const [formJoiningDate, setFormJoiningDate] = useState(new Date().toISOString().slice(0, 10));
   const [formStaffBasicPay, setFormStaffBasicPay] = useState("25000");
   const [formStaffHra, setFormStaffHra] = useState("0");
@@ -276,8 +288,8 @@ export default function PayrollPage() {
     setFormStaffEmail("");
     setFormStaffPhone("");
     setFormPersonId("");
-    setFormDept("Teaching / Faculty");
-    setFormDesig("Teacher / Faculty");
+    setFormDept(defaultDept);
+    setFormDesig(defaultDesig);
     setFormJoiningDate(new Date().toISOString().slice(0, 10));
     setFormStaffBasicPay("25000");
     setFormStaffHra("0");
@@ -1211,7 +1223,7 @@ export default function PayrollPage() {
               <label>Department</label>
               <input
                 type="text"
-                placeholder="e.g. Teaching / Faculty, Operations"
+                placeholder={isCoachingOrSchool ? "e.g. Teaching / Faculty, Operations" : isRealEstate ? "e.g. Sales, Marketing, Operations" : "e.g. Operations, Marketing"}
                 value={formDept}
                 onChange={(e) => setFormDept(e.target.value)}
               />
@@ -1220,7 +1232,7 @@ export default function PayrollPage() {
               <label>Designation / Role</label>
               <input
                 type="text"
-                placeholder="e.g. Teacher / Faculty, Counselor"
+                placeholder={isCoachingOrSchool ? "e.g. Teacher / Faculty, Counselor" : isRealEstate ? "e.g. Sales Manager, Property Consultant" : "e.g. Operations Manager, Staff"}
                 value={formDesig}
                 onChange={(e) => setFormDesig(e.target.value)}
               />
@@ -1243,7 +1255,7 @@ export default function PayrollPage() {
               {[
                 { label: "Junior / Intern (₹15k)", basic: "15000", hra: "0", allw: "0", ded: "0" },
                 { label: "Associate (₹25k)", basic: "20000", hra: "3000", allw: "2000", ded: "0" },
-                { label: "Faculty / Senior (₹45k)", basic: "35000", hra: "6000", allw: "4000", ded: "0" },
+                { label: isCoachingOrSchool ? "Faculty / Senior (₹45k)" : isRealEstate ? "Senior Agent / Exec (₹45k)" : "Senior Executive (₹45k)", basic: "35000", hra: "6000", allw: "4000", ded: "0" },
                 { label: "Lead / Manager (₹65k)", basic: "50000", hra: "10000", allw: "5000", ded: "0" },
               ].map((pkg) => (
                 <button
@@ -1368,7 +1380,7 @@ export default function PayrollPage() {
               {[
                 { label: "Junior / Intern (₹15k)", basic: "10000", hra: "3000", allowances: "2000", ded: "0" },
                 { label: "Associate / Staff (₹25k)", basic: "16000", hra: "6000", allowances: "4000", ded: "1000" },
-                { label: "Senior / Faculty (₹45k)", basic: "28000", hra: "11000", allowances: "8000", ded: "2000" },
+                { label: isCoachingOrSchool ? "Senior / Faculty (₹45k)" : isRealEstate ? "Senior Agent / Exec (₹45k)" : "Senior Executive (₹45k)", basic: "28000", hra: "11000", allowances: "8000", ded: "2000" },
                 { label: "Manager / Lead (₹65k)", basic: "40000", hra: "16000", allowances: "12000", ded: "3000" },
               ].map((pkg) => (
                 <button
