@@ -884,107 +884,118 @@ export default function PayrollPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {runs.map((run) => (
-                      <tr
-                        key={run.id}
-                        className="clickable"
-                        onClick={() => setDetailRun(run)}
-                      >
-                        <td>
-                          <strong>
-                            {MONTH_NAMES[run.month - 1]} {run.year}
-                          </strong>
-                        </td>
-                        <td>
-                          <Badge
-                            tone={
-                              run.status === "PAID"
-                                ? "green"
-                                : run.status === "APPROVED"
-                                  ? "blue"
-                                  : "amber"
-                            }
-                          >
-                            {run.status}
-                          </Badge>
-                        </td>
-                        <td>{run.items?.length || 0}</td>
-                        <td>{formatMoney(run.totalGrossMinor)}</td>
-                        <td>{formatMoney(run.totalDeductionsMinor)}</td>
-                        <td>
-                          <strong>{formatMoney(run.totalNetMinor)}</strong>
-                        </td>
-                        <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
-                          <button
-                            className="btn btn-secondary btn-sm"
-                            onClick={() => setDetailRun(run)}
-                          >
-                            <Icon name="eye" size={14} />
-                            <span>View Run</span>
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
+                    {runs.map((run) => {
+                      const runGross = run.totalGrossMinor ?? run.items?.reduce((s, it) => s + (it.grossMinor || 0), 0) ?? 0;
+                      const runDeductions = run.totalDeductionsMinor ?? run.items?.reduce((s, it) => s + (it.deductionsMinor || 0), 0) ?? 0;
+                      const runNet = run.totalNetMinor ?? run.items?.reduce((s, it) => s + (it.netMinor || 0), 0) ?? 0;
+
+                      return (
+                        <tr
+                          key={run.id}
+                          className="clickable"
+                          onClick={() => setDetailRun(run)}
+                        >
+                          <td>
+                            <strong>
+                              {MONTH_NAMES[run.month - 1]} {run.year}
+                            </strong>
+                          </td>
+                          <td>
+                            <Badge
+                              tone={
+                                run.status === "PAID"
+                                  ? "green"
+                                  : run.status === "APPROVED"
+                                    ? "blue"
+                                    : "amber"
+                              }
+                            >
+                              {run.status}
+                            </Badge>
+                          </td>
+                          <td>{run.items?.length || (run as any)._count?.items || 0}</td>
+                          <td>{formatMoney(runGross)}</td>
+                          <td>{formatMoney(runDeductions)}</td>
+                          <td>
+                            <strong>{formatMoney(runNet)}</strong>
+                          </td>
+                          <td style={{ textAlign: "right" }} onClick={(e) => e.stopPropagation()}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              onClick={() => setDetailRun(run)}
+                            >
+                              <Icon name="eye" size={14} />
+                              <span>View Run</span>
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
 
               {/* Mobile View: Payroll Run Cards */}
               <div className="mobile-cards-view">
-                {runs.map((run) => (
-                  <div
-                    key={run.id}
-                    className="mobile-record-card"
-                    onClick={() => setDetailRun(run)}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <div className="mobile-card-header">
-                      <div>
-                        <div className="mobile-card-name">
-                          {MONTH_NAMES[run.month - 1]} {run.year}
-                        </div>
-                        <div className="mobile-card-subtext">
-                          {run.items?.length || 0} Employees
-                        </div>
-                      </div>
-                      <Badge
-                        tone={
-                          run.status === "PAID"
-                            ? "green"
-                            : run.status === "APPROVED"
-                              ? "blue"
-                              : "amber"
-                        }
-                      >
-                        {run.status}
-                      </Badge>
-                    </div>
+                {runs.map((run) => {
+                  const runGross = run.totalGrossMinor ?? run.items?.reduce((s, it) => s + (it.grossMinor || 0), 0) ?? 0;
+                  const runNet = run.totalNetMinor ?? run.items?.reduce((s, it) => s + (it.netMinor || 0), 0) ?? 0;
 
-                    <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
-                      <div>
-                        <div className="mobile-card-label">Total Gross</div>
-                        <div className="mobile-card-value">{formatMoney(run.totalGrossMinor)}</div>
+                  return (
+                    <div
+                      key={run.id}
+                      className="mobile-record-card"
+                      onClick={() => setDetailRun(run)}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <div className="mobile-card-header">
+                        <div>
+                          <div className="mobile-card-name">
+                            {MONTH_NAMES[run.month - 1]} {run.year}
+                          </div>
+                          <div className="mobile-card-subtext">
+                            {run.items?.length || (run as any)._count?.items || 0} Employees
+                          </div>
+                        </div>
+                        <Badge
+                          tone={
+                            run.status === "PAID"
+                              ? "green"
+                              : run.status === "APPROVED"
+                                ? "blue"
+                                : "amber"
+                          }
+                        >
+                          {run.status}
+                        </Badge>
                       </div>
-                      <div style={{ textAlign: "right" }}>
-                        <div className="mobile-card-label">Net Disbursed</div>
-                        <div className="mobile-card-value" style={{ fontWeight: 750, color: "#16a34a", fontSize: 13.5 }}>
-                          {formatMoney(run.totalNetMinor)}
+
+                      <div className="mobile-card-meta-row" style={{ marginTop: 8 }}>
+                        <div>
+                          <div className="mobile-card-label">Total Gross</div>
+                          <div className="mobile-card-value">{formatMoney(runGross)}</div>
+                        </div>
+                        <div style={{ textAlign: "right" }}>
+                          <div className="mobile-card-label">Net Disbursed</div>
+                          <div className="mobile-card-value" style={{ fontWeight: 750, color: "#16a34a", fontSize: 13.5 }}>
+                            {formatMoney(runNet)}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
-                      <button
-                        className="btn btn-secondary btn-sm"
-                        onClick={() => setDetailRun(run)}
-                        style={{ padding: "6px 14px", borderRadius: 7 }}
-                      >
-                        <Icon name="eye" size={13} />
-                        <span>View Run Details</span>
-                      </button>
+                      <div className="mobile-card-footer" style={{ marginTop: 10, display: "flex", justifyContent: "flex-end" }} onClick={(e) => e.stopPropagation()}>
+                        <button
+                          className="btn btn-secondary btn-sm"
+                          onClick={() => setDetailRun(run)}
+                          style={{ padding: "6px 14px", borderRadius: 7 }}
+                        >
+                          <Icon name="eye" size={13} />
+                          <span>View Run Details</span>
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </>
           )}
@@ -1020,11 +1031,11 @@ export default function PayrollPage() {
               <div>
                 <small style={{ color: "var(--muted)", fontSize: 11 }}>Total Net Payout</small>
                 <div style={{ fontSize: 20, fontWeight: 800, color: "var(--brand)" }}>
-                  {formatMoney(detailRun.totalNetMinor)}
+                  {formatMoney(detailRun.totalNetMinor ?? detailRun.items?.reduce((s, it) => s + (it.netMinor || 0), 0))}
                 </div>
                 <small style={{ color: "var(--muted)" }}>
-                  Gross: {formatMoney(detailRun.totalGrossMinor)} · Deductions:{" "}
-                  {formatMoney(detailRun.totalDeductionsMinor)}
+                  Gross: {formatMoney(detailRun.totalGrossMinor ?? detailRun.items?.reduce((s, it) => s + (it.grossMinor || 0), 0))} · Deductions:{" "}
+                  {formatMoney(detailRun.totalDeductionsMinor ?? detailRun.items?.reduce((s, it) => s + (it.deductionsMinor || 0), 0))}
                 </small>
               </div>
               <Badge

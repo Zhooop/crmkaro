@@ -129,13 +129,32 @@ export class PayrollService {
     });
   }
   listRuns(organisationId: string, userId: string) {
-    return this.context(organisationId, userId, (tx) =>
-      tx.payrollRun.findMany({
+    return this.context(organisationId, userId, async (tx) => {
+      const runs = await tx.payrollRun.findMany({
         where: { organisationId },
-        include: { _count: { select: { items: true } } },
+        include: {
+          items: {
+            include: { employee: { include: { person: true } } },
+          },
+          _count: { select: { items: true } },
+        },
         orderBy: [{ year: "desc" }, { month: "desc" }],
-      }),
-    );
+      });
+      return runs.map((r) => {
+        const totalGrossMinor = r.items.reduce((sum, it) => sum + it.grossMinor, 0);
+        const totalDeductionsMinor = r.items.reduce(
+          (sum, it) => sum + it.deductionsMinor,
+          0,
+        );
+        const totalNetMinor = r.items.reduce((sum, it) => sum + it.netMinor, 0);
+        return {
+          ...r,
+          totalGrossMinor,
+          totalDeductionsMinor,
+          totalNetMinor,
+        };
+      });
+    });
   }
   prepareRun(
     organisationId: string,
@@ -217,7 +236,18 @@ export class PayrollService {
           metadata: { year, month, employees: run.items.length },
         },
       });
-      return run;
+      const totalGrossMinor = run.items.reduce((sum, it) => sum + it.grossMinor, 0);
+      const totalDeductionsMinor = run.items.reduce(
+        (sum, it) => sum + it.deductionsMinor,
+        0,
+      );
+      const totalNetMinor = run.items.reduce((sum, it) => sum + it.netMinor, 0);
+      return {
+        ...run,
+        totalGrossMinor,
+        totalDeductionsMinor,
+        totalNetMinor,
+      };
     });
   }
   private async run(

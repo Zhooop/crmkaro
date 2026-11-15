@@ -76,7 +76,8 @@ type Expense = {
   category: string;
   vendor: string | null;
   amountMinor: number;
-  date: string;
+  expenseDate?: string;
+  date?: string;
   description: string | null;
   status: "RECORDED" | "VOID";
   createdAt: string;
@@ -158,6 +159,7 @@ function generateInvoiceShareText(inv: Invoice, orgName: string, isSchool?: bool
     `*Status:* ${inv.status}\n\n` +
     (itemsText ? `*Items / Services:*\n${itemsText}\n\n` : "") +
     `*Total Amount:* ${formatMoney(inv.grandTotalMinor ?? inv.totalMinor ?? 0)}\n` +
+    ((inv.discountMinor || 0) > 0 ? `*Discount Applied:* -${formatMoney(inv.discountMinor)}\n` : "") +
     `*Amount Paid:* ${formatMoney(inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0)}\n` +
     `*Balance Due:* ${formatMoney(inv.balanceDueMinor ?? 0)}\n\n` +
     (inv.notes ? `*Notes:* ${inv.notes}\n\n` : "") +
@@ -284,6 +286,11 @@ function printInvoiceHtml(invoice: Invoice, orgName: string, isSchool?: boolean)
             <span>Subtotal:</span>
             <span>${formatMoney(invoice.subtotalMinor)}</span>
           </div>
+          ${(invoice.discountMinor || 0) > 0 ? `
+          <div class="totals-row" style="color: #059669; font-weight: 600;">
+            <span>Discount:</span>
+            <span>- ${formatMoney(invoice.discountMinor)}</span>
+          </div>` : ""}
           ${(invoice.taxMinor || 0) > 0 ? `
           <div class="totals-row">
             <span>GST / Tax:</span>
@@ -655,7 +662,7 @@ function FinanceContent() {
     .filter((e) => {
       if (e.status !== "RECORDED") return false;
       if (periodFilter === "THIS_MONTH") {
-        const ed = e.date || e.createdAt;
+        const ed = e.expenseDate || e.date || e.createdAt;
         return ed && ed.startsWith(currentMonthStr);
       }
       return true;
@@ -1672,7 +1679,7 @@ function FinanceContent() {
                   <tbody>
                     {expenses.map((exp) => (
                       <tr key={exp.id}>
-                        <td>{new Date(exp.date).toLocaleDateString()}</td>
+                        <td>{new Date(exp.expenseDate || exp.date || exp.createdAt).toLocaleDateString("en-IN")}</td>
                         <td>
                           <Badge tone="blue">{exp.category}</Badge>
                         </td>
@@ -1704,7 +1711,7 @@ function FinanceContent() {
                       <div>
                         <div className="mobile-card-name">{exp.vendor || exp.description || "Expense"}</div>
                         <div className="mobile-card-subtext">
-                          {new Date(exp.date).toLocaleDateString()}
+                          {new Date(exp.expenseDate || exp.date || exp.createdAt).toLocaleDateString("en-IN")}
                         </div>
                       </div>
                       <Badge tone="blue">{exp.category}</Badge>

@@ -29,10 +29,13 @@ type Product = {
   name: string;
   description: string | null;
   unit: string;
-  costPriceMinor: number | null;
-  sellingPriceMinor: number | null;
+  purchasePriceMinor?: number | null;
+  costPriceMinor?: number | null;
+  salePriceMinor?: number | null;
+  sellingPriceMinor?: number | null;
   currentStock: number;
-  reorderPoint: number | null;
+  lowStockThreshold?: number | null;
+  reorderPoint?: number | null;
   categoryId: string | null;
   category: Category | null;
   createdAt: string;
@@ -235,13 +238,15 @@ function InventoryContent() {
   }, [searchParams]);
 
   // Metrics
-  const lowStockCount = products.filter(
-    (p) => p.reorderPoint !== null && p.currentStock <= p.reorderPoint,
-  ).length;
-  const totalValuationMinor = products.reduce(
-    (acc, p) => acc + p.currentStock * (p.costPriceMinor || p.sellingPriceMinor || 0),
-    0,
-  );
+  const lowStockCount = products.filter((p) => {
+    const threshold = p.lowStockThreshold ?? p.reorderPoint ?? 0;
+    return threshold > 0 && Number(p.currentStock) <= threshold;
+  }).length;
+
+  const totalValuationMinor = products.reduce((acc, p) => {
+    const cost = p.purchasePriceMinor ?? p.costPriceMinor ?? p.salePriceMinor ?? p.sellingPriceMinor ?? 0;
+    return acc + Math.max(0, Number(p.currentStock) || 0) * cost;
+  }, 0);
 
   async function handleCreateProduct(e: FormEvent) {
     e.preventDefault();
@@ -262,10 +267,10 @@ function InventoryContent() {
           sku: formSku,
           categoryId: formCategoryId || undefined,
           unit: formUnit || "pcs",
-          costPriceMinor: !isNaN(costNum) ? Math.round(costNum * 100) : undefined,
-          sellingPriceMinor: !isNaN(priceNum) ? Math.round(priceNum * 100) : undefined,
-          reorderPoint: !isNaN(reorderNum) ? reorderNum : undefined,
-          initialStock: !isNaN(openStockNum) ? openStockNum : 0,
+          purchasePriceMinor: !isNaN(costNum) ? Math.round(costNum * 100) : undefined,
+          salePriceMinor: !isNaN(priceNum) ? Math.round(priceNum * 100) : undefined,
+          lowStockThreshold: !isNaN(reorderNum) ? reorderNum : 0,
+          openingStock: !isNaN(openStockNum) ? openStockNum : 0,
         }),
       });
       const data = await res.json();
@@ -527,8 +532,10 @@ function InventoryContent() {
                     </thead>
                     <tbody>
                       {products.map((prod) => {
+                        const threshold = prod.lowStockThreshold ?? prod.reorderPoint ?? null;
                         const isLow =
-                          prod.reorderPoint !== null && prod.currentStock <= prod.reorderPoint;
+                          threshold !== null && Number(prod.currentStock) <= threshold;
+                        const salePrice = prod.salePriceMinor ?? prod.sellingPriceMinor;
                         return (
                           <tr key={prod.id}>
                             <td>
@@ -556,10 +563,10 @@ function InventoryContent() {
                               )}
                             </td>
                             <td>
-                              {prod.reorderPoint !== null ? `${prod.reorderPoint} ${prod.unit}` : "—"}
+                              {threshold !== null ? `${threshold} ${prod.unit}` : "—"}
                             </td>
                             <td>
-                              <strong>{formatMoney(prod.sellingPriceMinor)}</strong>
+                              <strong>{formatMoney(salePrice)}</strong>
                             </td>
                             <td style={{ textAlign: "right" }}>
                               <button
@@ -584,8 +591,10 @@ function InventoryContent() {
               {/* Mobile View: Product Cards */}
               <div className="mobile-cards-view">
                 {products.map((prod) => {
+                  const threshold = prod.lowStockThreshold ?? prod.reorderPoint ?? null;
                   const isLow =
-                    prod.reorderPoint !== null && prod.currentStock <= prod.reorderPoint;
+                    threshold !== null && Number(prod.currentStock) <= threshold;
+                  const salePrice = prod.salePriceMinor ?? prod.sellingPriceMinor;
                   return (
                     <div key={prod.id} className="mobile-record-card">
                       <div className="mobile-card-header">
@@ -612,7 +621,7 @@ function InventoryContent() {
                         <div style={{ textAlign: "right" }}>
                           <div className="mobile-card-label">Selling Price</div>
                           <div className="mobile-card-value" style={{ fontWeight: 700, color: "var(--brand-primary)", fontSize: 13.5 }}>
-                            {formatMoney(prod.sellingPriceMinor)}
+                            {formatMoney(salePrice)}
                           </div>
                         </div>
                       </div>
