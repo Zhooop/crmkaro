@@ -26,10 +26,17 @@ import {
 type SalaryStructure = {
   id: string;
   effectiveFrom: string;
-  basicSalaryMinor: number;
-  hraMinor: number;
+  basicMinor?: number;
+  basicSalaryMinor?: number;
+  hraMinor?: number;
   allowancesMinor: number;
   deductionsMinor: number;
+  currency?: string;
+  components?: {
+    hra?: number;
+    otherAllowances?: number;
+    [key: string]: number | undefined;
+  };
 };
 
 type Employee = {
@@ -52,11 +59,14 @@ type PayrollRunItem = {
     employeeCode: string;
     person: { displayName: string; email: string | null };
   };
-  basicSalaryMinor: number;
-  hraMinor: number;
-  allowancesMinor: number;
-  deductionsMinor: number;
-  netPayableMinor: number;
+  basicMinor?: number;
+  basicSalaryMinor?: number;
+  hraMinor?: number;
+  allowancesMinor?: number;
+  deductionsMinor?: number;
+  grossMinor?: number;
+  netMinor?: number;
+  netPayableMinor?: number;
   status: string;
 };
 
@@ -81,11 +91,13 @@ type PersonOption = {
 };
 
 function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
-  if (!amountMinor) return "₹0";
+  if (amountMinor === undefined || amountMinor === null || isNaN(amountMinor)) return "₹0";
+  const hasDecimals = amountMinor % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency,
-    maximumFractionDigits: 0,
+    currency: currency || "INR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(amountMinor / 100);
 }
 
@@ -261,9 +273,11 @@ export default function PayrollPage() {
   const totalMonthlyPayrollMinor = activeEmployees.reduce((acc, e) => {
     const latestSalary = e.salaryStructures?.[0];
     if (!latestSalary) return acc;
-    const gross =
-      latestSalary.basicSalaryMinor + latestSalary.hraMinor + latestSalary.allowancesMinor;
-    return acc + (gross - latestSalary.deductionsMinor);
+    const basic = latestSalary.basicMinor ?? latestSalary.basicSalaryMinor ?? 0;
+    const allowances = latestSalary.allowancesMinor || 0;
+    const deductions = latestSalary.deductionsMinor || 0;
+    const gross = basic + allowances;
+    return acc + Math.max(0, gross - deductions);
   }, 0);
 
   const enrolledPersonIds = new Set(employees.map((e) => e.personId));
@@ -380,11 +394,14 @@ export default function PayrollPage() {
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          basicSalaryMinor: Math.round(bPay * 100),
-          hraMinor: Math.round(hPay * 100),
-          allowancesMinor: Math.round(aPay * 100),
+          basicMinor: Math.round(bPay * 100),
+          allowancesMinor: Math.round((hPay + aPay) * 100),
           deductionsMinor: Math.round(dPay * 100),
           effectiveFrom: new Date(formJoiningDate).toISOString(),
+          components: {
+            hra: Math.round(hPay * 100),
+            otherAllowances: Math.round(aPay * 100),
+          },
         }),
       });
 
@@ -416,11 +433,14 @@ export default function PayrollPage() {
         credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
-          basicSalaryMinor: Math.round(bPay * 100),
-          hraMinor: Math.round(hPay * 100),
-          allowancesMinor: Math.round(aPay * 100),
+          basicMinor: Math.round(bPay * 100),
+          allowancesMinor: Math.round((hPay + aPay) * 100),
           deductionsMinor: Math.round(dPay * 100),
           effectiveFrom: new Date(effectiveDate).toISOString(),
+          components: {
+            hra: Math.round(hPay * 100),
+            otherAllowances: Math.round(aPay * 100),
+          },
         }),
       });
       const data = await res.json();
@@ -644,10 +664,11 @@ export default function PayrollPage() {
                   <tbody>
                     {employees.map((emp) => {
                       const salary = emp.salaryStructures?.[0];
-                      const grossMinor = salary
-                        ? salary.basicSalaryMinor + salary.hraMinor + salary.allowancesMinor
-                        : 0;
-                      const netMinor = salary ? grossMinor - salary.deductionsMinor : 0;
+                      const basic = salary ? (salary.basicMinor ?? salary.basicSalaryMinor ?? 0) : 0;
+                      const allowances = salary?.allowancesMinor || 0;
+                      const deductions = salary?.deductionsMinor || 0;
+                      const grossMinor = salary ? basic + allowances : 0;
+                      const netMinor = salary ? Math.max(0, grossMinor - deductions) : 0;
 
                       return (
                         <tr key={emp.id}>
@@ -704,10 +725,14 @@ export default function PayrollPage() {
                                 onClick={() => {
                                   setSelectedEmployee(emp);
                                   if (salary) {
-                                    setBasicPay((salary.basicSalaryMinor / 100).toString());
-                                    setHra((salary.hraMinor / 100).toString());
-                                    setAllowances((salary.allowancesMinor / 100).toString());
-                                    setDeductions((salary.deductionsMinor / 100).toString());
+                                    const bVal = salary.basicMinor ?? salary.basicSalaryMinor ?? 0;
+                                    const hVal = salary.components?.hra ?? salary.hraMinor ?? 0;
+                                    const aVal = salary.components?.otherAllowances ?? Math.max(0, (salary.allowancesMinor || 0) - hVal);
+                                    const dVal = salary.deductionsMinor || 0;
+                                    setBasicPay((bVal / 100).toString());
+                                    setHra((hVal / 100).toString());
+                                    setAllowances((aVal / 100).toString());
+                                    setDeductions((dVal / 100).toString());
                                   } else {
                                     setBasicPay("30000");
                                     setHra("12000");
@@ -744,10 +769,11 @@ export default function PayrollPage() {
               <div className="mobile-cards-view">
                 {employees.map((emp) => {
                   const salary = emp.salaryStructures?.[0];
-                  const grossMinor = salary
-                    ? salary.basicSalaryMinor + salary.hraMinor + salary.allowancesMinor
-                    : 0;
-                  const netMinor = salary ? grossMinor - salary.deductionsMinor : 0;
+                  const basic = salary ? (salary.basicMinor ?? salary.basicSalaryMinor ?? 0) : 0;
+                  const allowances = salary?.allowancesMinor || 0;
+                  const deductions = salary?.deductionsMinor || 0;
+                  const grossMinor = salary ? basic + allowances : 0;
+                  const netMinor = salary ? Math.max(0, grossMinor - deductions) : 0;
 
                   return (
                     <div key={emp.id} className="mobile-record-card">
@@ -788,10 +814,14 @@ export default function PayrollPage() {
                           onClick={() => {
                             setSelectedEmployee(emp);
                             if (salary) {
-                              setBasicPay((salary.basicSalaryMinor / 100).toString());
-                              setHra((salary.hraMinor / 100).toString());
-                              setAllowances((salary.allowancesMinor / 100).toString());
-                              setDeductions((salary.deductionsMinor / 100).toString());
+                              const bVal = salary.basicMinor ?? salary.basicSalaryMinor ?? 0;
+                              const hVal = salary.components?.hra ?? salary.hraMinor ?? 0;
+                              const aVal = salary.components?.otherAllowances ?? Math.max(0, (salary.allowancesMinor || 0) - hVal);
+                              const dVal = salary.deductionsMinor || 0;
+                              setBasicPay((bVal / 100).toString());
+                              setHra((hVal / 100).toString());
+                              setAllowances((aVal / 100).toString());
+                              setDeductions((dVal / 100).toString());
                             } else {
                               setBasicPay("30000");
                               setHra("12000");
@@ -1054,12 +1084,12 @@ export default function PayrollPage() {
                     <div>
                       <strong>{item.employee.person.displayName}</strong>
                       <small style={{ color: "var(--muted)", display: "block" }}>
-                        Code: {item.employee.employeeCode} · Basic: {formatMoney(item.basicSalaryMinor)}
+                        Code: {item.employee.employeeCode} · Basic: {formatMoney(item.basicMinor ?? item.basicSalaryMinor)}
                       </small>
                     </div>
                     <div style={{ textAlign: "right" }}>
                       <strong style={{ fontSize: 14 }}>
-                        {formatMoney(item.netPayableMinor)}
+                        {formatMoney(item.netMinor ?? item.netPayableMinor)}
                       </strong>
                       <div style={{ marginTop: 4 }}>
                         <a

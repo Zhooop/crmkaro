@@ -1374,6 +1374,27 @@ export function Badge({
   return <span className={`badge badge-${tone}`}>{children}</span>;
 }
 
+/**
+ * High-precision Indian currency & financial number formatter.
+ * Handles whole numbers cleanly (e.g. ₹500), preserves fractional paise (e.g. ₹499.50, ₹116.82),
+ * and safely handles undefined/null/NaN without ever printing "₹NaN".
+ */
+export function formatMoney(
+  amountMinor: number | null | undefined,
+  currency = "INR",
+): string {
+  if (amountMinor === undefined || amountMinor === null || isNaN(amountMinor)) {
+    return currency === "INR" ? "₹0" : `0 ${currency}`;
+  }
+  const hasDecimals = amountMinor % 100 !== 0;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: currency || "INR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(amountMinor / 100);
+}
+
 export function Tabs({
   items,
   active,

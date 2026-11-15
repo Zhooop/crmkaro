@@ -178,6 +178,17 @@ export type PersonFeeDetails = {
   admissionDateStr: string | null;
 };
 
+function formatMoney(amountMinor: number | null | undefined, currency = "INR"): string {
+  if (amountMinor === undefined || amountMinor === null || isNaN(amountMinor)) return "₹0";
+  const hasDecimals = amountMinor % 100 !== 0;
+  return new Intl.NumberFormat("en-IN", {
+    style: "currency",
+    currency: currency || "INR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
+  }).format(amountMinor / 100);
+}
+
 function getPersonFeeDetails(person: Person): PersonFeeDetails {
   const profile = person.studentProfile;
   const payments = person.payments || [];
@@ -293,7 +304,7 @@ function getPersonFeeDetails(person: Person): PersonFeeDetails {
   if (hasPlan) {
     if (latestInvoice && latestInvoice.paidTotalMinor > 0 && latestInvoice.balanceDueMinor > 0) {
       feeStatus = "PARTIALLY_PAID";
-      statusBadgeLabel = `Partially Paid (₹${(latestInvoice.balanceDueMinor / 100).toLocaleString("en-IN")} Due)`;
+      statusBadgeLabel = `Partially Paid (${formatMoney(latestInvoice.balanceDueMinor)} Due)`;
       statusBadgeTone = "amber";
       statusBadgeColor = "#b45309";
       statusBadgeBg = "#fef3c7";
@@ -352,7 +363,7 @@ function getPersonFeeDetails(person: Person): PersonFeeDetails {
     } else {
       feeStatus = "PENDING";
       const dueAmount = latestInvoice ? latestInvoice.balanceDueMinor : feeAmountMinor;
-      statusBadgeLabel = dueAmount > 0 ? `Unpaid (₹${(dueAmount / 100).toLocaleString("en-IN")} Due)` : "Fee Unpaid";
+      statusBadgeLabel = dueAmount > 0 ? `Unpaid (${formatMoney(dueAmount)} Due)` : "Fee Unpaid";
       statusBadgeTone = "red";
       statusBadgeColor = "#dc2626";
       statusBadgeBg = "#fef2f2";
@@ -2787,7 +2798,7 @@ function PeopleContent() {
                             <div style={{ fontSize: 11.5, color: "#475569", marginTop: 2 }}>
                               {feeDetails.feeAmountMinor > 0 ? (
                                 <span style={{ fontWeight: 700, color: "#1e293b" }}>
-                                  ₹{(feeDetails.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                                  {formatMoney(feeDetails.feeAmountMinor)} Plan Fee
                                 </span>
                               ) : (
                                 <span style={{ color: "var(--muted)" }}>Configured Plan</span>
@@ -2867,7 +2878,7 @@ function PeopleContent() {
                               {feeDetails.paidAmountMinor > 0 ? (
                                 <div>
                                   <strong style={{ color: "#047857" }}>
-                                    Paid ₹{(feeDetails.paidAmountMinor / 100).toLocaleString("en-IN")}
+                                    Paid {formatMoney(feeDetails.paidAmountMinor)}
                                   </strong>
                                   {feeDetails.paidDateStr && <span> on {feeDetails.paidDateStr}</span>}
                                   {feeDetails.paidMethod && (
@@ -3037,7 +3048,7 @@ function PeopleContent() {
                     <strong style={{ color: "var(--ink)" }}>{feeDetails.planLabel}</strong>
                     {feeDetails.feeAmountMinor > 0 && (
                       <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
-                        ₹{(feeDetails.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                        {formatMoney(feeDetails.feeAmountMinor)} Plan Fee
                       </div>
                     )}
                   </div>
@@ -3251,7 +3262,7 @@ function PeopleContent() {
                       <strong style={{ color: "var(--ink)", fontSize: 13 }}>{feeInfo.planLabel}</strong>
                       {feeInfo.feeAmountMinor > 0 && (
                         <div style={{ color: "#475569", fontSize: 11, marginTop: 1 }}>
-                          ₹{(feeInfo.feeAmountMinor / 100).toLocaleString("en-IN")} Plan Fee
+                          {formatMoney(feeInfo.feeAmountMinor)} Plan Fee
                         </div>
                       )}
                     </div>
@@ -3288,7 +3299,7 @@ function PeopleContent() {
                       <small style={{ color: "var(--muted)", display: "block" }}>Amount Paid (Last Payment)</small>
                       <strong style={{ color: feeInfo.paidAmountMinor > 0 ? "#047857" : "#dc2626", fontSize: 13 }}>
                         {feeInfo.paidAmountMinor > 0
-                          ? `₹${(feeInfo.paidAmountMinor / 100).toLocaleString("en-IN")}`
+                          ? formatMoney(feeInfo.paidAmountMinor)
                           : "No payment recorded"}
                       </strong>
                     </div>
@@ -3632,13 +3643,13 @@ function PeopleContent() {
                           <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
                             <small style={{ color: "var(--muted)", fontSize: 10 }}>Total Billed</small>
                             <div style={{ fontWeight: 800, color: "var(--ink)", fontSize: 14 }}>
-                              ₹{(totalBilledMinor / 100).toLocaleString("en-IN")}
+                              {formatMoney(totalBilledMinor)}
                             </div>
                           </div>
                           <div style={{ flex: 1, background: "#f8fafc", padding: "8px 10px", borderRadius: 8, border: "1px solid var(--line)" }}>
                             <small style={{ color: "var(--muted)", fontSize: 10 }}>Pending Dues</small>
                             <div style={{ fontWeight: 800, color: pendingDuesMinor > 0 ? "#b91c1c" : "#15803d", fontSize: 14 }}>
-                              ₹{(pendingDuesMinor / 100).toLocaleString("en-IN")}
+                              {formatMoney(pendingDuesMinor)}
                             </div>
                           </div>
                         </div>
@@ -3663,7 +3674,7 @@ function PeopleContent() {
                                 <div>
                                   <strong>{inv.invoiceNumber}</strong>
                                   <div style={{ fontSize: 11, color: "var(--muted)" }}>
-                                    {new Date(inv.issueDate).toLocaleDateString()} · ₹{(invAmount / 100).toLocaleString("en-IN")}
+                                    {new Date(inv.issueDate).toLocaleDateString()} · {formatMoney(invAmount)}
                                   </div>
                                 </div>
                                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>

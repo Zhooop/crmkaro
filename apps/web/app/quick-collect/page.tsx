@@ -5,6 +5,7 @@ import {
   Badge,
   Icon,
   WhatsAppPreviewModal,
+  formatMoney,
   type NavItem,
   type OrganisationSummary,
 } from "@crmkaro/ui";
@@ -87,7 +88,7 @@ function QuickCollectContent() {
     const text = successList
       .map((item) => {
         const link = item.invoiceId ? `${origin}/pay/${item.invoiceId}` : "";
-        return `${item.name}${item.phone ? ` (${item.phone})` : ""}: ₹${(item.amountMinor / 100).toLocaleString("en-IN")}\nLink: ${link}`;
+        return `${item.name}${item.phone ? ` (${item.phone})` : ""}: ${formatMoney(item.amountMinor)}\nLink: ${link}`;
       })
       .join("\n\n");
     navigator.clipboard.writeText(text);
@@ -507,7 +508,7 @@ function QuickCollectContent() {
                 </thead>
                 <tbody>
                   {successList.map((item, idx) => {
-                    const amountFormatted = `₹ ${(item.amountMinor / 100).toLocaleString("en-IN")}`;
+                    const amountFormatted = formatMoney(item.amountMinor);
                     const payUrl = item.invoiceId && typeof window !== "undefined"
                       ? `${window.location.origin}/pay/${item.invoiceId}`
                       : "";

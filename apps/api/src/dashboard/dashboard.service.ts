@@ -56,7 +56,7 @@ export class DashboardService {
       const paymentWhere: any = { organisationId };
       const invoiceWhere: any = {
         organisationId,
-        status: { in: ["DRAFT", "ISSUED", "PARTIALLY_PAID"] },
+        status: { in: ["ISSUED", "PARTIALLY_PAID"] },
       };
 
       let isDateFiltered = false;
@@ -310,6 +310,7 @@ export class DashboardService {
           where: {
             organisationId,
             personId: { in: personIds },
+            status: { in: ["ISSUED", "PARTIALLY_PAID"] },
             balanceDueMinor: { gt: 0 },
           },
           orderBy: { dueDate: "asc" },

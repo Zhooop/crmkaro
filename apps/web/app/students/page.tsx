@@ -95,11 +95,14 @@ type MonthlyAttendanceSummary = {
   percentage: number;
 };
 
-function formatMoney(minor: number, currency = "INR") {
+function formatMoney(minor: number | null | undefined, currency = "INR") {
+  if (minor === undefined || minor === null || isNaN(minor)) return "₹0";
+  const hasDecimals = minor % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency,
-    maximumFractionDigits: 0,
+    currency: currency || "INR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(minor / 100);
 }
 

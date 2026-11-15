@@ -284,7 +284,7 @@ export class FinanceService {
         );
       const result = await tx.invoice.update({
         where: { id },
-        data: { status: "VOID", voidedAt: new Date() },
+        data: { status: "VOID", voidedAt: new Date(), balanceDueMinor: 0 },
       });
       await tx.auditLog.create({
         data: {

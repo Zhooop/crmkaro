@@ -115,10 +115,12 @@ type PersonOption = {
 
 function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
   if (amountMinor === undefined || amountMinor === null || isNaN(amountMinor)) return "₹0";
+  const hasDecimals = amountMinor % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
-    currency,
-    maximumFractionDigits: 0,
+    currency: currency || "INR",
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(amountMinor / 100);
 }
 
@@ -634,14 +636,18 @@ function FinanceContent() {
       })
     : invoices;
 
-  const totalBilledMinor = displayedInvoices.reduce(
-    (acc, inv) => acc + (inv.grandTotalMinor ?? inv.totalMinor ?? 0),
-    0,
-  );
-  const totalPaidMinor = displayedInvoices.reduce(
-    (acc, inv) => acc + (inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0),
-    0,
-  );
+  const totalBilledMinor = displayedInvoices
+    .filter((inv) => inv.status !== "VOID")
+    .reduce(
+      (acc, inv) => acc + (inv.grandTotalMinor ?? inv.totalMinor ?? 0),
+      0,
+    );
+  const totalPaidMinor = displayedInvoices
+    .filter((inv) => inv.status !== "VOID")
+    .reduce(
+      (acc, inv) => acc + (inv.paidTotalMinor ?? inv.amountPaidMinor ?? 0),
+      0,
+    );
   const totalBalanceDueMinor = displayedInvoices
     .filter((inv) => inv.status === "ISSUED" || inv.status === "PARTIALLY_PAID")
     .reduce((acc, inv) => acc + (inv.balanceDueMinor ?? 0), 0);

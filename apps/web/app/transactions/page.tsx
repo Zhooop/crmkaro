@@ -30,6 +30,7 @@ type InvoiceItem = {
   grandTotalMinor: number;
   balanceDueMinor: number;
   balanceMinor?: number;
+  paidTotalMinor?: number;
   paidAmountMinor?: number;
   personId: string;
   notes?: string | null;
@@ -49,16 +50,18 @@ type InvoiceItem = {
   }>;
 };
 
-function formatCurrency(minor: number | undefined, currency = "INR"): string {
-  if (!minor) return "₹0";
+function formatCurrency(minor: number | null | undefined, currency = "INR"): string {
+  if (minor === undefined || minor === null || isNaN(minor)) return "₹0";
+  const hasDecimals = minor % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: currency || "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(minor / 100);
 }
 
-function formatMoney(minor: number | undefined) {
+function formatMoney(minor: number | null | undefined) {
   return formatCurrency(minor, "INR");
 }
 
@@ -95,14 +98,17 @@ function TransactionsContent() {
 
   // Computed Financial Metrics
   const totalCollectedMinor = invoices.reduce((acc, inv) => {
+    if (inv.status === "VOID") return acc;
     if (inv.status === "PAID") return acc + (inv.grandTotalMinor || 0);
-    if (inv.status === "PARTIALLY_PAID") return acc + Math.max(0, (inv.grandTotalMinor || 0) - (inv.balanceDueMinor || 0));
-    return acc + (inv.paidAmountMinor || 0);
+    if (inv.status === "PARTIALLY_PAID") {
+      return acc + (inv.paidTotalMinor ?? Math.max(0, (inv.grandTotalMinor || 0) - (inv.balanceDueMinor || 0)));
+    }
+    return acc + (inv.paidTotalMinor ?? inv.paidAmountMinor ?? 0);
   }, 0);
 
-  const totalPendingMinor = invoices.reduce((acc, inv) => {
-    return acc + (inv.balanceDueMinor || 0);
-  }, 0);
+  const totalPendingMinor = invoices
+    .filter((inv) => inv.status !== "VOID" && inv.status !== "PAID")
+    .reduce((acc, inv) => acc + (inv.balanceDueMinor || 0), 0);
 
   const paidCount = invoices.filter((i) => i.status === "PAID").length;
 

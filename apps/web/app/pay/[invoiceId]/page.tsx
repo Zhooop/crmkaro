@@ -65,11 +65,14 @@ interface PublicInvoice {
   razorpayKeyId: string;
 }
 
-function formatMoney(amountMinor: number, currency = "INR") {
+function formatMoney(amountMinor: number | null | undefined, currency = "INR") {
+  if (amountMinor === undefined || amountMinor === null || isNaN(amountMinor)) return "₹0";
+  const hasDecimals = amountMinor % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: currency || "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(amountMinor / 100);
 }
 

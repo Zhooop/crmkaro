@@ -119,11 +119,14 @@ const icons: Record<string, IconName> = {
   inventory: "inventory",
 };
 
-function money(value: number, currency: string) {
+function money(value: number | null | undefined, currency: string) {
+  if (value === undefined || value === null || isNaN(value)) return "₹0";
+  const hasDecimals = value % 100 !== 0;
   return new Intl.NumberFormat("en-IN", {
     style: "currency",
     currency: currency || "INR",
-    maximumFractionDigits: 0,
+    minimumFractionDigits: hasDecimals ? 2 : 0,
+    maximumFractionDigits: 2,
   }).format(value / 100);
 }
 
