@@ -392,23 +392,43 @@ a {
 .stat-icon {
   display: grid;
   place-items: center;
-  width: 32px;
-  height: 32px;
-  border-radius: 7px;
-  background: #eaf0ff;
-  color: var(--brand);
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background: #eff6ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
 }
-.stat-icon.teal {
-  background: #e1f5f1;
-  color: #078477;
+.stat-icon.teal,
+.stat-icon.emerald,
+.stat-icon.green {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
 }
-.stat-icon.amber {
-  background: #fff2da;
-  color: #c27808;
+.stat-icon.amber,
+.stat-icon.warning {
+  background: #fffbeb;
+  color: #d97706;
+  border: 1px solid #fde68a;
 }
-.stat-icon.rose {
-  background: #fee9ed;
-  color: #d3425c;
+.stat-icon.rose,
+.stat-icon.red,
+.stat-icon.danger {
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fecaca;
+}
+.stat-icon.blue,
+.stat-icon.info {
+  background: #eff6ff;
+  color: #0284c7;
+  border: 1px solid #bae6fd;
+}
+.stat-icon.purple {
+  background: #faf5ff;
+  color: #7c3aed;
+  border: 1px solid #ddd6fe;
 }
 .stat-copy {
   display: flex;
@@ -2312,19 +2332,21 @@ html, body {
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 600;
+  padding: 3px 8px;
+  border-radius: 9999px;
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1.2;
   white-space: nowrap;
+  border: 1px solid transparent;
+  letter-spacing: 0.01em;
 }
-.badge-neutral { background: #f1f5f9; color: #475569; }
-.badge-green { background: #dcfce7; color: #15803d; }
-.badge-amber { background: #fef3c7; color: #b45309; }
-.badge-red { background: #fee2e2; color: #b91c1c; }
-.badge-blue { background: #dbeafe; color: #1d4ed8; }
-.badge-purple { background: #f3e8ff; color: #7e22ce; }
+.badge-neutral { background: #f8fafc; color: #475569; border-color: #e2e8f0; }
+.badge-green, .badge-emerald { background: #ecfdf5; color: #065f46; border-color: #a7f3d0; }
+.badge-amber, .badge-warning { background: #fffbeb; color: #92400e; border-color: #fde68a; }
+.badge-red, .badge-rose, .badge-danger { background: #fef2f2; color: #991b1b; border-color: #fecaca; }
+.badge-blue, .badge-info { background: #eff6ff; color: #1e40af; border-color: #bfdbfe; }
+.badge-purple { background: #faf5ff; color: #6b21a8; border-color: #e9d5ff; }
 
 /* Tabs Bar */
 .tab-list {
@@ -2439,22 +2461,22 @@ html, body {
 }
 .data-table th {
   background: #f1f6fc;
-  padding: 7px 10px;
-  font-size: 10px;
-  font-weight: 700;
+  padding: 8px 12px;
+  font-size: 10.5px;
+  font-weight: 750;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #475569;
-  border-bottom: 1px solid var(--line);
+  color: #334155;
+  border-bottom: 1px solid #cbd5e1;
 }
 .data-table td {
-  padding: 7px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid #eef3f9;
-  color: var(--ink);
+  color: #0f172a;
   vertical-align: middle;
 }
 .data-table tr:last-child td { border-bottom: 0; }
-.data-table tr:hover td { background: #f6f9fe; }
+.data-table tr:hover td { background: #f0f7ff; }
 .data-table tr.clickable { cursor: pointer; }
 .table-primary-cell {
   display: flex;

@@ -1357,7 +1357,18 @@ export function Badge({
   tone = "neutral",
   children,
 }: {
-  tone?: "green" | "amber" | "red" | "blue" | "purple" | "neutral";
+  tone?:
+    | "green"
+    | "emerald"
+    | "amber"
+    | "warning"
+    | "red"
+    | "rose"
+    | "danger"
+    | "blue"
+    | "info"
+    | "purple"
+    | "neutral";
   children: ReactNode;
 }) {
   return <span className={`badge badge-${tone}`}>{children}</span>;
