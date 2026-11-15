@@ -541,7 +541,7 @@ function CrmContent() {
           </p>
           <h1>Leads & CRM Pipeline</h1>
           <p className="subheading">
-            Track inquiries, manage follow-ups, and convert leads into long-term customers.
+            Inquiries manage karein, daily follow-up calls schedule karein, aur deals close karein.
           </p>
         </div>
         <div className="toolbar-actions">
@@ -862,12 +862,15 @@ function CrmContent() {
         <EmptyState
           icon="crm"
           title="No leads in this pipeline yet"
-          description="Create your first lead to start tracking potential deals through your sales stages."
-          actionLabel="Create Lead"
+          description="Aapki sales pipeline bilkul clean hai! Create your first lead to start tracking follow-up calls and conversions."
+          actionLabel="+ Pehli Lead Add Karein"
           onAction={() => {
             resetForm();
             setCreateOpen(true);
           }}
+          secondaryActionLabel="📥 Import from Excel"
+          onSecondaryAction={() => setImportOpen(true)}
+          tip="Inquiries, website forms, ya walk-ins ko capture karke daily call reminders set karein"
         />
       ) : viewMode === "kanban" ? (
         /* Kanban Pipeline Board */

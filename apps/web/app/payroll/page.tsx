@@ -619,10 +619,11 @@ export default function PayrollPage() {
           ) : employees.length === 0 ? (
             <EmptyState
               icon="payroll"
-              title="No employees registered yet"
-              description="Add staff members from your People directory and configure their salary packages."
-              actionLabel="Add Employee"
+              title="No staff or employees registered yet"
+              description="Apne teachers, trainers aur staff members ko salary package aur cycle ke sath add karein."
+              actionLabel="+ Add First Employee"
               onAction={() => setAddEmployeeOpen(true)}
+              tip="Salary slips generate karne aur advances record karne ke liye employee setup karein"
             />
           ) : (
             <>
@@ -831,10 +832,11 @@ export default function PayrollPage() {
           {runs.length === 0 ? (
             <EmptyState
               icon="calendar"
-              title="No payroll runs executed"
-              description="Prepare your first monthly payroll batch to calculate employee disbursements."
-              actionLabel="Prepare Monthly Run"
+              title="No payroll runs executed yet"
+              description="Is mahine ka payroll batch calculate karein taaki staff ki salary slips generate ho sakein."
+              actionLabel="Run Monthly Payroll"
               onAction={() => setPrepareRunOpen(true)}
+              tip="Net salary, allowances aur deduction ka automatic 1-click calculation"
             />
           ) : (
             <>

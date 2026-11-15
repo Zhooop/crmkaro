@@ -471,6 +471,21 @@ export default function HomePage() {
   const [customStartDate, setCustomStartDate] = useState<string>("");
   const [customEndDate, setCustomEndDate] = useState<string>("");
   const [dashboardLoading, setDashboardLoading] = useState<boolean>(false);
+  const [checklistDismissed, setChecklistDismissed] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (typeof window !== "undefined" && data?.organisation?.id) {
+      const isDismissed = localStorage.getItem(`crmkaro_checklist_dismissed_${data.organisation.id}`);
+      setChecklistDismissed(isDismissed === "true");
+    }
+  }, [data?.organisation?.id]);
+
+  const handleDismissChecklist = () => {
+    setChecklistDismissed(true);
+    if (typeof window !== "undefined" && data?.organisation?.id) {
+      localStorage.setItem(`crmkaro_checklist_dismissed_${data.organisation.id}`, "true");
+    }
+  };
 
   const api = getApiUrl();
 
@@ -1571,6 +1586,206 @@ export default function HomePage() {
           </button>
         </div>
       </div>
+
+      {/* 🎯 "First 5 Minutes" Getting Started Checklist Widget */}
+      {!checklistDismissed && (() => {
+        const step1Done = Boolean(data.academySummary?.activeStudents || groupsList.length > 0 || data.cards.some((c) => c.key === "batches" && c.value > 0));
+        const step2Done = Boolean(data.academySummary?.activeStudents || data.cards.some((c) => (c.key === "students" || c.key === "leads" || c.key === "people") && c.value > 0));
+        const step3Done = Boolean((data.transactions && data.transactions.length > 0) || (data.academySummary && data.academySummary.thisMonthCollectedMinor > 0) || data.cards.some((c) => c.key.includes("collected") && c.value > 0));
+        const completedStepsCount = (step1Done ? 1 : 0) + (step2Done ? 1 : 0) + (step3Done ? 1 : 0);
+
+        return (
+          <div
+            className="dashboard-checklist-card"
+            style={{
+              background: "linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)",
+              border: "1px solid #cbd5e1",
+              borderRadius: 12,
+              padding: "16px 18px",
+              marginBottom: 14,
+              boxShadow: "0 2px 8px rgba(0,0,0,0.03)",
+            }}
+          >
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12, flexWrap: "wrap", gap: 10 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 13.5, fontWeight: 800, color: "#0f172a" }}>
+                    🎯 Quick Launch Checklist ({completedStepsCount}/3 Completed)
+                  </span>
+                  <span
+                    style={{
+                      background: completedStepsCount === 3 ? "#dcfce7" : "#e0f2fe",
+                      color: completedStepsCount === 3 ? "#15803d" : "#0369a1",
+                      fontSize: 11,
+                      fontWeight: 750,
+                      padding: "2px 8px",
+                      borderRadius: 999,
+                    }}
+                  >
+                    {completedStepsCount === 3 ? "All Set! 🎉" : "3-Minute Setup"}
+                  </span>
+                </div>
+                <p style={{ margin: "4px 0 0", fontSize: 12, color: "#64748b" }}>
+                  Workspace setup complete karne ke liye yeh 3 zaroori steps karein:
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={handleDismissChecklist}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  fontSize: 12,
+                  color: "#94a3b8",
+                  cursor: "pointer",
+                  padding: "4px 8px",
+                  borderRadius: 6,
+                }}
+                title="Dismiss Checklist"
+              >
+                ✕ Hide
+              </button>
+            </div>
+
+            {/* Progress Bar */}
+            <div style={{ width: "100%", height: 6, background: "#e2e8f0", borderRadius: 999, overflow: "hidden", marginBottom: 14 }}>
+              <div
+                style={{
+                  width: `${(completedStepsCount / 3) * 100}%`,
+                  height: "100%",
+                  background: "linear-gradient(90deg, #0284c7 0%, #10b981 100%)",
+                  transition: "width 0.3s ease",
+                }}
+              />
+            </div>
+
+            {/* Steps Grid */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: 12,
+              }}
+            >
+              {/* Step 1 */}
+              <div
+                style={{
+                  background: step1Done ? "#f0fdf4" : "#ffffff",
+                  border: step1Done ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: step1Done ? "#15803d" : "#0284c7" }}>
+                    {step1Done ? "✓ STEP 1 DONE" : "STEP 1"}
+                  </span>
+                  <span style={{ fontSize: 16 }}>🏢</span>
+                </div>
+                <div>
+                  <strong style={{ fontSize: 13, color: "#0f172a", display: "block" }}>
+                    {isSchool ? "Classes & Divisions" : (isGymOrStudio ? "Membership Plans" : (isRealEstateOrSales ? "Inventory & Pipeline" : "Groups & Batches"))}
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    {isRealEstateOrSales ? "Property listings aur deals setup karein" : "Division rosters & batch schedule banayein"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => router.push(isRealEstateOrSales ? "/crm" : "/groups")}
+                  style={{ marginTop: "auto", fontSize: 11.5, fontWeight: 700, alignSelf: "flex-start" }}
+                >
+                  {step1Done ? "View Rosters →" : "+ Create First"}
+                </button>
+              </div>
+
+              {/* Step 2 */}
+              <div
+                style={{
+                  background: step2Done ? "#f0fdf4" : "#ffffff",
+                  border: step2Done ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: step2Done ? "#15803d" : "#0284c7" }}>
+                    {step2Done ? "✓ STEP 2 DONE" : "STEP 2"}
+                  </span>
+                  <span style={{ fontSize: 16 }}>👤</span>
+                </div>
+                <div>
+                  <strong style={{ fontSize: 13, color: "#0f172a", display: "block" }}>
+                    {isRealEstateOrSales ? "Add First Lead" : "Add Student / Member"}
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    {isRealEstateOrSales ? "Inquiry details & phone logs record karein" : "Customer / Student ki details & phone save karein"}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-secondary btn-sm"
+                  onClick={() => router.push(isRealEstateOrSales ? "/crm?action=new" : "/people?action=new")}
+                  style={{ marginTop: "auto", fontSize: 11.5, fontWeight: 700, alignSelf: "flex-start" }}
+                >
+                  {step2Done ? "View Directory →" : "+ Add Contact"}
+                </button>
+              </div>
+
+              {/* Step 3 */}
+              <div
+                style={{
+                  background: step3Done ? "#f0fdf4" : "#ffffff",
+                  border: step3Done ? "1px solid #bbf7d0" : "1px solid #e2e8f0",
+                  borderRadius: 10,
+                  padding: "12px 14px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: 8,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: step3Done ? "#15803d" : "#0284c7" }}>
+                    {step3Done ? "✓ STEP 3 DONE" : "STEP 3"}
+                  </span>
+                  <span style={{ fontSize: 16 }}>⚡</span>
+                </div>
+                <div>
+                  <strong style={{ fontSize: 13, color: "#0f172a", display: "block" }}>
+                    Collect Payment & WhatsApp
+                  </strong>
+                  <span style={{ fontSize: 11.5, color: "#64748b" }}>
+                    UPI / Cash jama karein aur instant WhatsApp receipt bhejein
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={() => router.push("/quick-collect")}
+                  style={{
+                    marginTop: "auto",
+                    fontSize: 11.5,
+                    fontWeight: 750,
+                    alignSelf: "flex-start",
+                    background: "#0284c7",
+                    color: "#ffffff",
+                    border: "none",
+                  }}
+                >
+                  {step3Done ? "Record Another ₹" : "⚡ Try Quick Collect"}
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 📅 Date Range Filter Bar */}
       <div

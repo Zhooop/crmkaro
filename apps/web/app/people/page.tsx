@@ -2636,9 +2636,9 @@ function PeopleContent() {
               ? "Archived members and inactive contacts will appear here."
               : search || selectedTag || activeTab !== "ALL"
                 ? "Try adjusting your search or active filters."
-                : "Start by adding your first member, student, or customer to your directory."
+                : "Aapki directory abhi khali hai. Pehla member, student, ya customer add karein."
           }
-          actionLabel={activeTab === "ARCHIVED" ? undefined : "Add Member"}
+          actionLabel={activeTab === "ARCHIVED" ? undefined : "+ Add First Member"}
           onAction={
             activeTab === "ARCHIVED"
               ? undefined
@@ -2647,6 +2647,9 @@ function PeopleContent() {
                   setCreateOpen(true);
                 }
           }
+          secondaryActionLabel={activeTab === "ARCHIVED" ? undefined : "⚡ Quick Collect ₹"}
+          onSecondaryAction={activeTab === "ARCHIVED" ? undefined : () => router.push("/quick-collect")}
+          tip="Direct counter payment lene ke liye Quick Collect use karein"
         />
       ) : (
         <>

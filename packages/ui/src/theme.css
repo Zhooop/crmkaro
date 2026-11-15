@@ -4580,3 +4580,224 @@ input[type="number"] {
   -moz-appearance: textfield !important;
   appearance: textfield !important;
 }
+
+/* ------------------------------------------------------------- */
+/* Global Omni FAB (Quick Action Hub)                            */
+/* ------------------------------------------------------------- */
+.app-omni-fab-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9998;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+}
+
+@media (max-width: 768px) {
+  .app-omni-fab-container {
+    bottom: 84px; /* Above mobile bottom nav */
+    right: 16px;
+  }
+}
+
+.app-omni-fab-btn {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 8px 24px rgba(2, 132, 199, 0.45);
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.2s ease;
+}
+
+.app-omni-fab-btn:hover {
+  transform: scale(1.06);
+  box-shadow: 0 10px 28px rgba(2, 132, 199, 0.55);
+}
+
+.app-omni-fab-btn.open {
+  background: #0f172a;
+  transform: rotate(90deg);
+}
+
+.app-omni-fab-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.4);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  z-index: 9997;
+}
+
+.app-omni-fab-menu {
+  position: absolute;
+  bottom: 64px;
+  right: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 210px;
+  animation: appFabMenuFade 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes appFabMenuFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.app-omni-fab-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #0f172a;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.app-omni-fab-item:hover {
+  background: #f8fafc;
+  transform: translateX(-3px);
+  border-color: #cbd5e1;
+}
+
+.app-omni-fab-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  flex-shrink: 0;
+}
+
+.app-omni-fab-item.quick-collect .app-omni-fab-icon {
+  background: #ecfdf5;
+  color: #059669;
+}
+
+.app-omni-fab-item.new-contact .app-omni-fab-icon {
+  background: #eff6ff;
+  color: #2563eb;
+}
+
+.app-omni-fab-item.new-lead .app-omni-fab-icon {
+  background: #fff7ed;
+  color: #ea580c;
+}
+
+.app-omni-fab-item.new-expense .app-omni-fab-icon {
+  background: #fdf2f8;
+  color: #db2777;
+}
+
+/* ------------------------------------------------------------- */
+/* Mobile Fixed Bottom Navigation App-Bar                        */
+/* ------------------------------------------------------------- */
+.app-mobile-bottom-nav {
+  display: none;
+}
+
+@media (max-width: 768px) {
+  .app-mobile-bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 64px;
+    background: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-top: 1px solid #e2e8f0;
+    z-index: 9990;
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 6px env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.05);
+  }
+
+  .admin-theme .app-mobile-bottom-nav {
+    background: rgba(15, 23, 42, 0.96);
+    border-top-color: #334155;
+  }
+
+  .app-mobile-nav-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    flex: 1;
+    background: transparent;
+    border: none;
+    color: #64748b;
+    font-size: 10.5px;
+    font-weight: 600;
+    cursor: pointer;
+    padding: 6px 0;
+    transition: color 0.15s ease;
+  }
+
+  .admin-theme .app-mobile-nav-tab {
+    color: #94a3b8;
+  }
+
+  .app-mobile-nav-tab.active {
+    color: #0284c7;
+    font-weight: 750;
+  }
+
+  .admin-theme .app-mobile-nav-tab.active {
+    color: #38bdf8;
+  }
+
+  .app-mobile-nav-tab.highlight .app-mobile-nav-pill-icon {
+    background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+    color: #ffffff;
+    padding: 5px 12px;
+    border-radius: 999px;
+    margin-bottom: 1px;
+    box-shadow: 0 2px 8px rgba(2, 132, 199, 0.4);
+  }
+
+  /* Ensure main content doesn't get hidden behind bottom nav */
+  .workspace {
+    padding-bottom: 74px !important;
+  }
+}
+
+/* ------------------------------------------------------------- */
+/* Enhanced Empty State Tips                                     */
+/* ------------------------------------------------------------- */
+.empty-state-tip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f0fdf4;
+  color: #15803d;
+  border: 1px solid #bbf7d0;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  margin-top: 8px;
+}

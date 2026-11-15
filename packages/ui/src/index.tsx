@@ -429,6 +429,7 @@ export function AppShell({
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [orgSwitcherOpen, setOrgSwitcherOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
   const [pendingNavPath, setPendingNavPath] = useState<string | null>(null);
   const [navProgress, setNavProgress] = useState<number>(0);
 
@@ -1163,6 +1164,121 @@ export function AppShell({
           </div>
         </div>
       )}
+
+      {/* Global Floating Quick Action Hub ("+" Omni FAB) */}
+      <div className="app-omni-fab-container" suppressHydrationWarning>
+        {fabOpen && (
+          <div className="app-omni-fab-scrim" onClick={() => setFabOpen(false)} />
+        )}
+        {fabOpen && (
+          <div className="app-omni-fab-menu" role="menu">
+            <button
+              type="button"
+              className="app-omni-fab-item quick-collect"
+              onClick={() => {
+                setFabOpen(false);
+                if (onNavigate) onNavigate("/quick-collect");
+              }}
+            >
+              <span className="app-omni-fab-icon"><Icon name="dollar" size={16} /></span>
+              <span className="app-omni-fab-label">Quick Collect ₹</span>
+            </button>
+            <button
+              type="button"
+              className="app-omni-fab-item new-contact"
+              onClick={() => {
+                setFabOpen(false);
+                if (onNavigate) onNavigate("/people?action=new");
+              }}
+            >
+              <span className="app-omni-fab-icon"><Icon name="people" size={16} /></span>
+              <span className="app-omni-fab-label">Naya Customer / Member</span>
+            </button>
+            <button
+              type="button"
+              className="app-omni-fab-item new-lead"
+              onClick={() => {
+                setFabOpen(false);
+                if (onNavigate) onNavigate("/crm?action=new");
+              }}
+            >
+              <span className="app-omni-fab-icon"><Icon name="crm" size={16} /></span>
+              <span className="app-omni-fab-label">Nayi Lead (Inquiry)</span>
+            </button>
+            <button
+              type="button"
+              className="app-omni-fab-item new-expense"
+              onClick={() => {
+                setFabOpen(false);
+                if (onNavigate) onNavigate("/finance?action=expense");
+              }}
+            >
+              <span className="app-omni-fab-icon"><Icon name="tag" size={16} /></span>
+              <span className="app-omni-fab-label">Naya Kharcha (Expense)</span>
+            </button>
+          </div>
+        )}
+        <button
+          type="button"
+          className={`app-omni-fab-btn ${fabOpen ? "open" : ""}`}
+          onClick={() => setFabOpen((prev) => !prev)}
+          aria-label="Quick Actions"
+          title="Quick Actions"
+        >
+          <Icon name={fabOpen ? "close" : "plus"} size={22} />
+        </button>
+      </div>
+
+      {/* Mobile Fixed Bottom Navigation Bar */}
+      <nav className="app-mobile-bottom-nav" aria-label="Mobile Navigation" suppressHydrationWarning>
+        <button
+          type="button"
+          className={`app-mobile-nav-tab ${currentPath === "/" ? "active" : ""}`}
+          onClick={() => onNavigate && onNavigate("/")}
+        >
+          <Icon name="home" size={19} />
+          <span>Home</span>
+        </button>
+        <button
+          type="button"
+          className={`app-mobile-nav-tab ${currentPath.startsWith("/crm") || currentPath.startsWith("/people") ? "active" : ""}`}
+          onClick={() => {
+            if (onNavigate) {
+              const hasCrm = nav.some((n) => n.href === "/crm");
+              onNavigate(hasCrm ? "/crm" : "/people");
+            }
+          }}
+        >
+          <Icon name={nav.some((n) => n.href === "/crm") ? "crm" : "people"} size={19} />
+          <span>{nav.some((n) => n.href === "/crm") ? "Leads" : "Roster"}</span>
+        </button>
+        <button
+          type="button"
+          className={`app-mobile-nav-tab highlight ${currentPath.startsWith("/quick-collect") ? "active" : ""}`}
+          onClick={() => onNavigate && onNavigate("/quick-collect")}
+        >
+          <div className="app-mobile-nav-pill-icon">
+            <Icon name="dollar" size={17} />
+          </div>
+          <span>Collect ₹</span>
+        </button>
+        <button
+          type="button"
+          className={`app-mobile-nav-tab ${currentPath.startsWith("/finance") ? "active" : ""}`}
+          onClick={() => onNavigate && onNavigate("/finance")}
+        >
+          <Icon name="finance" size={19} />
+          <span>Finance</span>
+        </button>
+        <button
+          type="button"
+          className="app-mobile-nav-tab"
+          onClick={() => setOpen(true)}
+        >
+          <Icon name="menu" size={19} />
+          <span>Menu</span>
+        </button>
+      </nav>
     </div>
   );
 }
@@ -1427,12 +1543,18 @@ export function EmptyState({
   description,
   actionLabel,
   onAction,
+  secondaryActionLabel,
+  onSecondaryAction,
+  tip,
 }: {
   icon?: IconName;
   title: string;
   description: string;
   actionLabel?: string;
   onAction?: () => void;
+  secondaryActionLabel?: string;
+  onSecondaryAction?: () => void;
+  tip?: string;
 }) {
   return (
     <div className="empty-state">
@@ -1441,14 +1563,209 @@ export function EmptyState({
       </div>
       <h3>{title}</h3>
       <p>{description}</p>
-      {actionLabel && onAction && (
-        <button className="primary-button" onClick={onAction}>
-          <Icon name="plus" size={16} />
-          <span>{actionLabel}</span>
-        </button>
+      {tip && (
+        <div className="empty-state-tip">
+          <Icon name="activity" size={12} />
+          <span>{tip}</span>
+        </div>
       )}
+      <div className="empty-state-actions" style={{ display: "flex", gap: 10, flexWrap: "wrap", justifyContent: "center", marginTop: 14 }}>
+        {actionLabel && onAction && (
+          <button type="button" className="primary-button" onClick={onAction}>
+            <Icon name="plus" size={16} />
+            <span>{actionLabel}</span>
+          </button>
+        )}
+        {secondaryActionLabel && onSecondaryAction && (
+          <button type="button" className="btn btn-secondary" onClick={onSecondaryAction}>
+            <span>{secondaryActionLabel}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
+}
+
+export function WhatsAppPreviewModal({
+  isOpen,
+  onClose,
+  recipientName,
+  recipientPhone,
+  message,
+  onSend,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  recipientName: string;
+  recipientPhone: string;
+  message: string;
+  onSend?: (finalMessage: string) => void;
+}) {
+  const [editedMessage, setEditedMessage] = useState(message);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setEditedMessage(message);
+  }, [message]);
+
+  if (!isOpen) return null;
+
+  const cleanPhone = recipientPhone ? recipientPhone.replace(/\D/g, "") : "";
+  const sendUrl = cleanPhone
+    ? `https://wa.me/${cleanPhone}?text=${encodeURIComponent(editedMessage)}`
+    : `https://wa.me/?text=${encodeURIComponent(editedMessage)}`;
+
+  const handleSend = () => {
+    if (onSend) {
+      onSend(editedMessage);
+    } else {
+      window.open(sendUrl, "_blank", "noopener,noreferrer");
+    }
+    onClose();
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(editedMessage);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const modalEl = (
+    <div className="modal-overlay" onClick={onClose} role="dialog" aria-modal="true">
+      <div
+        className="modal-card whatsapp-preview-card"
+        onClick={(e) => e.stopPropagation()}
+        style={{ maxWidth: 480, padding: 0, overflow: "hidden", borderRadius: 18 }}
+      >
+        {/* WhatsApp Green Top Header */}
+        <div
+          style={{
+            background: "#075e54",
+            color: "#ffffff",
+            padding: "14px 18px",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <div
+              style={{
+                width: 36,
+                height: 36,
+                borderRadius: "50%",
+                background: "#25d366",
+                display: "grid",
+                placeItems: "center",
+                color: "#ffffff",
+                fontWeight: 800,
+                fontSize: 16,
+              }}
+            >
+              {recipientName ? recipientName.charAt(0).toUpperCase() : "W"}
+            </div>
+            <div>
+              <div style={{ fontWeight: 800, fontSize: 14 }}>{recipientName || "Customer"}</div>
+              <div style={{ fontSize: 11, opacity: 0.85 }}>{recipientPhone || "WhatsApp Receipt"}</div>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="icon-button"
+            onClick={onClose}
+            style={{ color: "#ffffff", background: "rgba(255, 255, 255, 0.15)" }}
+            aria-label="Close"
+          >
+            <Icon name="close" size={16} />
+          </button>
+        </div>
+
+        {/* Live Chat Bubble Preview */}
+        <div
+          style={{
+            background: "#ece5dd",
+            backgroundImage: "radial-gradient(#075e54 0.5px, transparent 0.5px)",
+            backgroundSize: "16px 16px",
+            padding: "20px 18px",
+            maxHeight: 240,
+            overflowY: "auto",
+          }}
+        >
+          <div
+            style={{
+              background: "#dcf8c6",
+              borderRadius: "10px 10px 2px 10px",
+              padding: "12px 14px",
+              fontSize: 13,
+              lineHeight: 1.5,
+              color: "#111827",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.15)",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {editedMessage}
+            <div style={{ textAlign: "right", fontSize: 10, color: "#6b7280", marginTop: 4 }}>
+              Just now · ✓✓
+            </div>
+          </div>
+        </div>
+
+        {/* Message Editor textarea */}
+        <div style={{ padding: "14px 18px", background: "#f9fafb", borderTop: "1px solid #e5e7eb" }}>
+          <label style={{ display: "block", fontSize: 11.5, fontWeight: 700, color: "#4b5563", marginBottom: 6 }}>
+            ✏️ Edit message text before sending (Optional):
+          </label>
+          <textarea
+            value={editedMessage}
+            onChange={(e) => setEditedMessage(e.target.value)}
+            rows={3}
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              borderRadius: 8,
+              border: "1px solid #d1d5db",
+              fontSize: 12.5,
+              fontFamily: "inherit",
+              resize: "vertical",
+            }}
+          />
+
+          {/* Action Buttons */}
+          <div style={{ display: "flex", gap: 10, marginTop: 12, justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={handleCopy}
+              style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
+            >
+              <Icon name="copy" size={13} />
+              <span>{copied ? "Copied! ✓" : "Copy Message"}</span>
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm"
+              onClick={handleSend}
+              style={{
+                background: "#25d366",
+                color: "#ffffff",
+                border: "none",
+                fontWeight: 750,
+                display: "inline-flex",
+                alignItems: "center",
+                gap: 6,
+                boxShadow: "0 2px 8px rgba(37, 211, 102, 0.4)",
+              }}
+            >
+              <span>Open in WhatsApp →</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return typeof document !== "undefined" ? createPortal(modalEl, document.body) : null;
 }
 
 export function AuthPanel({

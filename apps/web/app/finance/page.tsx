@@ -1288,6 +1288,9 @@ function FinanceContent() {
               description="Create and issue professional invoices for your products and services."
               actionLabel="Create Invoice"
               onAction={() => openCreateInvoiceModal()}
+              secondaryActionLabel="⚡ Quick Collect ₹"
+              onSecondaryAction={() => router.push("/quick-collect")}
+              tip="Aap seedha Quick Collect se bhi bina invoice banaye fees jama kar sakte hain"
             />
           ) : (
             <>
@@ -1476,7 +1479,12 @@ function FinanceContent() {
             <EmptyState
               icon="finance"
               title="No payments recorded yet"
-              description="Record payments against issued invoices to keep track of collections."
+              description="Record payments against issued invoices or collect instantly with QR codes."
+              actionLabel="⚡ Quick Collect ₹"
+              onAction={() => router.push("/quick-collect")}
+              secondaryActionLabel="+ Create Invoice"
+              onSecondaryAction={() => openCreateInvoiceModal()}
+              tip="Customer se turant UPI QR code ya Cash se fees collect karein"
             />
           ) : (
             <>

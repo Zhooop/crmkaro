@@ -4,6 +4,7 @@ import {
   AppShell,
   Badge,
   Icon,
+  WhatsAppPreviewModal,
   type NavItem,
   type OrganisationSummary,
 } from "@crmkaro/ui";
@@ -61,6 +62,11 @@ function QuickCollectContent() {
   // Copy Feedback State
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [previewWhatsAppItem, setPreviewWhatsAppItem] = useState<{
+    name: string;
+    phone: string;
+    message: string;
+  } | null>(null);
 
   const showToast = useCallback((msg: string) => {
     setToastMessage(msg);
@@ -345,7 +351,7 @@ function QuickCollectContent() {
               Quick Collect
             </h1>
             <p style={{ fontSize: 13, color: "var(--muted, #64748b)", margin: "3px 0 0" }}>
-              Generate instant Razorpay online payment links and share via WhatsApp.
+              Bina lambe form ke seedha UPI QR ya Payment Link banayein aur WhatsApp receipt share karein.
             </p>
           </div>
 
@@ -590,11 +596,16 @@ function QuickCollectContent() {
                                 <span>Open</span>
                               </a>
                             )}
-                            {whatsappUrl ? (
-                              <a
-                                href={whatsappUrl}
-                                target="_blank"
-                                rel="noreferrer"
+                            {item.phone ? (
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setPreviewWhatsAppItem({
+                                    name: item.name,
+                                    phone: item.phone || "",
+                                    message: whatsappMsg,
+                                  })
+                                }
                                 className="btn btn-secondary btn-sm"
                                 style={{
                                   background: "#16a34a",
@@ -606,11 +617,13 @@ function QuickCollectContent() {
                                   display: "inline-flex",
                                   alignItems: "center",
                                   gap: 5,
+                                  cursor: "pointer",
                                 }}
+                                title="Preview & Send on WhatsApp"
                               >
                                 <Icon name="whatsapp" size={13} />
                                 <span>WhatsApp</span>
-                              </a>
+                              </button>
                             ) : (
                               <span style={{ fontSize: 11, color: "var(--muted)" }}>No Phone</span>
                             )}
@@ -1030,6 +1043,15 @@ function QuickCollectContent() {
           <span>{toastMessage}</span>
         </div>
       )}
+
+      {/* WhatsApp Live Message Preview Modal */}
+      <WhatsAppPreviewModal
+        isOpen={Boolean(previewWhatsAppItem)}
+        onClose={() => setPreviewWhatsAppItem(null)}
+        recipientName={previewWhatsAppItem?.name || ""}
+        recipientPhone={previewWhatsAppItem?.phone || ""}
+        message={previewWhatsAppItem?.message || ""}
+      />
     </AppShell>
   );
 }
