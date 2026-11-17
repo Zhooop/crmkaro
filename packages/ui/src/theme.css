@@ -249,9 +249,10 @@ a {
   justify-content: space-between;
   height: 50px;
   padding: 0 20px;
-  background: rgba(237, 243, 251, 0.88);
-  border-bottom: 1px solid var(--line);
+  background: #dc2626 !important;
+  border-bottom: 2px solid #b91c1c !important;
   backdrop-filter: blur(14px);
+  color: #ffffff !important;
 }
 .global-search {
   display: flex;

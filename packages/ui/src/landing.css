@@ -124,11 +124,11 @@ div[id] {
   justify-content: space-between;
   padding: 10px 24px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.16);
+  background: #dc2626 !important;
   backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
-  border: 1px solid rgba(255, 255, 255, 0.28);
-  box-shadow: 0 16px 40px -10px rgba(10, 30, 80, 0.35), var(--lp-card-shine);
+  border: 2px solid #ef4444 !important;
+  box-shadow: 0 16px 40px -10px rgba(220, 38, 38, 0.5), var(--lp-card-shine);
   transition: all 0.2s ease;
 }
 
